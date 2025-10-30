@@ -49,9 +49,9 @@ type SessionConfig struct {
 
 // GoogleOAuthConfig contains Google OAuth settings
 type GoogleOAuthConfig struct {
-	ClientID     string
-	ClientSecret string
-	RedirectURL  string
+	ClientID      string
+	ClientSecret  string
+	RedirectURL   string
 	AllowedDomain string
 }
 
@@ -114,9 +114,9 @@ func Load() *Config {
 			MaxAge: getEnvAsInt("SESSION_MAX_AGE", 86400),
 		},
 		Google: GoogleOAuthConfig{
-			ClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
-			ClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
-			RedirectURL:  getEnv("GOOGLE_REDIRECT_URL", ""),
+			ClientID:      getEnv("GOOGLE_CLIENT_ID", ""),
+			ClientSecret:  getEnv("GOOGLE_CLIENT_SECRET", ""),
+			RedirectURL:   getEnv("GOOGLE_REDIRECT_URL", ""),
 			AllowedDomain: getEnv("GOOGLE_ALLOWED_DOMAIN", "bairesdev.com"),
 		},
 		SMTP: SMTPConfig{
@@ -172,4 +172,3 @@ func getEnvAsInt64(key string, defaultValue int64) int64 {
 	}
 	return defaultValue
 }
-

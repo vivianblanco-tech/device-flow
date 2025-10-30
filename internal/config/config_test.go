@@ -132,4 +132,3 @@ func TestGetEnvAsInt64(t *testing.T) {
 		})
 	}
 }
-

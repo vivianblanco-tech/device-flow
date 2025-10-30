@@ -36,4 +36,3 @@ func Connect(cfg config.DatabaseConfig) (*sql.DB, error) {
 
 	return db, nil
 }
-
