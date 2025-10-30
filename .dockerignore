@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Environment files
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs
+bin/
+dist/
+build/
+
+# Test files
+*_test.go
+tests/
+coverage.*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Uploads (will be volume mounted)
+uploads/*
+!uploads/.gitkeep
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Plans and process docs
+plan.md
+process.md
+tdd.md
+email-templates/
+form-templates/
+
