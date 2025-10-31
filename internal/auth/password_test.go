@@ -112,23 +112,23 @@ func TestCheckPasswordHash(t *testing.T) {
 
 func TestHashPasswordConsistency(t *testing.T) {
 	password := "testPassword123"
-	
+
 	// Hash the same password multiple times
 	hash1, err := HashPassword(password)
 	if err != nil {
 		t.Fatalf("Failed to hash password: %v", err)
 	}
-	
+
 	hash2, err := HashPassword(password)
 	if err != nil {
 		t.Fatalf("Failed to hash password: %v", err)
 	}
-	
+
 	// Hashes should be different (bcrypt uses random salt)
 	if hash1 == hash2 {
 		t.Error("HashPassword() generated identical hashes, expected different salts")
 	}
-	
+
 	// But both should validate against the same password
 	if !CheckPasswordHash(password, hash1) {
 		t.Error("First hash failed to validate")
@@ -206,4 +206,3 @@ func TestValidatePassword(t *testing.T) {
 		})
 	}
 }
-

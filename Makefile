@@ -29,6 +29,9 @@ dev: ## Run the application with hot reload (requires air)
 test: ## Run tests
 	go test -v -race -cover ./...
 
+test-unit: ## Run unit tests only (no database required)
+	go test -v -race -short ./...
+
 test-coverage: ## Run tests with coverage report
 	go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 	go tool cover -html=coverage.out -o coverage.html
@@ -49,6 +52,19 @@ db-reset: ## Reset database (drop and recreate)
 	dropdb $(DB_NAME) || true
 	createdb $(DB_NAME)
 	$(MAKE) migrate-up
+
+test-db-setup: ## Set up test database
+	@echo "Setting up test database..."
+	psql -U postgres -c "DROP DATABASE IF EXISTS laptop_tracking_test;" || true
+	psql -U postgres -c "CREATE DATABASE laptop_tracking_test;"
+	$(MIGRATE) -path migrations -database "postgres://postgres:postgres@localhost:5432/laptop_tracking_test?sslmode=disable" up
+	@echo "Test database ready!"
+
+test-db-reset: ## Reset test database
+	@echo "Resetting test database..."
+	psql -U postgres -c "DROP DATABASE IF EXISTS laptop_tracking_test;" || true
+	psql -U postgres -c "CREATE DATABASE laptop_tracking_test;"
+	$(MIGRATE) -path migrations -database "postgres://postgres:postgres@localhost:5432/laptop_tracking_test?sslmode=disable" up
 
 dev-setup: ## Set up development environment
 	@echo "Setting up development environment..."
