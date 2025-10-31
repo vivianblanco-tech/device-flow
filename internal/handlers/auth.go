@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"golang.org/x/oauth2"
+
 	"github.com/yourusername/laptop-tracking-system/internal/auth"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
@@ -14,8 +16,10 @@ import (
 
 // AuthHandler handles authentication-related requests
 type AuthHandler struct {
-	DB        *sql.DB
-	Templates *template.Template
+	DB           *sql.DB
+	Templates    *template.Template
+	OAuthConfig  *oauth2.Config
+	OAuthDomain  string // Allowed domain for Google OAuth
 }
 
 // NewAuthHandler creates a new AuthHandler
@@ -370,5 +374,127 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{"magic_link_url": "%s", "message": "Magic link created successfully"}`, magicLinkURL)
+}
+
+// GoogleLogin initiates the Google OAuth flow
+func (h *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
+	if h.OAuthConfig == nil {
+		http.Error(w, "OAuth not configured", http.StatusInternalServerError)
+		return
+	}
+
+	// Generate state token for CSRF protection
+	state, err := auth.GenerateOAuthState()
+	if err != nil {
+		http.Error(w, "Failed to generate state token", http.StatusInternalServerError)
+		return
+	}
+
+	// Store state in session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		Path:     "/",
+		MaxAge:   600, // 10 minutes
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	// Redirect to Google OAuth consent page
+	url := h.OAuthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+// GoogleCallback handles the OAuth callback from Google
+func (h *AuthHandler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
+	if h.OAuthConfig == nil {
+		http.Error(w, "OAuth not configured", http.StatusInternalServerError)
+		return
+	}
+
+	// Verify state token to prevent CSRF
+	stateCookie, err := r.Cookie("oauth_state")
+	if err != nil {
+		http.Redirect(w, r, "/login?error=Invalid+OAuth+state", http.StatusSeeOther)
+		return
+	}
+
+	state := r.URL.Query().Get("state")
+	if state != stateCookie.Value {
+		http.Redirect(w, r, "/login?error=Invalid+OAuth+state", http.StatusSeeOther)
+		return
+	}
+
+	// Clear state cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	// Exchange authorization code for token
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		http.Redirect(w, r, "/login?error=No+authorization+code", http.StatusSeeOther)
+		return
+	}
+
+	token, err := h.OAuthConfig.Exchange(r.Context(), code)
+	if err != nil {
+		http.Redirect(w, r, "/login?error=Failed+to+exchange+token", http.StatusSeeOther)
+		return
+	}
+
+	// Get user info from Google
+	userInfo, err := auth.GetGoogleUserInfo(r.Context(), token)
+	if err != nil {
+		http.Redirect(w, r, "/login?error=Failed+to+get+user+info", http.StatusSeeOther)
+		return
+	}
+
+	// Validate email is verified
+	if !userInfo.VerifiedEmail {
+		http.Redirect(w, r, "/login?error=Email+not+verified", http.StatusSeeOther)
+		return
+	}
+
+	// Validate domain if configured
+	if h.OAuthDomain != "" && !auth.ValidateDomain(userInfo.Email, h.OAuthDomain) {
+		http.Redirect(w, r, "/login?error=Email+domain+not+allowed", http.StatusSeeOther)
+		return
+	}
+
+	// Find or create user
+	user, err := auth.FindOrCreateGoogleUser(r.Context(), h.DB, userInfo, models.RoleLogistics)
+	if err != nil {
+		http.Error(w, "Failed to create/find user", http.StatusInternalServerError)
+		return
+	}
+
+	// Create session
+	session, err := auth.CreateSession(r.Context(), h.DB, user.ID, auth.DefaultSessionDuration)
+	if err != nil {
+		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		return
+	}
+
+	// Set session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.SessionCookieName,
+		Value:    session.Token,
+		Path:     "/",
+		Expires:  session.ExpiresAt,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	// Redirect to dashboard
+	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
 

@@ -10,4 +10,8 @@ require (
 	github.com/lib/pq v1.10.9
 )
 
-require golang.org/x/crypto v0.43.0 // indirect
+require (
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
+	golang.org/x/crypto v0.43.0 // indirect
+	golang.org/x/oauth2 v0.32.0 // indirect
+)
