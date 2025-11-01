@@ -39,9 +39,9 @@ func TestPickupFormPage(t *testing.T) {
 	// Create test user
 	var userID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO users (email, role, created_at, updated_at)
-		VALUES ($1, $2, $3, $4) RETURNING id`,
-		"client@company.com", models.RoleClient, time.Now(), time.Now(),
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"client@company.com", "$2a$12$test.hash.for.testing.purposes", models.RoleClient, time.Now(), time.Now(),
 	).Scan(&userID)
 	if err != nil {
 		t.Fatalf("Failed to create test user: %v", err)
@@ -90,9 +90,9 @@ func TestPickupFormSubmit(t *testing.T) {
 	// Create test user
 	var userID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO users (email, role, created_at, updated_at)
-		VALUES ($1, $2, $3, $4) RETURNING id`,
-		"client@company.com", models.RoleClient, time.Now(), time.Now(),
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"client@company.com", "$2a$12$test.hash.for.testing.purposes", models.RoleClient, time.Now(), time.Now(),
 	).Scan(&userID)
 	if err != nil {
 		t.Fatalf("Failed to create test user: %v", err)
