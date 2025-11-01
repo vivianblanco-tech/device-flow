@@ -9,14 +9,14 @@ import (
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 )
 
-// contextKey is a custom type for context keys to avoid collisions
-type contextKey string
+// ContextKey is a custom type for context keys to avoid collisions
+type ContextKey string
 
 const (
 	// UserContextKey is the key for storing user in request context
-	UserContextKey contextKey = "user"
+	UserContextKey ContextKey = "user"
 	// SessionContextKey is the key for storing session in request context
-	SessionContextKey contextKey = "session"
+	SessionContextKey ContextKey = "session"
 )
 
 // SessionCookieName is the name of the session cookie
