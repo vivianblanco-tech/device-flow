@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Reception Report - Laptop Tracking System</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-900">Laptop Tracking System</h1>
+                </div>
+                <div class="flex items-center">
+                    {{if .User}}
+                    <span class="text-sm text-gray-600 mr-4">{{.User.Email}} (Warehouse)</span>
+                    <a href="/logout" class="text-sm text-blue-600 hover:text-blue-700">Logout</a>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">Warehouse Reception Report</h2>
+            <p class="mt-2 text-gray-600">Record the receipt of laptops at the warehouse</p>
+        </div>
+
+        <!-- Error Message -->
+        {{if .Error}}
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-red-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-sm text-red-800">{{.Error}}</p>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Success Message -->
+        {{if .Success}}
+        <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-green-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-sm text-green-800">{{.Success}}</p>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Shipment Information Card -->
+        {{if .Shipment}}
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-semibold text-blue-900 mb-3">Shipment Information</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="text-blue-700 font-medium">Shipment ID:</span>
+                    <span class="text-blue-900">{{.Shipment.ID}}</span>
+                </div>
+                <div>
+                    <span class="text-blue-700 font-medium">Client Company:</span>
+                    <span class="text-blue-900">{{.CompanyName}}</span>
+                </div>
+                <div>
+                    <span class="text-blue-700 font-medium">Current Status:</span>
+                    <span class="text-blue-900 capitalize">{{.Shipment.Status}}</span>
+                </div>
+                <div>
+                    <span class="text-blue-700 font-medium">Created:</span>
+                    <span class="text-blue-900">{{.Shipment.CreatedAt.Format "Jan 02, 2006"}}</span>
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Reception Report Form -->
+        <div class="bg-white shadow-md rounded-lg p-6 md:p-8">
+            <form action="/reception-report" method="POST" enctype="multipart/form-data" class="space-y-6">
+                <input type="hidden" name="shipment_id" value="{{.Shipment.ID}}">
+
+                <!-- Notes Section -->
+                <div>
+                    <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">
+                        Reception Notes
+                    </label>
+                    <textarea 
+                        id="notes" 
+                        name="notes" 
+                        rows="6"
+                        placeholder="Document the condition of received items, any discrepancies, damage, or special observations..."
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    ></textarea>
+                    <p class="mt-1 text-sm text-gray-500">Maximum 1000 characters</p>
+                </div>
+
+                <!-- Photo Upload Section -->
+                <div>
+                    <label for="photos" class="block text-sm font-medium text-gray-700 mb-2">
+                        Upload Photos (Optional)
+                    </label>
+                    <div class="mt-2">
+                        <input 
+                            type="file" 
+                            id="photos" 
+                            name="photos" 
+                            accept="image/*"
+                            multiple
+                            class="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-md file:border-0
+                                file:text-sm file:font-medium
+                                file:bg-blue-50 file:text-blue-700
+                                hover:file:bg-blue-100
+                                cursor-pointer"
+                        >
+                    </div>
+                    <p class="mt-2 text-sm text-gray-500">
+                        Upload photos of received items (JPG, PNG, etc.). Maximum 10 photos, 10MB each.
+                    </p>
+                    
+                    <!-- Photo Preview Area -->
+                    <div id="photo-preview" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                </div>
+
+                <!-- Instructions -->
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-yellow-900 mb-2">Checklist:</h4>
+                    <ul class="text-sm text-yellow-800 space-y-1 ml-4 list-disc">
+                        <li>Verify the number of items received matches the shipment</li>
+                        <li>Check for any visible damage to packaging or devices</li>
+                        <li>Record serial numbers of all devices</li>
+                        <li>Take photos of any damage or discrepancies</li>
+                        <li>Store items in designated warehouse location</li>
+                    </ul>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="flex items-center justify-end space-x-4 pt-6 border-t">
+                    <a 
+                        href="/dashboard" 
+                        class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition font-medium"
+                    >
+                        Cancel
+                    </a>
+                    <button 
+                        type="submit" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition font-medium"
+                    >
+                        Submit Reception Report
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-600">
+                Need help? Contact <a href="mailto:support@bairesdev.com" class="text-blue-600 hover:text-blue-700">support@bairesdev.com</a>
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript for Photo Preview -->
+    <script>
+        document.getElementById('photos').addEventListener('change', function(e) {
+            const previewArea = document.getElementById('photo-preview');
+            previewArea.innerHTML = '';
+            
+            const files = Array.from(e.target.files);
+            
+            if (files.length > 10) {
+                alert('Maximum 10 photos allowed');
+                e.target.value = '';
+                return;
+            }
+            
+            files.forEach((file, index) => {
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`File ${file.name} is too large. Maximum size is 10MB.`);
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const div = document.createElement('div');
+                    div.className = 'relative';
+                    div.innerHTML = `
+                        <img src="${event.target.result}" 
+                             alt="Preview ${index + 1}" 
+                             class="w-full h-24 object-cover rounded-md border border-gray-300">
+                        <div class="absolute top-1 right-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                            ${index + 1}
+                        </div>
+                    `;
+                    previewArea.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+    </script>
+</body>
+</html>
+

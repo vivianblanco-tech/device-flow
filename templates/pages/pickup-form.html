@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pickup Form - Laptop Tracking System</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-900">Laptop Tracking System</h1>
+                </div>
+                <div class="flex items-center">
+                    {{if .User}}
+                    <span class="text-sm text-gray-600 mr-4">{{.User.Email}}</span>
+                    <a href="/logout" class="text-sm text-blue-600 hover:text-blue-700">Logout</a>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">Schedule Laptop Pickup</h2>
+            <p class="mt-2 text-gray-600">Fill out the form below to schedule a laptop pickup from your location.</p>
+        </div>
+
+        <!-- Error Message -->
+        {{if .Error}}
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-red-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-sm text-red-800">{{.Error}}</p>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Success Message -->
+        {{if .Success}}
+        <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-green-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-sm text-green-800">{{.Success}}</p>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Pickup Form -->
+        <div class="bg-white shadow-md rounded-lg p-6 md:p-8">
+            <form action="/pickup-form" method="POST" class="space-y-6">
+                
+                <!-- Company Selection (for Logistics users) -->
+                {{if eq .User.Role "logistics"}}
+                <div>
+                    <label for="client_company_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        Client Company <span class="text-red-600">*</span>
+                    </label>
+                    <select 
+                        id="client_company_id" 
+                        name="client_company_id" 
+                        required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    >
+                        <option value="">Select a company...</option>
+                        {{range .Companies}}
+                        <option value="{{.ID}}" {{if eq $.CompanyID .ID}}selected{{end}}>{{.Name}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                {{else}}
+                <input type="hidden" name="client_company_id" value="{{.CompanyID}}">
+                {{end}}
+
+                <!-- Contact Information Section -->
+                <div class="border-t pt-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Contact Name -->
+                        <div>
+                            <label for="contact_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                Contact Name <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="contact_name" 
+                                name="contact_name" 
+                                required
+                                placeholder="John Doe"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- Contact Email -->
+                        <div>
+                            <label for="contact_email" class="block text-sm font-medium text-gray-700 mb-2">
+                                Contact Email <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="email" 
+                                id="contact_email" 
+                                name="contact_email" 
+                                required
+                                placeholder="john.doe@company.com"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- Contact Phone -->
+                        <div class="md:col-span-2">
+                            <label for="contact_phone" class="block text-sm font-medium text-gray-700 mb-2">
+                                Contact Phone <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="tel" 
+                                id="contact_phone" 
+                                name="contact_phone" 
+                                required
+                                placeholder="+1-555-0123"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pickup Details Section -->
+                <div class="border-t pt-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Pickup Details</h3>
+                    
+                    <!-- Pickup Address -->
+                    <div class="mb-6">
+                        <label for="pickup_address" class="block text-sm font-medium text-gray-700 mb-2">
+                            Pickup Address <span class="text-red-600">*</span>
+                        </label>
+                        <textarea 
+                            id="pickup_address" 
+                            name="pickup_address" 
+                            rows="3"
+                            required
+                            placeholder="123 Main Street, Suite 400, City, State, ZIP Code"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        ></textarea>
+                        <p class="mt-1 text-sm text-gray-500">Include building name, floor, and any access instructions</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Pickup Date -->
+                        <div>
+                            <label for="pickup_date" class="block text-sm font-medium text-gray-700 mb-2">
+                                Pickup Date <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="date" 
+                                id="pickup_date" 
+                                name="pickup_date" 
+                                required
+                                min="{{.TodayDate}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- Time Slot -->
+                        <div>
+                            <label for="pickup_time_slot" class="block text-sm font-medium text-gray-700 mb-2">
+                                Time Slot <span class="text-red-600">*</span>
+                            </label>
+                            <select 
+                                id="pickup_time_slot" 
+                                name="pickup_time_slot" 
+                                required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                                <option value="">Select...</option>
+                                <option value="morning">Morning (8AM - 12PM)</option>
+                                <option value="afternoon">Afternoon (12PM - 5PM)</option>
+                                <option value="evening">Evening (5PM - 8PM)</option>
+                            </select>
+                        </div>
+
+                        <!-- Number of Laptops -->
+                        <div>
+                            <label for="number_of_laptops" class="block text-sm font-medium text-gray-700 mb-2">
+                                Number of Laptops <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="number" 
+                                id="number_of_laptops" 
+                                name="number_of_laptops" 
+                                min="1"
+                                required
+                                placeholder="1"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Special Instructions -->
+                    <div class="mt-6">
+                        <label for="special_instructions" class="block text-sm font-medium text-gray-700 mb-2">
+                            Special Instructions (Optional)
+                        </label>
+                        <textarea 
+                            id="special_instructions" 
+                            name="special_instructions" 
+                            rows="3"
+                            placeholder="Any special handling requirements, parking instructions, security protocols, etc."
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="flex items-center justify-end space-x-4 pt-6 border-t">
+                    <a 
+                        href="/dashboard" 
+                        class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition font-medium"
+                    >
+                        Cancel
+                    </a>
+                    <button 
+                        type="submit" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition font-medium"
+                    >
+                        Submit Pickup Request
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Help Text -->
+        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 class="text-sm font-medium text-blue-900 mb-2">What happens next?</h4>
+            <ul class="text-sm text-blue-800 space-y-1 ml-4 list-disc">
+                <li>You'll receive a confirmation email with your pickup request details</li>
+                <li>Our logistics team will contact you to confirm the pickup schedule</li>
+                <li>A courier will arrive during your selected time slot</li>
+                <li>You'll be able to track your shipment status in real-time</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-600">
+                Need help? Contact <a href="mailto:support@bairesdev.com" class="text-blue-600 hover:text-blue-700">support@bairesdev.com</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
+
