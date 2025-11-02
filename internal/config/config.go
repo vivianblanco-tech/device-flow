@@ -67,7 +67,11 @@ type SMTPConfig struct {
 
 // JIRAConfig contains JIRA integration settings
 type JIRAConfig struct {
-	URL          string
+	URL            string
+	Username       string
+	APIToken       string
+	DefaultProject string
+	// Legacy OAuth fields (kept for backward compatibility)
 	ClientID     string
 	ClientSecret string
 	RedirectURL  string
@@ -128,10 +132,13 @@ func Load() *Config {
 			FromName: getEnv("SMTP_FROM_NAME", "Laptop Tracking System"),
 		},
 		JIRA: JIRAConfig{
-			URL:          getEnv("JIRA_URL", ""),
-			ClientID:     getEnv("JIRA_CLIENT_ID", ""),
-			ClientSecret: getEnv("JIRA_CLIENT_SECRET", ""),
-			RedirectURL:  getEnv("JIRA_REDIRECT_URL", ""),
+			URL:            getEnv("JIRA_URL", ""),
+			Username:       getEnv("JIRA_USERNAME", ""),
+			APIToken:       getEnv("JIRA_API_TOKEN", ""),
+			DefaultProject: getEnv("JIRA_DEFAULT_PROJECT", ""),
+			ClientID:       getEnv("JIRA_CLIENT_ID", ""),
+			ClientSecret:   getEnv("JIRA_CLIENT_SECRET", ""),
+			RedirectURL:    getEnv("JIRA_REDIRECT_URL", ""),
 		},
 		Upload: UploadConfig{
 			MaxSize: getEnvAsInt64("MAX_UPLOAD_SIZE", 10485760), // 10MB default
