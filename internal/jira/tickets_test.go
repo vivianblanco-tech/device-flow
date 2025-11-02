@@ -36,10 +36,9 @@ func TestClient_GetTicket(t *testing.T) {
 	defer server.Close()
 
 	config := Config{
-		URL:          server.URL,
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
+		URL:      server.URL,
+		Username: "test@example.com",
+		APIToken: "test-api-token",
 	}
 
 	client, err := NewClient(config)
@@ -48,7 +47,7 @@ func TestClient_GetTicket(t *testing.T) {
 	}
 
 	// Fetch the ticket
-	ticket, err := client.GetTicket("PROJ-123", "mock-access-token")
+	ticket, err := client.GetTicket("PROJ-123")
 	if err != nil {
 		t.Fatalf("expected no error fetching ticket, got %v", err)
 	}
@@ -75,10 +74,9 @@ func TestClient_GetTicket_NotFound(t *testing.T) {
 	defer server.Close()
 
 	config := Config{
-		URL:          server.URL,
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
+		URL:      server.URL,
+		Username: "test@example.com",
+		APIToken: "test-api-token",
 	}
 
 	client, err := NewClient(config)
@@ -86,30 +84,9 @@ func TestClient_GetTicket_NotFound(t *testing.T) {
 		t.Fatalf("expected no error creating client, got %v", err)
 	}
 
-	_, err = client.GetTicket("NONEXISTENT-123", "mock-access-token")
+	_, err = client.GetTicket("NONEXISTENT-123")
 	if err == nil {
 		t.Error("expected error for non-existent ticket, got nil")
-	}
-}
-
-// 🟥 RED: Test for fetching ticket without access token
-// This test verifies that fetching requires an access token
-func TestClient_GetTicket_NoToken(t *testing.T) {
-	config := Config{
-		URL:          "https://bairesdev.atlassian.net",
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
-	}
-
-	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("expected no error creating client, got %v", err)
-	}
-
-	_, err = client.GetTicket("PROJ-123", "")
-	if err == nil {
-		t.Error("expected error for missing token, got nil")
 	}
 }
 
@@ -145,10 +122,9 @@ func TestClient_SearchTickets(t *testing.T) {
 	defer server.Close()
 
 	config := Config{
-		URL:          server.URL,
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
+		URL:      server.URL,
+		Username: "test@example.com",
+		APIToken: "test-api-token",
 	}
 
 	client, err := NewClient(config)
@@ -157,7 +133,7 @@ func TestClient_SearchTickets(t *testing.T) {
 	}
 
 	// Search tickets
-	results, err := client.SearchTickets("project = PROJ", "mock-access-token")
+	results, err := client.SearchTickets("project = PROJ")
 	if err != nil {
 		t.Fatalf("expected no error searching tickets, got %v", err)
 	}

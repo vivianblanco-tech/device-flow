@@ -31,10 +31,9 @@ func TestClient_CreateTicket(t *testing.T) {
 	defer server.Close()
 
 	config := Config{
-		URL:          server.URL,
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
+		URL:      server.URL,
+		Username: "test@example.com",
+		APIToken: "test-api-token",
 	}
 
 	client, err := NewClient(config)
@@ -49,7 +48,7 @@ func TestClient_CreateTicket(t *testing.T) {
 		IssueType:  "Task",
 	}
 
-	response, err := client.CreateTicket(ticketRequest, "mock-access-token")
+	response, err := client.CreateTicket(ticketRequest)
 	if err != nil {
 		t.Fatalf("expected no error creating ticket, got %v", err)
 	}
@@ -60,41 +59,13 @@ func TestClient_CreateTicket(t *testing.T) {
 	}
 }
 
-// 🟥 RED: Test for creating a JIRA ticket without access token
-// This test verifies that ticket creation requires an access token
-func TestClient_CreateTicket_NoToken(t *testing.T) {
-	config := Config{
-		URL:          "https://bairesdev.atlassian.net",
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
-	}
-
-	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("expected no error creating client, got %v", err)
-	}
-
-	ticketRequest := &CreateTicketRequest{
-		ProjectKey: "PROJ",
-		Summary:    "Test ticket",
-		IssueType:  "Task",
-	}
-
-	_, err = client.CreateTicket(ticketRequest, "")
-	if err == nil {
-		t.Error("expected error for missing token, got nil")
-	}
-}
-
 // 🟥 RED: Test for creating a JIRA ticket with invalid request
 // This test verifies proper validation of ticket creation request
 func TestClient_CreateTicket_InvalidRequest(t *testing.T) {
 	config := Config{
-		URL:          "https://bairesdev.atlassian.net",
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
+		URL:      "https://bairesdev.atlassian.net",
+		Username: "test@example.com",
+		APIToken: "test-api-token",
 	}
 
 	client, err := NewClient(config)
@@ -131,7 +102,7 @@ func TestClient_CreateTicket_InvalidRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := client.CreateTicket(tt.request, "mock-token")
+			_, err := client.CreateTicket(tt.request)
 			if err == nil {
 				t.Error("expected error for invalid request, got nil")
 			}
@@ -156,10 +127,9 @@ func TestClient_UpdateTicketStatus(t *testing.T) {
 	defer server.Close()
 
 	config := Config{
-		URL:          server.URL,
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
+		URL:      server.URL,
+		Username: "test@example.com",
+		APIToken: "test-api-token",
 	}
 
 	client, err := NewClient(config)
@@ -168,7 +138,7 @@ func TestClient_UpdateTicketStatus(t *testing.T) {
 	}
 
 	// Update ticket status
-	err = client.UpdateTicketStatus("PROJ-123", "In Progress", "mock-access-token")
+	err = client.UpdateTicketStatus("PROJ-123", "In Progress")
 	if err != nil {
 		t.Fatalf("expected no error updating status, got %v", err)
 	}
@@ -195,10 +165,9 @@ func TestClient_AddComment(t *testing.T) {
 	defer server.Close()
 
 	config := Config{
-		URL:          server.URL,
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
+		URL:      server.URL,
+		Username: "test@example.com",
+		APIToken: "test-api-token",
 	}
 
 	client, err := NewClient(config)
@@ -207,7 +176,7 @@ func TestClient_AddComment(t *testing.T) {
 	}
 
 	// Add comment to ticket
-	err = client.AddComment("PROJ-123", "Shipment has been picked up from client", "mock-access-token")
+	err = client.AddComment("PROJ-123", "Shipment has been picked up from client")
 	if err != nil {
 		t.Fatalf("expected no error adding comment, got %v", err)
 	}
@@ -272,10 +241,9 @@ func TestSyncShipmentStatusToJira(t *testing.T) {
 	defer server.Close()
 
 	config := Config{
-		URL:          server.URL,
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
+		URL:      server.URL,
+		Username: "test@example.com",
+		APIToken: "test-api-token",
 	}
 
 	client, err := NewClient(config)
@@ -289,7 +257,7 @@ func TestSyncShipmentStatusToJira(t *testing.T) {
 	}
 
 	// Sync shipment status to JIRA
-	err = client.SyncShipmentStatusToJira("PROJ-123", shipment, "mock-access-token")
+	err = client.SyncShipmentStatusToJira("PROJ-123", shipment)
 	if err != nil {
 		t.Fatalf("expected no error syncing status, got %v", err)
 	}

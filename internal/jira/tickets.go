@@ -27,10 +27,7 @@ type SearchResults struct {
 }
 
 // GetTicket fetches a specific JIRA ticket by key
-func (c *Client) GetTicket(issueKey, accessToken string) (*Ticket, error) {
-	if accessToken == "" {
-		return nil, errors.New("access token is required")
-	}
+func (c *Client) GetTicket(issueKey string) (*Ticket, error) {
 	if issueKey == "" {
 		return nil, errors.New("issue key is required")
 	}
@@ -42,8 +39,8 @@ func (c *Client) GetTicket(issueKey, accessToken string) (*Ticket, error) {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Add authorization header
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	// Add authorization header with Basic Auth
+	req.Header.Set("Authorization", c.createAuthHeader())
 	req.Header.Set("Accept", "application/json")
 
 	// Make the request
@@ -104,10 +101,7 @@ func (c *Client) GetTicket(issueKey, accessToken string) (*Ticket, error) {
 }
 
 // SearchTickets searches for JIRA tickets using JQL (JIRA Query Language)
-func (c *Client) SearchTickets(jql, accessToken string) (*SearchResults, error) {
-	if accessToken == "" {
-		return nil, errors.New("access token is required")
-	}
+func (c *Client) SearchTickets(jql string) (*SearchResults, error) {
 	if jql == "" {
 		return nil, errors.New("JQL query is required")
 	}
@@ -125,8 +119,8 @@ func (c *Client) SearchTickets(jql, accessToken string) (*SearchResults, error) 
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Add authorization header
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	// Add authorization header with Basic Auth
+	req.Header.Set("Authorization", c.createAuthHeader())
 	req.Header.Set("Accept", "application/json")
 
 	// Make the request

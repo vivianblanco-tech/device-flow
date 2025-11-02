@@ -588,7 +588,7 @@ Building a web application to track laptop pickup and delivery from client compa
   - [x] File upload handling with validation
   - [x] ~3,500 lines of production code
 - [x] **Phase 4: JIRA Integration** (Completed November 2, 2025)
-  - [x] JIRA client with OAuth configuration and connection validation
+  - [x] JIRA client with API token authentication (Basic Auth) and connection validation
   - [x] Fetch individual tickets and search using JQL
   - [x] Map JIRA data to shipment information
   - [x] Extract custom fields (serial numbers, engineer emails, client companies)
@@ -597,8 +597,9 @@ Building a web application to track laptop pickup and delivery from client compa
   - [x] Create JIRA tickets from shipments
   - [x] Update ticket statuses and add comments
   - [x] Sync shipment status changes to JIRA
-  - [x] 27 test cases with full coverage
+  - [x] 24 test cases with full coverage (OAuth-free implementation)
   - [x] ~600 lines of production code in 5 files
+  - [x] Simple API token + Basic Auth (no OAuth complexity)
 - [x] **Phase 8: Partial Completion** (Docker setup completed)
   - [x] Multi-stage Dockerfile created
   - [x] .dockerignore file created

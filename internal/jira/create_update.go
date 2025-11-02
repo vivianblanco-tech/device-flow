@@ -30,10 +30,7 @@ type CreateTicketResponse struct {
 }
 
 // CreateTicket creates a new JIRA ticket
-func (c *Client) CreateTicket(request *CreateTicketRequest, accessToken string) (*CreateTicketResponse, error) {
-	if accessToken == "" {
-		return nil, errors.New("access token is required")
-	}
+func (c *Client) CreateTicket(request *CreateTicketRequest) (*CreateTicketResponse, error) {
 	if request == nil {
 		return nil, errors.New("request cannot be nil")
 	}
@@ -105,8 +102,8 @@ func (c *Client) CreateTicket(request *CreateTicketRequest, accessToken string) 
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Add headers
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	// Add headers with Basic Auth
+	req.Header.Set("Authorization", c.createAuthHeader())
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
@@ -138,10 +135,7 @@ func (c *Client) CreateTicket(request *CreateTicketRequest, accessToken string) 
 }
 
 // UpdateTicketStatus updates a JIRA ticket's status by transitioning it
-func (c *Client) UpdateTicketStatus(issueKey, status, accessToken string) error {
-	if accessToken == "" {
-		return errors.New("access token is required")
-	}
+func (c *Client) UpdateTicketStatus(issueKey, status string) error {
 	if issueKey == "" {
 		return errors.New("issue key is required")
 	}
@@ -174,8 +168,8 @@ func (c *Client) UpdateTicketStatus(issueKey, status, accessToken string) error 
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Add headers
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	// Add headers with Basic Auth
+	req.Header.Set("Authorization", c.createAuthHeader())
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
@@ -196,10 +190,7 @@ func (c *Client) UpdateTicketStatus(issueKey, status, accessToken string) error 
 }
 
 // AddComment adds a comment to a JIRA ticket
-func (c *Client) AddComment(issueKey, comment, accessToken string) error {
-	if accessToken == "" {
-		return errors.New("access token is required")
-	}
+func (c *Client) AddComment(issueKey, comment string) error {
 	if issueKey == "" {
 		return errors.New("issue key is required")
 	}
@@ -238,8 +229,8 @@ func (c *Client) AddComment(issueKey, comment, accessToken string) error {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Add headers
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	// Add headers with Basic Auth
+	req.Header.Set("Authorization", c.createAuthHeader())
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
@@ -306,7 +297,7 @@ func BuildTicketFromShipment(shipment *models.Shipment, clientCompany *models.Cl
 }
 
 // SyncShipmentStatusToJira syncs shipment status changes to JIRA
-func (c *Client) SyncShipmentStatusToJira(issueKey string, shipment *models.Shipment, accessToken string) error {
+func (c *Client) SyncShipmentStatusToJira(issueKey string, shipment *models.Shipment) error {
 	if issueKey == "" {
 		return errors.New("issue key is required")
 	}
@@ -336,13 +327,13 @@ func (c *Client) SyncShipmentStatusToJira(issueKey string, shipment *models.Ship
 	}
 
 	// Update the ticket status
-	if err := c.UpdateTicketStatus(issueKey, jiraStatus, accessToken); err != nil {
+	if err := c.UpdateTicketStatus(issueKey, jiraStatus); err != nil {
 		return fmt.Errorf("failed to update ticket status: %w", err)
 	}
 
 	// Add a comment with the status update
 	comment := fmt.Sprintf("Shipment status updated to: %s", shipment.Status)
-	if err := c.AddComment(issueKey, comment, accessToken); err != nil {
+	if err := c.AddComment(issueKey, comment); err != nil {
 		// Don't fail if comment fails, just log it
 		// In production, this would use proper logging
 		return nil

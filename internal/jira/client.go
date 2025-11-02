@@ -1,6 +1,7 @@
 package jira
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -8,10 +9,9 @@ import (
 
 // Config holds the JIRA client configuration
 type Config struct {
-	URL          string
-	ClientID     string
-	ClientSecret string
-	RedirectURL  string
+	URL      string
+	Username string // JIRA account email (e.g., user@example.com)
+	APIToken string // API token from JIRA user settings
 }
 
 // Client represents a JIRA API client
@@ -26,11 +26,11 @@ func NewClient(config Config) (*Client, error) {
 	if config.URL == "" {
 		return nil, errors.New("JIRA URL is required")
 	}
-	if config.ClientID == "" {
-		return nil, errors.New("JIRA ClientID is required")
+	if config.Username == "" {
+		return nil, errors.New("JIRA Username is required")
 	}
-	if config.ClientSecret == "" {
-		return nil, errors.New("JIRA ClientSecret is required")
+	if config.APIToken == "" {
+		return nil, errors.New("JIRA APIToken is required")
 	}
 
 	return &Client{
@@ -39,12 +39,14 @@ func NewClient(config Config) (*Client, error) {
 	}, nil
 }
 
-// TestConnection validates the connection to JIRA API using the provided access token
-func (c *Client) TestConnection(accessToken string) error {
-	if accessToken == "" {
-		return errors.New("access token is required")
-	}
+// createAuthHeader generates Basic Auth header from username and API token
+func (c *Client) createAuthHeader() string {
+	auth := c.config.Username + ":" + c.config.APIToken
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
+}
 
+// TestConnection validates the connection to JIRA API using Basic Auth
+func (c *Client) TestConnection() error {
 	// Make a request to JIRA API to validate the connection
 	url := fmt.Sprintf("%s/rest/api/3/myself", c.config.URL)
 	req, err := http.NewRequest("GET", url, nil)
@@ -52,8 +54,8 @@ func (c *Client) TestConnection(accessToken string) error {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Add authorization header
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	// Add authorization header with Basic Auth
+	req.Header.Set("Authorization", c.createAuthHeader())
 	req.Header.Set("Accept", "application/json")
 
 	// Make the request
@@ -65,7 +67,7 @@ func (c *Client) TestConnection(accessToken string) error {
 
 	// Check response status
 	if resp.StatusCode == http.StatusUnauthorized {
-		return errors.New("unauthorized: invalid access token")
+		return errors.New("unauthorized: invalid credentials")
 	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)

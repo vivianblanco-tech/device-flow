@@ -10,10 +10,9 @@ import (
 // This test verifies that we can create a new JIRA client with proper configuration
 func TestNewClient(t *testing.T) {
 	config := Config{
-		URL:          "https://bairesdev.atlassian.net",
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
+		URL:      "https://bairesdev.atlassian.net",
+		Username: "test@example.com",
+		APIToken: "test-api-token",
 	}
 
 	client, err := NewClient(config)
@@ -40,25 +39,22 @@ func TestNewClient_InvalidConfig(t *testing.T) {
 		{
 			name: "missing URL",
 			config: Config{
-				ClientID:     "test-client-id",
-				ClientSecret: "test-client-secret",
-				RedirectURL:  "http://localhost:8080/auth/jira/callback",
+				Username: "test@example.com",
+				APIToken: "test-api-token",
 			},
 		},
 		{
-			name: "missing ClientID",
+			name: "missing Username",
 			config: Config{
-				URL:          "https://bairesdev.atlassian.net",
-				ClientSecret: "test-client-secret",
-				RedirectURL:  "http://localhost:8080/auth/jira/callback",
+				URL:      "https://bairesdev.atlassian.net",
+				APIToken: "test-api-token",
 			},
 		},
 		{
-			name: "missing ClientSecret",
+			name: "missing APIToken",
 			config: Config{
-				URL:         "https://bairesdev.atlassian.net",
-				ClientID:    "test-client-id",
-				RedirectURL: "http://localhost:8080/auth/jira/callback",
+				URL:      "https://bairesdev.atlassian.net",
+				Username: "test@example.com",
 			},
 		},
 	}
@@ -89,10 +85,9 @@ func TestClient_TestConnection(t *testing.T) {
 	defer server.Close()
 
 	config := Config{
-		URL:          server.URL,
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
+		URL:      server.URL,
+		Username: "test@example.com",
+		APIToken: "test-api-token",
 	}
 
 	client, err := NewClient(config)
@@ -100,14 +95,14 @@ func TestClient_TestConnection(t *testing.T) {
 		t.Fatalf("expected no error creating client, got %v", err)
 	}
 
-	// Test connection with a mock access token
-	err = client.TestConnection("mock-access-token")
+	// Test connection using Basic Auth
+	err = client.TestConnection()
 	if err != nil {
 		t.Errorf("expected no error testing connection, got %v", err)
 	}
 }
 
-// 🟥 RED: Test for JIRA connection validation with invalid token
+// 🟥 RED: Test for JIRA connection validation with invalid credentials
 // This test verifies that connection test fails with unauthorized access
 func TestClient_TestConnection_Unauthorized(t *testing.T) {
 	// Create a test server that returns 401 Unauthorized
@@ -118,10 +113,9 @@ func TestClient_TestConnection_Unauthorized(t *testing.T) {
 	defer server.Close()
 
 	config := Config{
-		URL:          server.URL,
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
+		URL:      server.URL,
+		Username: "test@example.com",
+		APIToken: "invalid-api-token",
 	}
 
 	client, err := NewClient(config)
@@ -129,31 +123,9 @@ func TestClient_TestConnection_Unauthorized(t *testing.T) {
 		t.Fatalf("expected no error creating client, got %v", err)
 	}
 
-	// Test connection with an invalid token
-	err = client.TestConnection("invalid-token")
+	// Test connection with invalid credentials
+	err = client.TestConnection()
 	if err == nil {
 		t.Error("expected error for unauthorized connection, got nil")
-	}
-}
-
-// 🟥 RED: Test for JIRA connection validation without token
-// This test verifies that connection test fails when no token is provided
-func TestClient_TestConnection_NoToken(t *testing.T) {
-	config := Config{
-		URL:          "https://bairesdev.atlassian.net",
-		ClientID:     "test-client-id",
-		ClientSecret: "test-client-secret",
-		RedirectURL:  "http://localhost:8080/auth/jira/callback",
-	}
-
-	client, err := NewClient(config)
-	if err != nil {
-		t.Fatalf("expected no error creating client, got %v", err)
-	}
-
-	// Test connection without a token
-	err = client.TestConnection("")
-	if err == nil {
-		t.Error("expected error for missing token, got nil")
 	}
 }
