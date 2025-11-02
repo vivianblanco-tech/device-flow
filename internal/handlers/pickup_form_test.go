@@ -48,7 +48,7 @@ func TestPickupFormPage(t *testing.T) {
 	}
 
 	templates := loadTestTemplates(t)
-	handler := NewPickupFormHandler(db, templates)
+	handler := NewPickupFormHandler(db, templates, nil)
 
 	t.Run("GET request displays form", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/pickup-form?company_id="+strconv.FormatInt(companyID, 10), nil)
@@ -100,7 +100,7 @@ func TestPickupFormSubmit(t *testing.T) {
 	}
 
 	templates := loadTestTemplates(t)
-	handler := NewPickupFormHandler(db, templates)
+	handler := NewPickupFormHandler(db, templates, nil)
 
 	t.Run("valid form submission creates shipment", func(t *testing.T) {
 		formData := url.Values{}

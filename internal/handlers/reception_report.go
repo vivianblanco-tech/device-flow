@@ -15,6 +15,7 @@ import (
 
 	"github.com/lib/pq"
 
+	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 	"github.com/yourusername/laptop-tracking-system/internal/validator"
@@ -31,16 +32,18 @@ const (
 type ReceptionReportHandler struct {
 	DB        *sql.DB
 	Templates *template.Template
+	Notifier  *email.Notifier
 }
 
 // NewReceptionReportHandler creates a new ReceptionReportHandler
-func NewReceptionReportHandler(db *sql.DB, templates *template.Template) *ReceptionReportHandler {
+func NewReceptionReportHandler(db *sql.DB, templates *template.Template, notifier *email.Notifier) *ReceptionReportHandler {
 	// Ensure upload directory exists
 	os.MkdirAll(UploadDir, 0755)
 	
 	return &ReceptionReportHandler{
 		DB:        db,
 		Templates: templates,
+		Notifier:  notifier,
 	}
 }
 
@@ -295,6 +298,10 @@ func (h *ReceptionReportHandler) ReceptionReportSubmit(w http.ResponseWriter, r 
 		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
 		return
 	}
+
+	// TODO: Send notification to logistics about warehouse reception (Step 8 in process flow)
+	// This would require adding a new method to the Notifier like SendWarehouseReceptionNotification
+	// For now, logging the event via audit_logs is sufficient
 
 	// Redirect to success page or shipment detail
 	redirectURL := fmt.Sprintf("/shipments/%d?success=Reception+report+submitted+successfully", shipmentID)

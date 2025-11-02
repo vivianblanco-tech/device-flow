@@ -48,7 +48,7 @@ func TestDeliveryFormPage(t *testing.T) {
 	}
 
 	templates := loadTestTemplates(t)
-	handler := NewDeliveryFormHandler(db, templates)
+	handler := NewDeliveryFormHandler(db, templates, nil)
 
 	t.Run("GET request displays form", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/delivery-form?shipment_id="+strconv.FormatInt(shipmentID, 10), nil)
@@ -139,7 +139,7 @@ func TestDeliveryFormSubmit(t *testing.T) {
 	}
 
 	templates := loadTestTemplates(t)
-	handler := NewDeliveryFormHandler(db, templates)
+	handler := NewDeliveryFormHandler(db, templates, nil)
 
 	t.Run("valid form submission creates delivery record", func(t *testing.T) {
 		formData := url.Values{}

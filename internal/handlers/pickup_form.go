@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 	"github.com/yourusername/laptop-tracking-system/internal/validator"
@@ -18,13 +19,15 @@ import (
 type PickupFormHandler struct {
 	DB        *sql.DB
 	Templates *template.Template
+	Notifier  *email.Notifier
 }
 
 // NewPickupFormHandler creates a new PickupFormHandler
-func NewPickupFormHandler(db *sql.DB, templates *template.Template) *PickupFormHandler {
+func NewPickupFormHandler(db *sql.DB, templates *template.Template, notifier *email.Notifier) *PickupFormHandler {
 	return &PickupFormHandler{
 		DB:        db,
 		Templates: templates,
+		Notifier:  notifier,
 	}
 }
 
@@ -245,6 +248,14 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 	if err := tx.Commit(); err != nil {
 		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
 		return
+	}
+
+	// Send pickup confirmation email (Step 4 in process flow)
+	if h.Notifier != nil {
+		if err := h.Notifier.SendPickupConfirmation(r.Context(), shipmentID); err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Warning: Failed to send pickup confirmation email: %v\n", err)
+		}
 	}
 
 	// Redirect to success page or shipment detail

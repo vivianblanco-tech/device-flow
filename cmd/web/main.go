@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/yourusername/laptop-tracking-system/internal/config"
 	"github.com/yourusername/laptop-tracking-system/internal/database"
+	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/handlers"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 )
@@ -62,14 +64,40 @@ func main() {
 		Endpoint: google.Endpoint,
 	}
 
+	// Initialize email client and notifier
+	smtpPort, err := strconv.Atoi(cfg.SMTP.Port)
+	if err != nil {
+		log.Printf("Warning: Invalid SMTP port '%s', defaulting to 1025", cfg.SMTP.Port)
+		smtpPort = 1025
+	}
+
+	emailClient, err := email.NewClient(email.Config{
+		Host:     cfg.SMTP.Host,
+		Port:     smtpPort,
+		Username: cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+	})
+	if err != nil {
+		log.Printf("Warning: Failed to initialize email client: %v", err)
+		log.Println("Email notifications will be disabled")
+		emailClient = nil
+	}
+
+	var notifier *email.Notifier
+	if emailClient != nil {
+		notifier = email.NewNotifier(emailClient, db)
+		log.Println("Email notifications enabled")
+	}
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db, templates)
 	authHandler.OAuthConfig = oauthConfig
 	authHandler.OAuthDomain = cfg.Google.AllowedDomain
 
-	pickupFormHandler := handlers.NewPickupFormHandler(db, templates)
-	receptionReportHandler := handlers.NewReceptionReportHandler(db, templates)
-	deliveryFormHandler := handlers.NewDeliveryFormHandler(db, templates)
+	pickupFormHandler := handlers.NewPickupFormHandler(db, templates, notifier)
+	receptionReportHandler := handlers.NewReceptionReportHandler(db, templates, notifier)
+	deliveryFormHandler := handlers.NewDeliveryFormHandler(db, templates, notifier)
 	shipmentsHandler := handlers.NewShipmentsHandler(db, templates)
 
 	// Initialize router

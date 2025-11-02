@@ -60,7 +60,7 @@ func TestReceptionReportPage(t *testing.T) {
 	}
 
 	templates := loadTestTemplates(t)
-	handler := NewReceptionReportHandler(db, templates)
+	handler := NewReceptionReportHandler(db, templates, nil)
 
 	t.Run("warehouse user can view reception report page", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/reception-report?shipment_id="+strconv.FormatInt(shipmentID, 10), nil)
@@ -170,7 +170,7 @@ func TestReceptionReportSubmit(t *testing.T) {
 	}
 
 	templates := loadTestTemplates(t)
-	handler := NewReceptionReportHandler(db, templates)
+	handler := NewReceptionReportHandler(db, templates, nil)
 
 	t.Run("valid submission creates reception report", func(t *testing.T) {
 		formData := url.Values{}

@@ -14,6 +14,7 @@ import (
 
 	"github.com/lib/pq"
 
+	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 	"github.com/yourusername/laptop-tracking-system/internal/validator"
 )
@@ -27,16 +28,18 @@ const (
 type DeliveryFormHandler struct {
 	DB        *sql.DB
 	Templates *template.Template
+	Notifier  *email.Notifier
 }
 
 // NewDeliveryFormHandler creates a new DeliveryFormHandler
-func NewDeliveryFormHandler(db *sql.DB, templates *template.Template) *DeliveryFormHandler {
+func NewDeliveryFormHandler(db *sql.DB, templates *template.Template, notifier *email.Notifier) *DeliveryFormHandler {
 	// Ensure upload directory exists
 	os.MkdirAll(DeliveryUploadDir, 0755)
 	
 	return &DeliveryFormHandler{
 		DB:        db,
 		Templates: templates,
+		Notifier:  notifier,
 	}
 }
 
@@ -292,6 +295,14 @@ func (h *DeliveryFormHandler) DeliveryFormSubmit(w http.ResponseWriter, r *http.
 	if err := tx.Commit(); err != nil {
 		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
 		return
+	}
+
+	// Send delivery confirmation email (Step 11-12 in process flow)
+	if h.Notifier != nil {
+		if err := h.Notifier.SendDeliveryConfirmation(r.Context(), shipmentID); err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Warning: Failed to send delivery confirmation email: %v\n", err)
+		}
 	}
 
 	// Create audit log entry outside transaction (non-critical, user_id would need to be set)
