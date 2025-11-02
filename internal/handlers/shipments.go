@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lib/pq"
+
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 )
@@ -186,9 +188,12 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 
 	err = h.DB.QueryRowContext(r.Context(),
 		`SELECT s.id, s.client_company_id, s.software_engineer_id, s.status, 
-		        s.courier_name, s.tracking_number, s.pickup_scheduled_date,
+		        COALESCE(s.courier_name, '') as courier_name, 
+		        COALESCE(s.tracking_number, '') as tracking_number, 
+		        s.pickup_scheduled_date,
 		        s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, 
-		        s.delivered_at, s.notes, s.created_at, s.updated_at,
+		        s.delivered_at, COALESCE(s.notes, '') as notes, 
+		        s.created_at, s.updated_at,
 		        c.name, se.name, se.email
 		FROM shipments s
 		JOIN client_companies c ON c.id = s.client_company_id
@@ -242,41 +247,50 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	// Get pickup form if exists
 	var pickupForm *models.PickupForm
 	var pickupFormData json.RawMessage
+	pickupFormTemp := models.PickupForm{}
 	err = h.DB.QueryRowContext(r.Context(),
 		`SELECT id, shipment_id, submitted_by_user_id, submitted_at, form_data
 		FROM pickup_forms WHERE shipment_id = $1`,
 		shipmentID,
-	).Scan(&pickupForm.ID, &pickupForm.ShipmentID, &pickupForm.SubmittedByUserID,
-		&pickupForm.SubmittedAt, &pickupFormData)
-	if err != nil && err != sql.ErrNoRows {
-		// Non-critical error
-		pickupForm = nil
+	).Scan(&pickupFormTemp.ID, &pickupFormTemp.ShipmentID, &pickupFormTemp.SubmittedByUserID,
+		&pickupFormTemp.SubmittedAt, &pickupFormData)
+	if err == nil {
+		pickupForm = &pickupFormTemp
+	} else if err != sql.ErrNoRows {
+		// Non-critical error, log it but continue
+		fmt.Printf("Error fetching pickup form: %v\n", err)
 	}
 
 	// Get reception report if exists
 	var receptionReport *models.ReceptionReport
+	receptionReportTemp := models.ReceptionReport{}
 	err = h.DB.QueryRowContext(r.Context(),
 		`SELECT id, shipment_id, warehouse_user_id, received_at, notes, photo_urls
 		FROM reception_reports WHERE shipment_id = $1`,
 		shipmentID,
-	).Scan(&receptionReport.ID, &receptionReport.ShipmentID, &receptionReport.WarehouseUserID,
-		&receptionReport.ReceivedAt, &receptionReport.Notes, &receptionReport.PhotoURLs)
-	if err != nil && err != sql.ErrNoRows {
-		// Non-critical error
-		receptionReport = nil
+	).Scan(&receptionReportTemp.ID, &receptionReportTemp.ShipmentID, &receptionReportTemp.WarehouseUserID,
+		&receptionReportTemp.ReceivedAt, &receptionReportTemp.Notes, (*pq.StringArray)(&receptionReportTemp.PhotoURLs))
+	if err == nil {
+		receptionReport = &receptionReportTemp
+	} else if err != sql.ErrNoRows {
+		// Non-critical error, log it but continue
+		fmt.Printf("Error fetching reception report: %v\n", err)
 	}
 
 	// Get delivery form if exists
 	var deliveryForm *models.DeliveryForm
+	deliveryFormTemp := models.DeliveryForm{}
 	err = h.DB.QueryRowContext(r.Context(),
 		`SELECT id, shipment_id, engineer_id, delivered_at, notes, photo_urls
 		FROM delivery_forms WHERE shipment_id = $1`,
 		shipmentID,
-	).Scan(&deliveryForm.ID, &deliveryForm.ShipmentID, &deliveryForm.EngineerID,
-		&deliveryForm.DeliveredAt, &deliveryForm.Notes, &deliveryForm.PhotoURLs)
-	if err != nil && err != sql.ErrNoRows {
-		// Non-critical error
-		deliveryForm = nil
+	).Scan(&deliveryFormTemp.ID, &deliveryFormTemp.ShipmentID, &deliveryFormTemp.EngineerID,
+		&deliveryFormTemp.DeliveredAt, &deliveryFormTemp.Notes, (*pq.StringArray)(&deliveryFormTemp.PhotoURLs))
+	if err == nil {
+		deliveryForm = &deliveryFormTemp
+	} else if err != sql.ErrNoRows {
+		// Non-critical error, log it but continue
+		fmt.Printf("Error fetching delivery form: %v\n", err)
 	}
 
 	// Get error and success messages
@@ -300,7 +314,8 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	if h.Templates != nil {
 		err := h.Templates.ExecuteTemplate(w, "shipment-detail.html", data)
 		if err != nil {
-			http.Error(w, "Failed to render template", http.StatusInternalServerError)
+			fmt.Printf("Template execution error: %v\n", err)
+			http.Error(w, fmt.Sprintf("Failed to render template: %v", err), http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -393,4 +408,3 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 	redirectURL := fmt.Sprintf("/shipments/%d?success=Status+updated+successfully", shipmentID)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
-

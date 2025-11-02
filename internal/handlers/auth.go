@@ -333,13 +333,15 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 	).Scan(&userID)
 
 	if err == sql.ErrNoRows {
-		// User doesn't exist, create a client user
+		// User doesn't exist, create a client user with a placeholder password
+		// (they'll authenticate via magic link)
+		placeholderPassword := "MAGIC_LINK_USER" // Placeholder to satisfy the auth_method constraint
 		err = h.DB.QueryRowContext(
 			r.Context(),
-			`INSERT INTO users (email, role, created_at, updated_at)
-			VALUES ($1, $2, $3, $4)
+			`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5)
 			RETURNING id`,
-			email, models.RoleClient, time.Now(), time.Now(),
+			email, placeholderPassword, models.RoleClient, time.Now(), time.Now(),
 		).Scan(&userID)
 		if err != nil {
 			http.Error(w, "Failed to create user", http.StatusInternalServerError)

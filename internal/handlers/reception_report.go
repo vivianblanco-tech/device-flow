@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -137,11 +138,15 @@ func (h *ReceptionReportHandler) ReceptionReportSubmit(w http.ResponseWriter, r 
 		return
 	}
 
-	// Parse multipart form (for file uploads)
+	// Parse form - try multipart first (for file uploads), fallback to regular form
 	err := r.ParseMultipartForm(MaxUploadSize)
 	if err != nil {
-		http.Redirect(w, r, "/reception-report?error=File+too+large", http.StatusSeeOther)
-		return
+		// If multipart parsing fails, try regular form parsing
+		err = r.ParseForm()
+		if err != nil {
+			http.Redirect(w, r, "/reception-report?error=Invalid+form+data", http.StatusSeeOther)
+			return
+		}
 	}
 
 	// Extract form values
@@ -156,7 +161,10 @@ func (h *ReceptionReportHandler) ReceptionReportSubmit(w http.ResponseWriter, r 
 
 	// Handle photo uploads
 	photoURLs := []string{}
-	files := r.MultipartForm.File["photos"]
+	var files []*multipart.FileHeader
+	if r.MultipartForm != nil {
+		files = r.MultipartForm.File["photos"]
+	}
 	
 	for _, fileHeader := range files {
 		// Validate file size
