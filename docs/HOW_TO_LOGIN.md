@@ -13,14 +13,27 @@ Before you can log in, ensure:
 
 ---
 
-## Step 1: Create a Test User
+## Step 1: Create Test Users
 
-You have two options to create a test user:
+You have several options to create test users:
 
-### Option A: Using PowerShell Script (Recommended for Windows)
+### Option A: Create All Test Users (Recommended)
+
+```bash
+# Run from the project root - creates users for all 4 roles
+psql -h localhost -U postgres -d laptop_tracking_dev -f scripts/create-test-users-all-roles.sql
+```
+
+This will create 4 users (all with password `Test123!`):
+- **logistics@bairesdev.com** - Full access
+- **client@bairesdev.com** - Limited access
+- **warehouse@bairesdev.com** - Medium access  
+- **pm@bairesdev.com** - Read-only access
+
+### Option B: Create Single Admin User (PowerShell)
 
 ```powershell
-# Run from the project root
+# Windows only - creates a single logistics user
 .\scripts\create-test-user.ps1
 ```
 
@@ -29,14 +42,14 @@ This will create a user with:
 - **Password**: `Test123!`
 - **Role**: `logistics` (full access)
 
-### Option B: Using SQL Script Directly
+### Option C: Using SQL Script Directly
 
 ```bash
 # Connect to your database and run the SQL script
 psql -h localhost -U postgres -d laptop_tracking_dev -f scripts/create-test-user.sql
 ```
 
-### Option C: Manual SQL Command
+### Option D: Manual SQL Command
 
 ```sql
 -- Connect to your database first
@@ -235,21 +248,37 @@ The test user created above has the **logistics** role for full system access.
 
 ### For Testing Different Roles
 
+**Recommended**: Use the all-in-one script that creates test users for all roles:
+
+```bash
+psql -h localhost -U postgres -d laptop_tracking_dev -f scripts/create-test-users-all-roles.sql
+```
+
+This creates:
+- `logistics@bairesdev.com` - Full access
+- `client@bairesdev.com` - Limited access  
+- `warehouse@bairesdev.com` - Medium access
+- `pm@bairesdev.com` - Read-only access
+
+All users have the password `Test123!`
+
+### Manual Creation
+
+If you need to create custom test users manually:
+
 ```sql
 -- Client user (password: Test123!)
 INSERT INTO users (email, password_hash, role, created_at, updated_at)
-VALUES ('client@example.com', '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK', 'client', NOW(), NOW());
+VALUES ('custom-client@example.com', '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK', 'client', NOW(), NOW());
 
 -- Warehouse user (password: Test123!)
 INSERT INTO users (email, password_hash, role, created_at, updated_at)
-VALUES ('warehouse@bairesdev.com', '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK', 'warehouse', NOW(), NOW());
+VALUES ('custom-warehouse@bairesdev.com', '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK', 'warehouse', NOW(), NOW());
 
 -- Project Manager user (password: Test123!)
 INSERT INTO users (email, password_hash, role, created_at, updated_at)
-VALUES ('pm@bairesdev.com', '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK', 'project_manager', NOW(), NOW());
+VALUES ('custom-pm@bairesdev.com', '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK', 'project_manager', NOW(), NOW());
 ```
-
-All these users will have the password `Test123!`
 
 ---
 
@@ -276,11 +305,40 @@ The test scripts use a pre-generated bcrypt hash for the password `Test123!`. Th
 
 ## Quick Reference
 
-### Default Test Credentials
+### All Test User Credentials
+
+All test users have the password: **`Test123!`**
+
+#### Logistics Users (Full Access)
 ```
 Email:    admin@bairesdev.com
 Password: Test123!
 Role:     logistics
+
+Email:    logistics@bairesdev.com
+Password: Test123!
+Role:     logistics
+```
+
+#### Client User (Limited Access)
+```
+Email:    client@bairesdev.com
+Password: Test123!
+Role:     client
+```
+
+#### Warehouse User (Medium Access)
+```
+Email:    warehouse@bairesdev.com
+Password: Test123!
+Role:     warehouse
+```
+
+#### Project Manager User (Read-Only Access)
+```
+Email:    pm@bairesdev.com
+Password: Test123!
+Role:     project_manager
 ```
 
 ### Key URLs
@@ -295,8 +353,11 @@ Shipments: http://localhost:8080/shipments
 # Start application
 make run
 
-# Create test user
+# Create admin test user (logistics role)
 .\scripts\create-test-user.ps1
+
+# Create all test users (all roles)
+psql -h localhost -U postgres -d laptop_tracking_dev -f scripts/create-test-users-all-roles.sql
 
 # Check database
 psql -h localhost -U postgres -d laptop_tracking_dev
@@ -317,8 +378,8 @@ After logging in successfully:
 1. ✅ Explore the dashboard
 2. ✅ Try creating a shipment with the pickup form
 3. ✅ Test the shipments list view
-4. ✅ Set up Google OAuth (optional)
-5. ✅ Create additional test users for other roles
+4. ✅ Test role-based access control with different user accounts
+5. ✅ Set up Google OAuth (optional)
 6. ✅ Review the [Contributing Guide](CONTRIBUTING.md)
 
 ---
