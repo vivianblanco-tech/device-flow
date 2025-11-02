@@ -47,7 +47,8 @@ func TestPickupFormPage(t *testing.T) {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
 
-	handler := NewPickupFormHandler(db, nil)
+	templates := loadTestTemplates(t)
+	handler := NewPickupFormHandler(db, templates)
 
 	t.Run("GET request displays form", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/pickup-form?company_id="+strconv.FormatInt(companyID, 10), nil)
@@ -98,7 +99,8 @@ func TestPickupFormSubmit(t *testing.T) {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
 
-	handler := NewPickupFormHandler(db, nil)
+	templates := loadTestTemplates(t)
+	handler := NewPickupFormHandler(db, templates)
 
 	t.Run("valid form submission creates shipment", func(t *testing.T) {
 		formData := url.Values{}

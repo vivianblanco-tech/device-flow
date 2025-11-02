@@ -1,13 +1,20 @@
 package main
 
 import (
+	"html/template"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+
 	"github.com/yourusername/laptop-tracking-system/internal/config"
 	"github.com/yourusername/laptop-tracking-system/internal/database"
+	"github.com/yourusername/laptop-tracking-system/internal/handlers"
+	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 )
 
 func main() {
@@ -28,23 +35,106 @@ func main() {
 
 	log.Println("Database connected successfully")
 
+	// Load templates with custom functions
+	funcMap := template.FuncMap{
+		"replace": func(old, new, s string) string {
+			return strings.ReplaceAll(s, old, new)
+		},
+		"title": func(s string) string {
+			return strings.Title(s)
+		},
+	}
+
+	templates, err := template.New("").Funcs(funcMap).ParseGlob("templates/pages/*.html")
+	if err != nil {
+		log.Fatalf("Failed to parse templates: %v", err)
+	}
+
+	// Set up Google OAuth config
+	oauthConfig := &oauth2.Config{
+		ClientID:     cfg.Google.ClientID,
+		ClientSecret: cfg.Google.ClientSecret,
+		RedirectURL:  cfg.Google.RedirectURL,
+		Scopes: []string{
+			"https://www.googleapis.com/auth/userinfo.email",
+			"https://www.googleapis.com/auth/userinfo.profile",
+		},
+		Endpoint: google.Endpoint,
+	}
+
+	// Initialize handlers
+	authHandler := handlers.NewAuthHandler(db, templates)
+	authHandler.OAuthConfig = oauthConfig
+	authHandler.OAuthDomain = cfg.Google.AllowedDomain
+
+	pickupFormHandler := handlers.NewPickupFormHandler(db, templates)
+	receptionReportHandler := handlers.NewReceptionReportHandler(db, templates)
+	deliveryFormHandler := handlers.NewDeliveryFormHandler(db, templates)
+	shipmentsHandler := handlers.NewShipmentsHandler(db, templates)
+
 	// Initialize router
 	router := mux.NewRouter()
 
-	// Basic health check endpoint
+	// Apply auth middleware globally
+	router.Use(middleware.AuthMiddleware(db))
+
+	// Public routes
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	}).Methods("GET")
+
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	}).Methods("GET")
 
+	// Authentication routes (public)
+	router.HandleFunc("/login", authHandler.LoginPage).Methods("GET")
+	router.HandleFunc("/login", authHandler.Login).Methods("POST")
+	router.HandleFunc("/logout", authHandler.Logout).Methods("POST", "GET")
+	router.HandleFunc("/auth/google", authHandler.GoogleLogin).Methods("GET")
+	router.HandleFunc("/auth/google/callback", authHandler.GoogleCallback).Methods("GET")
+	router.HandleFunc("/auth/magic-link", authHandler.MagicLinkLogin).Methods("GET")
+
+	// Protected routes (require authentication)
+	protected := router.PathPrefix("/").Subrouter()
+	protected.Use(middleware.RequireAuth)
+
+	// Dashboard
+	protected.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Dashboard - Coming Soon!"))
+	}).Methods("GET")
+
+	// Pickup form routes
+	protected.HandleFunc("/pickup-form", pickupFormHandler.PickupFormPage).Methods("GET")
+	protected.HandleFunc("/pickup-form", pickupFormHandler.PickupFormSubmit).Methods("POST")
+
+	// Reception report routes
+	protected.HandleFunc("/reception-report", receptionReportHandler.ReceptionReportPage).Methods("GET")
+	protected.HandleFunc("/reception-report", receptionReportHandler.ReceptionReportSubmit).Methods("POST")
+
+	// Delivery form routes
+	protected.HandleFunc("/delivery-form", deliveryFormHandler.DeliveryFormPage).Methods("GET")
+	protected.HandleFunc("/delivery-form", deliveryFormHandler.DeliveryFormSubmit).Methods("POST")
+
+	// Shipment routes
+	protected.HandleFunc("/shipments", shipmentsHandler.ShipmentsList).Methods("GET")
+	protected.HandleFunc("/shipments/{id:[0-9]+}", shipmentsHandler.ShipmentDetail).Methods("GET")
+	protected.HandleFunc("/shipments/{id:[0-9]+}/status", shipmentsHandler.UpdateShipmentStatus).Methods("POST")
+
 	// Serve static files
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/",
 		http.FileServer(http.Dir("./static"))))
+
+	// Serve uploads (photos)
+	router.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/",
+		http.FileServer(http.Dir("./uploads"))))
 
 	// Start server
 	addr := cfg.Server.Host + ":" + cfg.Server.Port
 	log.Printf("Server starting on %s", addr)
 	log.Printf("Environment: %s", cfg.App.Environment)
+	log.Printf("Login at: http://%s/login", addr)
 
 	if err := http.ListenAndServe(addr, router); err != nil {
 		log.Fatalf("Server failed to start: %v", err)

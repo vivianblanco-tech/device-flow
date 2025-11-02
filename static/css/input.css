@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+@tailwind utilities;
+
+@source "./templates/pages/*.{html}";
