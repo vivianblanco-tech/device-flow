@@ -43,10 +43,11 @@ psql -h localhost -U postgres -d laptop_tracking_dev -f scripts/create-test-user
 psql -h localhost -U postgres -d laptop_tracking_dev
 
 -- Then run this SQL
+-- Password hash is for "Test123!" (bcrypt cost 12)
 INSERT INTO users (email, password_hash, role, created_at, updated_at)
 VALUES (
     'admin@bairesdev.com',
-    '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzS0MYq5IW',
+    '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK',
     'logistics',
     NOW(),
     NOW()
@@ -235,17 +236,17 @@ The test user created above has the **logistics** role for full system access.
 ### For Testing Different Roles
 
 ```sql
--- Client user
+-- Client user (password: Test123!)
 INSERT INTO users (email, password_hash, role, created_at, updated_at)
-VALUES ('client@example.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzS0MYq5IW', 'client', NOW(), NOW());
+VALUES ('client@example.com', '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK', 'client', NOW(), NOW());
 
--- Warehouse user
+-- Warehouse user (password: Test123!)
 INSERT INTO users (email, password_hash, role, created_at, updated_at)
-VALUES ('warehouse@bairesdev.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzS0MYq5IW', 'warehouse', NOW(), NOW());
+VALUES ('warehouse@bairesdev.com', '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK', 'warehouse', NOW(), NOW());
 
--- Project Manager user
+-- Project Manager user (password: Test123!)
 INSERT INTO users (email, password_hash, role, created_at, updated_at)
-VALUES ('pm@bairesdev.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzS0MYq5IW', 'project_manager', NOW(), NOW());
+VALUES ('pm@bairesdev.com', '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK', 'project_manager', NOW(), NOW());
 ```
 
 All these users will have the password `Test123!`

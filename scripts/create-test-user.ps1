@@ -19,7 +19,8 @@ Write-Host ""
 
 # Note: This uses the bcrypt hash for "Test123!" generated with cost 12
 # In production, you should generate your own hash using the Go bcrypt package
-$passwordHash = '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzS0MYq5IW'  # Hash for "Test123!"
+# Generated using: bcrypt.GenerateFromPassword([]byte("Test123!"), 12)
+$passwordHash = '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK'  # Hash for "Test123!"
 
 # SQL to insert test user
 $sql = @"

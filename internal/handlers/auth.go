@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -16,10 +17,16 @@ import (
 
 // AuthHandler handles authentication-related requests
 type AuthHandler struct {
-	DB           *sql.DB
-	Templates    *template.Template
-	OAuthConfig  *oauth2.Config
-	OAuthDomain  string // Allowed domain for Google OAuth
+	DB          *sql.DB
+	Templates   *template.Template
+	OAuthConfig *oauth2.Config
+	OAuthDomain string // Allowed domain for Google OAuth
+}
+
+// isProduction checks if the application is running in production
+func isProduction() bool {
+	env := os.Getenv("APP_ENV")
+	return env == "production"
 }
 
 // NewAuthHandler creates a new AuthHandler
@@ -123,7 +130,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Expires:  session.ExpiresAt,
 		HttpOnly: true,
-		Secure:   true, // Set to true in production with HTTPS
+		Secure:   isProduction(), // Only require HTTPS in production
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -147,7 +154,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isProduction(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -230,7 +237,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isProduction(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -280,7 +287,7 @@ func (h *AuthHandler) MagicLinkLogin(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Expires:  session.ExpiresAt,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isProduction(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -399,7 +406,7 @@ func (h *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   600, // 10 minutes
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isProduction(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -435,7 +442,7 @@ func (h *AuthHandler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isProduction(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -492,11 +499,10 @@ func (h *AuthHandler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Expires:  session.ExpiresAt,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   isProduction(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
 	// Redirect to dashboard
 	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
-

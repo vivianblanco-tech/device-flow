@@ -4,10 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"os"
 
 	"github.com/yourusername/laptop-tracking-system/internal/auth"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 )
+
+// isProduction checks if the application is running in production
+func isProduction() bool {
+	env := os.Getenv("APP_ENV")
+	return env == "production"
+}
 
 // ContextKey is a custom type for context keys to avoid collisions
 type ContextKey string
@@ -42,20 +49,20 @@ func AuthMiddleware(db *sql.DB) func(http.Handler) http.Handler {
 				return
 			}
 
-			if session == nil {
-				// Invalid or expired session, clear cookie
-				http.SetCookie(w, &http.Cookie{
-					Name:     SessionCookieName,
-					Value:    "",
-					Path:     "/",
-					MaxAge:   -1,
-					HttpOnly: true,
-					Secure:   true,
-					SameSite: http.SameSiteStrictMode,
-				})
-				next.ServeHTTP(w, r)
-				return
-			}
+		if session == nil {
+			// Invalid or expired session, clear cookie
+			http.SetCookie(w, &http.Cookie{
+				Name:     SessionCookieName,
+				Value:    "",
+				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: true,
+				Secure:   isProduction(),
+				SameSite: http.SameSiteStrictMode,
+			})
+			next.ServeHTTP(w, r)
+			return
+		}
 
 			// Add session and user to context
 			ctx := context.WithValue(r.Context(), SessionContextKey, session)

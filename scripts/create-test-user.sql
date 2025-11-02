@@ -3,10 +3,11 @@
 
 -- Insert or update test user
 -- Password hash is for "Test123!" (bcrypt cost 12)
+-- Generated using: bcrypt.GenerateFromPassword([]byte("Test123!"), 12)
 INSERT INTO users (email, password_hash, role, created_at, updated_at)
 VALUES (
     'admin@bairesdev.com',
-    '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzS0MYq5IW',
+    '$2a$12$5jhaEE3wXZtjKA/a07CHvunJymFovVivi8e1X7WX/zQCS9wmLU2yK',
     'logistics',
     NOW(),
     NOW()
