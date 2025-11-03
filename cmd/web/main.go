@@ -95,6 +95,7 @@ func main() {
 	authHandler.OAuthConfig = oauthConfig
 	authHandler.OAuthDomain = cfg.Google.AllowedDomain
 
+	dashboardHandler := handlers.NewDashboardHandler(db, templates)
 	pickupFormHandler := handlers.NewPickupFormHandler(db, templates, notifier)
 	receptionReportHandler := handlers.NewReceptionReportHandler(db, templates, notifier)
 	deliveryFormHandler := handlers.NewDeliveryFormHandler(db, templates, notifier)
@@ -108,7 +109,13 @@ func main() {
 
 	// Public routes
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		// Check if user is authenticated
+		user := middleware.GetUserFromContext(r.Context())
+		if user != nil {
+			http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		} else {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+		}
 	}).Methods("GET")
 
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -129,9 +136,7 @@ func main() {
 	protected.Use(middleware.RequireAuth)
 
 	// Dashboard
-	protected.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Dashboard - Coming Soon!"))
-	}).Methods("GET")
+	protected.HandleFunc("/dashboard", dashboardHandler.Dashboard).Methods("GET")
 
 	// Pickup form routes
 	protected.HandleFunc("/pickup-form", pickupFormHandler.PickupFormPage).Methods("GET")
