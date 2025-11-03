@@ -225,6 +225,40 @@ go test -v ./internal/models
 
 # Run with race detection
 go test -race ./...
+
+# Run tests with test database (required for integration tests)
+# Note: Set TEST_DATABASE_URL environment variable
+$env:TEST_DATABASE_URL = "postgres://postgres:password@localhost:5432/laptop_tracking_dev?sslmode=disable"
+go test -v ./internal/handlers
+
+# Skip integration tests (run only unit tests)
+go test -short ./...
+```
+
+### Test-Driven Development (TDD)
+
+This project follows strict TDD methodology. See `docs/tdd.md` for the complete workflow.
+
+**TDD Cycle:**
+1. 🟥 **RED**: Write a failing test first
+2. 🟩 **GREEN**: Implement minimal code to pass the test
+3. 🛠 **REFACTOR**: Improve code structure (after tests pass)
+
+**Example:**
+```bash
+# 1. Write failing test in *_test.go file
+# 2. Run test to verify it fails
+go test -v ./internal/handlers -run TestFeature
+
+# 3. Implement feature
+# 4. Run test again to verify it passes
+go test -v ./internal/handlers -run TestFeature
+
+# 5. Run full test suite to check for regressions
+go test ./...
+
+# 6. Commit only after tests pass
+git commit -m "feat: implement feature to pass test"
 ```
 
 ### Code Quality
@@ -292,7 +326,11 @@ Key variables:
 - Sessions are encrypted and stored securely
 - Magic links expire after single use or timeout
 - CSRF protection on all forms
-- Role-based access control (RBAC)
+- Role-based access control (RBAC):
+  - Dashboard: Logistics users only
+  - Pickup forms: Client and Logistics users
+  - Reception reports: Warehouse and Logistics users
+  - Delivery forms: Software engineers (via magic links)
 - Google OAuth restricted to @bairesdev.com domain
 - SQL injection prevention via parameterized queries
 - File upload validation and sanitization
