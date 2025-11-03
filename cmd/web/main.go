@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -44,6 +45,22 @@ func main() {
 		},
 		"title": func(s string) string {
 			return strings.Title(s)
+		},
+		// Calendar template functions
+		"formatDate": func(t time.Time) string {
+			return t.Format("Jan 2, 2006")
+		},
+		"formatTime": func(t time.Time) string {
+			return t.Format("3:04 PM")
+		},
+		"formatDateShort": func(t time.Time) string {
+			return t.Format("Jan 2")
+		},
+		"daysInMonth": func(year int, month time.Month) int {
+			return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+		},
+		"firstWeekday": func(year int, month time.Month) time.Weekday {
+			return time.Date(year, month, 1, 0, 0, 0, 0, time.UTC).Weekday()
 		},
 	}
 
