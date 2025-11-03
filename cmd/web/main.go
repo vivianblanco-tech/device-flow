@@ -149,6 +149,7 @@ func main() {
 	protected.HandleFunc("/shipments", shipmentsHandler.ShipmentsList).Methods("GET")
 	protected.HandleFunc("/shipments/{id:[0-9]+}", shipmentsHandler.ShipmentDetail).Methods("GET")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/status", shipmentsHandler.UpdateShipmentStatus).Methods("POST")
+	protected.HandleFunc("/shipments/{id:[0-9]+}/assign-engineer", shipmentsHandler.AssignEngineer).Methods("POST")
 
 	// Serve static files
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/",

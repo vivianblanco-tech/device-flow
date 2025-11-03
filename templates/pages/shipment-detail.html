@@ -279,11 +279,66 @@
                 <!-- Quick Actions -->
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                    <div class="space-y-2">
+                    <div class="space-y-3">
                         {{if eq .User.Role "logistics"}}
-                        <button class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition text-sm font-medium">
-                            Update Status
-                        </button>
+                        <!-- Status Update Form -->
+                        <form action="/shipments/{{.Shipment.ID}}/status" method="POST" class="space-y-3">
+                            <div>
+                                <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Update Status
+                                </label>
+                                <select 
+                                    id="status" 
+                                    name="status" 
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                >
+                                    <option value="">Select new status...</option>
+                                    <option value="pending_pickup" {{if eq .Shipment.Status "pending_pickup"}}selected{{end}}>Pending Pickup</option>
+                                    <option value="picked_up_from_client" {{if eq .Shipment.Status "picked_up_from_client"}}selected{{end}}>Picked Up from Client</option>
+                                    <option value="in_transit_to_warehouse" {{if eq .Shipment.Status "in_transit_to_warehouse"}}selected{{end}}>In Transit to Warehouse</option>
+                                    <option value="at_warehouse" {{if eq .Shipment.Status "at_warehouse"}}selected{{end}}>At Warehouse</option>
+                                    <option value="released_from_warehouse" {{if eq .Shipment.Status "released_from_warehouse"}}selected{{end}}>Released from Warehouse</option>
+                                    <option value="in_transit_to_engineer" {{if eq .Shipment.Status "in_transit_to_engineer"}}selected{{end}}>In Transit to Engineer</option>
+                                    <option value="delivered" {{if eq .Shipment.Status "delivered"}}selected{{end}}>Delivered</option>
+                                </select>
+                            </div>
+                            <input type="hidden" name="shipment_id" value="{{.Shipment.ID}}">
+                            <button 
+                                type="submit" 
+                                class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition text-sm font-medium"
+                            >
+                                Update Status
+                            </button>
+                        </form>
+
+                        <!-- Assign Engineer Form -->
+                        {{if and (not .Shipment.SoftwareEngineerID) .Engineers}}
+                        <form action="/shipments/{{.Shipment.ID}}/assign-engineer" method="POST" class="space-y-3 pt-3 border-t">
+                            <div>
+                                <label for="engineer_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Assign Engineer
+                                </label>
+                                <select 
+                                    id="engineer_id" 
+                                    name="engineer_id" 
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
+                                >
+                                    <option value="">Select engineer...</option>
+                                    {{range .Engineers}}
+                                    <option value="{{.ID}}">{{.Name}} ({{.Email}})</option>
+                                    {{end}}
+                                </select>
+                            </div>
+                            <button 
+                                type="submit" 
+                                class="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition text-sm font-medium"
+                            >
+                                Assign Engineer
+                            </button>
+                        </form>
+                        {{end}}
                         {{end}}
                         
                         {{if and (eq .User.Role "warehouse") (eq .Shipment.Status "in_transit_to_warehouse")}}

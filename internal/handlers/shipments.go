@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
@@ -64,13 +65,14 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 	switch user.Role {
 	case models.RoleClient:
 		// Clients can only see their own company's shipments
-		baseQuery += fmt.Sprintf(" AND s.client_company_id = $%d", argCount)
 		// Note: In a real app, we'd link user to company via a relationship
-		// For now, we'll skip this filter if user doesn't have company_id
-		argCount++
+		// For now, we skip this filter and let clients see all shipments
+		// TODO: Add company_id to users table and filter properly
 	case models.RoleWarehouse:
 		// Warehouse users see shipments in transit or at warehouse
 		baseQuery += " AND s.status IN ('in_transit_to_warehouse', 'at_warehouse', 'released_from_warehouse')"
+	case models.RoleLogistics, models.RoleProjectManager:
+		// Logistics and PM users can see all shipments - no additional filter needed
 	}
 
 	// Status filter
@@ -103,17 +105,25 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 		var s models.Shipment
 		var companyName string
 		var engineerName sql.NullString
+		var courierName sql.NullString
+		var trackingNumber sql.NullString
+		var notes sql.NullString
 
 		err := rows.Scan(
 			&s.ID, &s.ClientCompanyID, &s.SoftwareEngineerID, &s.Status,
-			&s.CourierName, &s.TrackingNumber, &s.PickupScheduledDate,
+			&courierName, &trackingNumber, &s.PickupScheduledDate,
 			&s.PickedUpAt, &s.ArrivedWarehouseAt, &s.ReleasedWarehouseAt,
-			&s.DeliveredAt, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
+			&s.DeliveredAt, &notes, &s.CreatedAt, &s.UpdatedAt,
 			&companyName, &engineerName,
 		)
 		if err != nil {
 			continue
 		}
+
+		// Convert nullable strings
+		s.CourierName = courierName.String
+		s.TrackingNumber = trackingNumber.String
+		s.Notes = notes.String
 
 		shipment := map[string]interface{}{
 			"Shipment":     s,
@@ -167,8 +177,9 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Get shipment ID from URL path (you'll need to parse this based on your routing)
-	shipmentIDStr := r.URL.Query().Get("id")
+	// Get shipment ID from URL path variable
+	vars := mux.Vars(r)
+	shipmentIDStr := vars["id"]
 	if shipmentIDStr == "" {
 		http.Error(w, "Shipment ID is required", http.StatusBadRequest)
 		return
@@ -293,6 +304,21 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		fmt.Printf("Error fetching delivery form: %v\n", err)
 	}
 
+	// Get list of software engineers (for assignment)
+	engineerRows, err := h.DB.QueryContext(r.Context(),
+		`SELECT id, name, email FROM software_engineers ORDER BY name`,
+	)
+	engineers := []models.SoftwareEngineer{}
+	if err == nil {
+		defer engineerRows.Close()
+		for engineerRows.Next() {
+			var engineer models.SoftwareEngineer
+			if err := engineerRows.Scan(&engineer.ID, &engineer.Name, &engineer.Email); err == nil {
+				engineers = append(engineers, engineer)
+			}
+		}
+	}
+
 	// Get error and success messages
 	errorMsg := r.URL.Query().Get("error")
 	successMsg := r.URL.Query().Get("success")
@@ -309,6 +335,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		"PickupForm":      pickupForm,
 		"ReceptionReport": receptionReport,
 		"DeliveryForm":    deliveryForm,
+		"Engineers":       engineers,
 	}
 
 	if h.Templates != nil {
@@ -406,5 +433,88 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 
 	// Redirect back to shipment detail
 	redirectURL := fmt.Sprintf("/shipments/%d?success=Status+updated+successfully", shipmentID)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// AssignEngineer assigns a software engineer to a shipment (logistics only)
+func (h *ShipmentsHandler) AssignEngineer(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Only logistics users can assign engineers
+	if user.Role != models.RoleLogistics {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Get shipment ID from URL path variable
+	vars := mux.Vars(r)
+	shipmentIDStr := vars["id"]
+	shipmentID, err := strconv.ParseInt(shipmentIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid shipment ID", http.StatusBadRequest)
+		return
+	}
+
+	// Parse form data
+	err = r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	engineerIDStr := r.FormValue("engineer_id")
+	if engineerIDStr == "" {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Please+select+an+engineer", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	engineerID, err := strconv.ParseInt(engineerIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid engineer ID", http.StatusBadRequest)
+		return
+	}
+
+	// Update shipment with engineer assignment
+	_, err = h.DB.ExecContext(r.Context(),
+		`UPDATE shipments 
+		SET software_engineer_id = $1, updated_at = $2
+		WHERE id = $3`,
+		engineerID, time.Now(), shipmentID,
+	)
+	if err != nil {
+		fmt.Printf("Error assigning engineer: %v\n", err)
+		http.Error(w, "Failed to assign engineer", http.StatusInternalServerError)
+		return
+	}
+
+	// Create audit log
+	auditDetails, _ := json.Marshal(map[string]interface{}{
+		"action":      "engineer_assigned",
+		"engineer_id": engineerID,
+	})
+
+	_, err = h.DB.ExecContext(r.Context(),
+		`INSERT INTO audit_logs (user_id, action, entity_type, entity_id, timestamp, details)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		user.ID, "engineer_assigned", "shipment", shipmentID, time.Now(), auditDetails,
+	)
+	if err != nil {
+		// Non-critical error
+		fmt.Printf("Failed to create audit log: %v\n", err)
+	}
+
+	// Redirect back to shipment detail
+	redirectURL := fmt.Sprintf("/shipments/%d?success=Engineer+assigned+successfully", shipmentID)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }

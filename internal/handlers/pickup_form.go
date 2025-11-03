@@ -79,12 +79,12 @@ func (h *PickupFormHandler) PickupFormPage(w http.ResponseWriter, r *http.Reques
 	}
 
 	data := map[string]interface{}{
-		"Error":      errorMsg,
-		"Success":    successMsg,
-		"User":       user,
-		"CompanyID":  companyID,
-		"Companies":  companies,
-		"TimeSlots":  []string{"morning", "afternoon", "evening"},
+		"Error":     errorMsg,
+		"Success":   successMsg,
+		"User":      user,
+		"CompanyID": companyID,
+		"Companies": companies,
+		"TimeSlots": []string{"morning", "afternoon", "evening"},
 	}
 
 	if h.Templates != nil {
@@ -150,7 +150,7 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 
 	// Validate form
 	if err := validator.ValidatePickupForm(formInput); err != nil {
-		redirectURL := fmt.Sprintf("/pickup-form?error=%s&company_id=%d", 
+		redirectURL := fmt.Sprintf("/pickup-form?error=%s&company_id=%d",
 			err.Error(), companyID)
 		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 		return
@@ -262,4 +262,3 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 	redirectURL := fmt.Sprintf("/shipments/%d?success=Pickup+form+submitted+successfully", shipmentID)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
-
