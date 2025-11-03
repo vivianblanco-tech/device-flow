@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Laptop Tracking System</title>
+    <link rel="stylesheet" href="/static/css/output.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center space-x-8">
+                    <h1 class="text-xl font-bold text-gray-900">Laptop Tracking System</h1>
+                    <a href="/dashboard" class="text-sm text-blue-600 font-medium">Dashboard</a>
+                    <a href="/shipments" class="text-sm text-gray-600 hover:text-gray-900">Shipments</a>
+                    <a href="/inventory" class="text-sm text-gray-600 hover:text-gray-900">Inventory</a>
+                    <a href="/calendar" class="text-sm text-gray-600 hover:text-gray-900">Calendar</a>
+                </div>
+                <div class="flex items-center">
+                    {{if .User}}
+                    <span class="text-sm text-gray-600 mr-4">{{.User.Email}} ({{.User.Role | title}})</span>
+                    <a href="/logout" class="text-sm text-blue-600 hover:text-blue-700">Logout</a>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">Dashboard</h2>
+            <p class="mt-2 text-gray-600">Overview of your laptop tracking operations</p>
+        </div>
+
+        <!-- Statistics Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Shipments Card -->
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 uppercase tracking-wide">Total Shipments</p>
+                        <p class="mt-2 text-3xl font-bold text-gray-900">{{.Stats.TotalShipments}}</p>
+                    </div>
+                    <div class="bg-blue-100 rounded-full p-3">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Pickups Card -->
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 uppercase tracking-wide">Pending Pickups</p>
+                        <p class="mt-2 text-3xl font-bold text-gray-900">{{.Stats.PendingPickups}}</p>
+                    </div>
+                    <div class="bg-yellow-100 rounded-full p-3">
+                        <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- In Transit Card -->
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 uppercase tracking-wide">In Transit</p>
+                        <p class="mt-2 text-3xl font-bold text-gray-900">{{.Stats.InTransit}}</p>
+                    </div>
+                    <div class="bg-purple-100 rounded-full p-3">
+                        <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delivered Card -->
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 uppercase tracking-wide">Delivered</p>
+                        <p class="mt-2 text-3xl font-bold text-gray-900">{{.Stats.Delivered}}</p>
+                    </div>
+                    <div class="bg-green-100 rounded-full p-3">
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Shipments Over Time Chart -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Shipments Over Time (Last 30 Days)</h3>
+                <canvas id="shipmentsOverTimeChart" height="250"></canvas>
+            </div>
+
+            <!-- Status Distribution Chart -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Shipment Status Distribution</h3>
+                <canvas id="statusDistributionChart" height="250"></canvas>
+            </div>
+        </div>
+
+        <!-- Delivery Time Trends Chart -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Average Delivery Time Trends (Last 8 Weeks)</h3>
+            <canvas id="deliveryTimeTrendsChart" height="200"></canvas>
+        </div>
+
+        <!-- Average Delivery Time Card -->
+        {{if gt .Stats.Delivered 0}}
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Average Delivery Time</h3>
+                    <p class="text-sm text-gray-600">Time from pickup to delivery</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-4xl font-bold text-blue-600">{{printf "%.1f" .Stats.AvgDeliveryDays}}</p>
+                    <p class="text-sm text-gray-600 mt-1">days</p>
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Quick Actions -->
+        {{if or (eq .User.Role "logistics") (eq .User.Role "warehouse")}}
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {{if eq .User.Role "logistics"}}
+                <a href="/pickup-form" class="flex items-center justify-center px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                    <span class="text-sm font-medium text-gray-700">+ New Pickup Request</span>
+                </a>
+                {{end}}
+                <a href="/shipments" class="flex items-center justify-center px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                    <span class="text-sm font-medium text-gray-700">View All Shipments</span>
+                </a>
+                {{if eq .User.Role "warehouse"}}
+                <a href="/reception-report" class="flex items-center justify-center px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                    <span class="text-sm font-medium text-gray-700">+ New Reception Report</span>
+                </a>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- Chart.js Initialization Script -->
+    <script>
+        // Chart configuration
+        const chartColors = {
+            blue: 'rgb(59, 130, 246)',
+            purple: 'rgb(168, 85, 247)',
+            green: 'rgb(34, 197, 94)',
+            yellow: 'rgb(234, 179, 8)',
+            red: 'rgb(239, 68, 68)',
+            orange: 'rgb(249, 115, 22)',
+            cyan: 'rgb(6, 182, 212)',
+            indigo: 'rgb(99, 102, 241)'
+        };
+
+        // Fetch and render Shipments Over Time chart
+        fetch('/api/charts/shipments-over-time?days=30')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('shipmentsOverTimeChart');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map(d => d.date),
+                        datasets: [{
+                            label: 'Shipments',
+                            data: data.map(d => d.count),
+                            borderColor: chartColors.blue,
+                            backgroundColor: chartColors.blue + '33',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error loading shipments over time chart:', error));
+
+        // Fetch and render Status Distribution chart
+        fetch('/api/charts/status-distribution')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('statusDistributionChart');
+                const colors = [chartColors.blue, chartColors.purple, chartColors.green, 
+                              chartColors.yellow, chartColors.orange, chartColors.cyan, chartColors.indigo];
+                
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.map(d => d.status_label),
+                        datasets: [{
+                            data: data.map(d => d.count),
+                            backgroundColor: colors.slice(0, data.length),
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error loading status distribution chart:', error));
+
+        // Fetch and render Delivery Time Trends chart
+        fetch('/api/charts/delivery-time-trends?weeks=8')
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('deliveryTimeTrendsChart');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(d => 'Week of ' + d.week_start),
+                        datasets: [{
+                            label: 'Average Days',
+                            data: data.map(d => d.average_delivery_days),
+                            backgroundColor: chartColors.purple + 'CC',
+                            borderColor: chartColors.purple,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Days'
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error loading delivery time trends chart:', error));
+    </script>
+</body>
+</html>
+

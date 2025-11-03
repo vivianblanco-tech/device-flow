@@ -56,8 +56,8 @@ func (h *DashboardHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		"laptopStatusColor": getLaptopStatusColor,
 	}
 
-	// Parse template with custom functions
-	tmpl, err := template.New("dashboard.html").Funcs(funcMap).ParseFiles("templates/pages/dashboard.html")
+	// Parse template with custom functions (use dashboard-with-charts.html for better visualization)
+	tmpl, err := template.New("dashboard-with-charts.html").Funcs(funcMap).ParseFiles("templates/pages/dashboard-with-charts.html")
 	if err != nil {
 		log.Printf("Error parsing template: %v", err)
 		http.Error(w, "Failed to load dashboard", http.StatusInternalServerError)
