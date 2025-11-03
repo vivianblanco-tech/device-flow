@@ -98,6 +98,7 @@ func main() {
 	dashboardHandler := handlers.NewDashboardHandler(db, templates)
 	chartsHandler := handlers.NewChartsHandler(db)
 	calendarHandler := handlers.NewCalendarHandler(db, templates)
+	inventoryHandler := handlers.NewInventoryHandler(db, templates)
 	pickupFormHandler := handlers.NewPickupFormHandler(db, templates, notifier)
 	receptionReportHandler := handlers.NewReceptionReportHandler(db, templates, notifier)
 	deliveryFormHandler := handlers.NewDeliveryFormHandler(db, templates, notifier)
@@ -142,6 +143,15 @@ func main() {
 
 	// Calendar
 	protected.HandleFunc("/calendar", calendarHandler.Calendar).Methods("GET")
+
+	// Inventory routes
+	protected.HandleFunc("/inventory", inventoryHandler.InventoryList).Methods("GET")
+	protected.HandleFunc("/inventory/add", inventoryHandler.AddLaptopPage).Methods("GET")
+	protected.HandleFunc("/inventory/add", inventoryHandler.AddLaptopSubmit).Methods("POST")
+	protected.HandleFunc("/inventory/{id:[0-9]+}", inventoryHandler.LaptopDetail).Methods("GET")
+	protected.HandleFunc("/inventory/{id:[0-9]+}/edit", inventoryHandler.EditLaptopPage).Methods("GET")
+	protected.HandleFunc("/inventory/{id:[0-9]+}/update", inventoryHandler.UpdateLaptopSubmit).Methods("POST")
+	protected.HandleFunc("/inventory/{id:[0-9]+}/delete", inventoryHandler.DeleteLaptop).Methods("POST")
 
 	// Chart API endpoints
 	protected.HandleFunc("/api/charts/shipments-over-time", chartsHandler.ShipmentsOverTimeAPI).Methods("GET")
