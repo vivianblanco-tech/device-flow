@@ -18,6 +18,7 @@ import (
 	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/handlers"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
+	"github.com/yourusername/laptop-tracking-system/internal/models"
 )
 
 func main() {
@@ -61,6 +62,45 @@ func main() {
 		},
 		"firstWeekday": func(year int, month time.Month) time.Weekday {
 			return time.Date(year, month, 1, 0, 0, 0, 0, time.UTC).Weekday()
+		},
+		// Dashboard template functions
+		"statusColor": func(status models.ShipmentStatus) string {
+			switch status {
+			case models.ShipmentStatusPendingPickup:
+				return "bg-yellow-400"
+			case models.ShipmentStatusPickedUpFromClient:
+				return "bg-orange-400"
+			case models.ShipmentStatusInTransitToWarehouse:
+				return "bg-purple-400"
+			case models.ShipmentStatusAtWarehouse:
+				return "bg-indigo-400"
+			case models.ShipmentStatusReleasedFromWarehouse:
+				return "bg-blue-400"
+			case models.ShipmentStatusInTransitToEngineer:
+				return "bg-cyan-400"
+			case models.ShipmentStatusDelivered:
+				return "bg-green-400"
+			default:
+				return "bg-gray-400"
+			}
+		},
+		"laptopStatusColor": func(status models.LaptopStatus) string {
+			switch status {
+			case models.LaptopStatusAvailable:
+				return "bg-green-400"
+			case models.LaptopStatusInTransitToWarehouse:
+				return "bg-purple-400"
+			case models.LaptopStatusAtWarehouse:
+				return "bg-indigo-400"
+			case models.LaptopStatusInTransitToEngineer:
+				return "bg-cyan-400"
+			case models.LaptopStatusDelivered:
+				return "bg-blue-400"
+			case models.LaptopStatusRetired:
+				return "bg-gray-400"
+			default:
+				return "bg-gray-400"
+			}
 		},
 	}
 
