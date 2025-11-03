@@ -100,3 +100,4 @@ Write-Host "To start database: docker-compose start postgres" -ForegroundColor G
 Write-Host ""
 
 
+
