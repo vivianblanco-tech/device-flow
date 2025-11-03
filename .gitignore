@@ -12,6 +12,9 @@
 *.out
 coverage.txt
 coverage.html
+coverage
+coverage.out
+coverage-*.txt
 
 # Go workspace file
 go.work
@@ -44,6 +47,7 @@ vendor/
 *.db
 *.sqlite
 *.sqlite3
+/db-data/
 
 # Logs
 *.log
