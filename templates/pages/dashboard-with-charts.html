@@ -14,7 +14,9 @@
             <div class="flex justify-between h-16">
                 <div class="flex items-center space-x-8">
                     <h1 class="text-xl font-bold text-gray-900">Laptop Tracking System</h1>
+                    {{if or (eq .User.Role "logistics") (eq .User.Role "project_manager")}}
                     <a href="/dashboard" class="text-sm text-blue-600 font-medium">Dashboard</a>
+                    {{end}}
                     <a href="/shipments" class="text-sm text-gray-600 hover:text-gray-900">Shipments</a>
                     <a href="/inventory" class="text-sm text-gray-600 hover:text-gray-900">Inventory</a>
                     <a href="/calendar" class="text-sm text-gray-600 hover:text-gray-900">Calendar</a>
@@ -105,20 +107,26 @@
             <!-- Shipments Over Time Chart -->
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Shipments Over Time (Last 30 Days)</h3>
-                <canvas id="shipmentsOverTimeChart" height="250"></canvas>
+                <div style="height: 250px;">
+                    <canvas id="shipmentsOverTimeChart"></canvas>
+                </div>
             </div>
 
             <!-- Status Distribution Chart -->
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Shipment Status Distribution</h3>
-                <canvas id="statusDistributionChart" height="250"></canvas>
+                <div style="height: 250px;">
+                    <canvas id="statusDistributionChart"></canvas>
+                </div>
             </div>
         </div>
 
         <!-- Delivery Time Trends Chart -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Average Delivery Time Trends (Last 8 Weeks)</h3>
-            <canvas id="deliveryTimeTrendsChart" height="200"></canvas>
+            <div style="height: 200px;">
+                <canvas id="deliveryTimeTrendsChart"></canvas>
+            </div>
         </div>
 
         <!-- Average Delivery Time Card -->
@@ -176,8 +184,19 @@
 
         // Fetch and render Shipments Over Time chart
         fetch('/api/charts/shipments-over-time?days=30')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
+                // Check if data is valid and is an array
+                if (!data || !Array.isArray(data)) {
+                    console.warn('Invalid or empty data received for shipments over time chart');
+                    data = []; // Use empty array as fallback
+                }
+                
                 const ctx = document.getElementById('shipmentsOverTimeChart');
                 new Chart(ctx, {
                     type: 'line',
@@ -215,8 +234,19 @@
 
         // Fetch and render Status Distribution chart
         fetch('/api/charts/status-distribution')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
+                // Check if data is valid and is an array
+                if (!data || !Array.isArray(data)) {
+                    console.warn('Invalid or empty data received for status distribution chart');
+                    data = []; // Use empty array as fallback
+                }
+                
                 const ctx = document.getElementById('statusDistributionChart');
                 const colors = [chartColors.blue, chartColors.purple, chartColors.green, 
                               chartColors.yellow, chartColors.orange, chartColors.cyan, chartColors.indigo];
@@ -247,8 +277,19 @@
 
         // Fetch and render Delivery Time Trends chart
         fetch('/api/charts/delivery-time-trends?weeks=8')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
+                // Check if data is valid and is an array
+                if (!data || !Array.isArray(data)) {
+                    console.warn('Invalid or empty data received for delivery time trends chart');
+                    data = []; // Use empty array as fallback
+                }
+                
                 const ctx = document.getElementById('deliveryTimeTrendsChart');
                 new Chart(ctx, {
                     type: 'bar',

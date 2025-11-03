@@ -33,9 +33,9 @@ func (h *DashboardHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Only logistics users can access the dashboard
-	if user.Role != models.RoleLogistics {
-		http.Error(w, "Forbidden: Only logistics users can access this page", http.StatusForbidden)
+	// Only logistics and project manager users can access the dashboard
+	if user.Role != models.RoleLogistics && user.Role != models.RoleProjectManager {
+		http.Error(w, "Forbidden: Only logistics and project manager users can access this page", http.StatusForbidden)
 		return
 	}
 

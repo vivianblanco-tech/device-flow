@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/yourusername/laptop-tracking-system/internal/database"
@@ -52,9 +53,9 @@ func TestDashboardAccessControl(t *testing.T) {
 			expectRedirect: false,
 		},
 		{
-			name:           "Project Manager user cannot access dashboard",
+			name:           "Project Manager user can access dashboard",
 			userRole:       models.RoleProjectManager,
-			expectedStatus: http.StatusForbidden,
+			expectedStatus: http.StatusOK,
 			expectRedirect: false,
 		},
 	}
@@ -70,7 +71,7 @@ func TestDashboardAccessControl(t *testing.T) {
 
 			// Create request
 			req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
-			
+
 			// Add user to context
 			ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 			req = req.WithContext(ctx)
@@ -124,3 +125,102 @@ func TestDashboardUnauthenticated(t *testing.T) {
 	}
 }
 
+// TestDashboardMenuVisibility tests that dashboard menu item is only visible to authorized roles
+func TestDashboardMenuVisibility(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Setup test database
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Load templates
+	templates := loadTestTemplates(t)
+
+	// Create handlers
+	dashboardHandler := NewDashboardHandler(db, templates)
+	shipmentsHandler := NewShipmentsHandler(db, templates)
+
+	tests := []struct {
+		name                string
+		userRole            models.UserRole
+		shouldShowDashboard bool
+		testHandler         string // "dashboard" or "shipments"
+	}{
+		{
+			name:                "Logistics user sees dashboard menu on dashboard page",
+			userRole:            models.RoleLogistics,
+			shouldShowDashboard: true,
+			testHandler:         "dashboard",
+		},
+		{
+			name:                "Client user does not see dashboard menu on shipments page",
+			userRole:            models.RoleClient,
+			shouldShowDashboard: false,
+			testHandler:         "shipments",
+		},
+		{
+			name:                "Warehouse user does not see dashboard menu on shipments page",
+			userRole:            models.RoleWarehouse,
+			shouldShowDashboard: false,
+			testHandler:         "shipments",
+		},
+		{
+			name:                "Project Manager sees dashboard menu on dashboard page",
+			userRole:            models.RoleProjectManager,
+			shouldShowDashboard: true,
+			testHandler:         "dashboard",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test user with specific role
+			user := &models.User{
+				ID:    1,
+				Email: "test@bairesdev.com",
+				Role:  tt.userRole,
+			}
+
+			// Create request
+			var req *http.Request
+			if tt.testHandler == "dashboard" {
+				req = httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+			} else {
+				req = httptest.NewRequest(http.MethodGet, "/shipments", nil)
+			}
+
+			// Add user to context
+			ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+			req = req.WithContext(ctx)
+
+			// Create response recorder
+			rr := httptest.NewRecorder()
+
+			// Call appropriate handler
+			if tt.testHandler == "dashboard" {
+				dashboardHandler.Dashboard(rr, req)
+			} else {
+				shipmentsHandler.ShipmentsList(rr, req)
+			}
+
+			// Check status code is OK
+			if rr.Code != http.StatusOK {
+				t.Fatalf("expected status 200, got %d", rr.Code)
+			}
+
+			// Check dashboard link presence/absence
+			body := rr.Body.String()
+			dashboardLinkPresent := strings.Contains(body, `href="/dashboard"`)
+
+			if tt.shouldShowDashboard && !dashboardLinkPresent {
+				t.Errorf("expected dashboard link in HTML for %s role, but it was not found", tt.userRole)
+			}
+
+			if !tt.shouldShowDashboard && dashboardLinkPresent {
+				t.Errorf("did not expect dashboard link in HTML for %s role, but it was found", tt.userRole)
+			}
+		})
+	}
+}

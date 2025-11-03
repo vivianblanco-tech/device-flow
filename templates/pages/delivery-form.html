@@ -15,7 +15,11 @@
                     <h1 class="text-xl font-bold text-gray-900">Laptop Tracking System</h1>
                 </div>
                 <div class="flex items-center">
+                    {{if .User}}
+                    {{if or (eq .User.Role "logistics") (eq .User.Role "project_manager")}}
                     <a href="/dashboard" class="text-sm text-gray-600 hover:text-gray-900 mr-4">Dashboard</a>
+                    {{end}}
+                    {{end}}
                 </div>
             </div>
         </div>
