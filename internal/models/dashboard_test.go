@@ -49,15 +49,15 @@ func TestGetShipmentCountsByStatus(t *testing.T) {
 
 	// Verify counts
 	expectedCounts := map[ShipmentStatus]int{
-		ShipmentStatusPendingPickup:        2,
-		ShipmentStatusAtWarehouse:          1,
-		ShipmentStatusInTransitToEngineer:  1,
-		ShipmentStatusDelivered:            3,
+		ShipmentStatusPendingPickup:       2,
+		ShipmentStatusAtWarehouse:         1,
+		ShipmentStatusInTransitToEngineer: 1,
+		ShipmentStatusDelivered:           3,
 	}
 
 	for status, expectedCount := range expectedCounts {
 		if counts[status] != expectedCount {
-			t.Errorf("Expected %d shipments with status %s, got %d", 
+			t.Errorf("Expected %d shipments with status %s, got %d",
 				expectedCount, status, counts[status])
 		}
 	}
@@ -118,7 +118,7 @@ func TestGetAverageDeliveryTime(t *testing.T) {
 
 	// Create test shipments with delivery times
 	baseTime := time.Now().Add(-10 * 24 * time.Hour)
-	
+
 	shipments := []struct {
 		pickupDays   int
 		deliveryDays int
@@ -131,7 +131,7 @@ func TestGetAverageDeliveryTime(t *testing.T) {
 	for _, s := range shipments {
 		pickupTime := baseTime.Add(time.Duration(s.pickupDays) * 24 * time.Hour)
 		deliveryTime := baseTime.Add(time.Duration(s.deliveryDays) * 24 * time.Hour)
-		
+
 		shipment := &Shipment{
 			ClientCompanyID: company.ID,
 			Status:          ShipmentStatusDelivered,
@@ -177,8 +177,8 @@ func TestGetInTransitShipmentCount(t *testing.T) {
 		ShipmentStatusInTransitToWarehouse,
 		ShipmentStatusInTransitToEngineer,
 		ShipmentStatusInTransitToWarehouse,
-		ShipmentStatusAtWarehouse,          // Not in transit
-		ShipmentStatusDelivered,            // Not in transit
+		ShipmentStatusAtWarehouse, // Not in transit
+		ShipmentStatusDelivered,   // Not in transit
 	}
 
 	for _, status := range statuses {
@@ -224,8 +224,8 @@ func TestGetPendingPickupCount(t *testing.T) {
 		ShipmentStatusPendingPickup,
 		ShipmentStatusPendingPickup,
 		ShipmentStatusPendingPickup,
-		ShipmentStatusPickedUpFromClient,  // Not pending
-		ShipmentStatusAtWarehouse,         // Not pending
+		ShipmentStatusPickedUpFromClient, // Not pending
+		ShipmentStatusAtWarehouse,        // Not pending
 	}
 
 	for _, status := range statuses {
@@ -289,7 +289,7 @@ func TestGetLaptopCountsByStatus(t *testing.T) {
 
 	for status, expectedCount := range expectedCounts {
 		if counts[status] != expectedCount {
-			t.Errorf("Expected %d laptops with status %s, got %d", 
+			t.Errorf("Expected %d laptops with status %s, got %d",
 				expectedCount, status, counts[status])
 		}
 	}
@@ -348,7 +348,7 @@ func TestGetDashboardStats(t *testing.T) {
 
 	// Create test shipments with different statuses and delivery times
 	baseTime := time.Now().Add(-20 * 24 * time.Hour)
-	
+
 	// Shipment 1: Delivered (took 5 days)
 	pickup1 := baseTime
 	delivery1 := baseTime.Add(5 * 24 * time.Hour)
@@ -450,17 +450,17 @@ func TestGetDashboardStats(t *testing.T) {
 	// Verify average delivery time (should be 10 days: (5+15)/2)
 	expectedAvg := 10.0
 	if stats.AvgDeliveryDays < expectedAvg-0.1 || stats.AvgDeliveryDays > expectedAvg+0.1 {
-		t.Errorf("Expected average delivery time of %.1f days, got %.1f", 
+		t.Errorf("Expected average delivery time of %.1f days, got %.1f",
 			expectedAvg, stats.AvgDeliveryDays)
 	}
 
 	// Verify shipments by status
 	if stats.ShipmentsByStatus[ShipmentStatusDelivered] != 2 {
-		t.Errorf("Expected 2 delivered in status map, got %d", 
+		t.Errorf("Expected 2 delivered in status map, got %d",
 			stats.ShipmentsByStatus[ShipmentStatusDelivered])
 	}
 	if stats.ShipmentsByStatus[ShipmentStatusPendingPickup] != 1 {
-		t.Errorf("Expected 1 pending pickup in status map, got %d", 
+		t.Errorf("Expected 1 pending pickup in status map, got %d",
 			stats.ShipmentsByStatus[ShipmentStatusPendingPickup])
 	}
 
@@ -471,15 +471,15 @@ func TestGetDashboardStats(t *testing.T) {
 
 	// Verify laptops by status
 	if stats.LaptopsByStatus[LaptopStatusAvailable] != 2 {
-		t.Errorf("Expected 2 available laptops in status map, got %d", 
+		t.Errorf("Expected 2 available laptops in status map, got %d",
 			stats.LaptopsByStatus[LaptopStatusAvailable])
 	}
 	if stats.LaptopsByStatus[LaptopStatusDelivered] != 1 {
-		t.Errorf("Expected 1 delivered laptop in status map, got %d", 
+		t.Errorf("Expected 1 delivered laptop in status map, got %d",
 			stats.LaptopsByStatus[LaptopStatusDelivered])
 	}
 	if stats.LaptopsByStatus[LaptopStatusAtWarehouse] != 1 {
-		t.Errorf("Expected 1 warehouse laptop in status map, got %d", 
+		t.Errorf("Expected 1 warehouse laptop in status map, got %d",
 			stats.LaptopsByStatus[LaptopStatusAtWarehouse])
 	}
 }
@@ -487,20 +487,20 @@ func TestGetDashboardStats(t *testing.T) {
 // Helper function to create a client company in the test database
 func createClientCompany(db *sql.DB, c *ClientCompany) error {
 	c.BeforeCreate()
-	
+
 	query := `
 		INSERT INTO client_companies (name, contact_info, created_at, updated_at)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id
 	`
-	
+
 	return db.QueryRow(query, c.Name, c.ContactInfo, c.CreatedAt, c.UpdatedAt).Scan(&c.ID)
 }
 
 // Helper function to create a shipment in the test database
 func createShipment(db *sql.DB, s *Shipment) error {
 	s.BeforeCreate()
-	
+
 	query := `
 		INSERT INTO shipments (
 			client_company_id, software_engineer_id, status, courier_name, 
@@ -510,7 +510,7 @@ func createShipment(db *sql.DB, s *Shipment) error {
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING id
 	`
-	
+
 	return db.QueryRow(
 		query,
 		s.ClientCompanyID, s.SoftwareEngineerID, s.Status, s.CourierName,
@@ -523,16 +523,15 @@ func createShipment(db *sql.DB, s *Shipment) error {
 // Helper function to create a laptop in the test database
 func createLaptop(db *sql.DB, l *Laptop) error {
 	l.BeforeCreate()
-	
+
 	query := `
 		INSERT INTO laptops (serial_number, brand, model, specs, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id
 	`
-	
+
 	return db.QueryRow(
 		query,
 		l.SerialNumber, l.Brand, l.Model, l.Specs, l.Status, l.CreatedAt, l.UpdatedAt,
 	).Scan(&l.ID)
 }
-

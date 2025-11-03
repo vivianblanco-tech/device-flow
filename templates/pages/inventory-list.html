@@ -133,7 +133,7 @@
                                 <div class="text-sm text-gray-900">{{if .Specs}}{{.Specs}}{{else}}-{{end}}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{statusColor .Status}}">
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{inventoryStatusColor .Status}}">
                                     {{.Status | replace "_" " " | title}}
                                 </span>
                             </td>

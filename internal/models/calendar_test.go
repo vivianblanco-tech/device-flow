@@ -183,9 +183,9 @@ func TestCalendarEventFormatting(t *testing.T) {
 // TestCalendarEventTypeValidation tests validation of calendar event types
 func TestCalendarEventTypeValidation(t *testing.T) {
 	testCases := []struct {
-		name     string
+		name      string
 		eventType CalendarEventType
-		expected bool
+		expected  bool
 	}{
 		{"Valid pickup", CalendarEventTypePickup, true},
 		{"Valid delivery", CalendarEventTypeDelivery, true},
@@ -222,4 +222,3 @@ func createSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
 		time.Now(),
 	).Scan(&engineer.ID)
 }
-

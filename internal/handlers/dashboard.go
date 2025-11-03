@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
@@ -48,24 +47,8 @@ func (h *DashboardHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		"Stats": stats,
 	}
 
-	// Create custom template functions
-	funcMap := template.FuncMap{
-		"title":             strings.Title,
-		"replace":           strings.ReplaceAll,
-		"statusColor":       getStatusColor,
-		"laptopStatusColor": getLaptopStatusColor,
-	}
-
-	// Parse template with custom functions (use dashboard-with-charts.html for better visualization)
-	tmpl, err := template.New("dashboard-with-charts.html").Funcs(funcMap).ParseFiles("templates/pages/dashboard-with-charts.html")
-	if err != nil {
-		log.Printf("Error parsing template: %v", err)
-		http.Error(w, "Failed to load dashboard", http.StatusInternalServerError)
-		return
-	}
-
-	// Execute template
-	if err := tmpl.Execute(w, data); err != nil {
+	// Execute template using pre-parsed global templates
+	if err := h.Templates.ExecuteTemplate(w, "dashboard-with-charts.html", data); err != nil {
 		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Failed to render dashboard", http.StatusInternalServerError)
 		return

@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
@@ -73,40 +72,8 @@ func (h *InventoryHandler) InventoryList(w http.ResponseWriter, r *http.Request)
 		},
 	}
 
-	// Create custom template functions
-	funcMap := template.FuncMap{
-		"title":   strings.Title,
-		"replace": strings.ReplaceAll,
-		"statusColor": func(status models.LaptopStatus) string {
-			switch status {
-			case models.LaptopStatusAvailable:
-				return "bg-green-100 text-green-800"
-			case models.LaptopStatusInTransitToWarehouse:
-				return "bg-purple-100 text-purple-800"
-			case models.LaptopStatusAtWarehouse:
-				return "bg-indigo-100 text-indigo-800"
-			case models.LaptopStatusInTransitToEngineer:
-				return "bg-cyan-100 text-cyan-800"
-			case models.LaptopStatusDelivered:
-				return "bg-blue-100 text-blue-800"
-			case models.LaptopStatusRetired:
-				return "bg-gray-100 text-gray-800"
-			default:
-				return "bg-gray-100 text-gray-800"
-			}
-		},
-	}
-
-	// Parse template with custom functions
-	tmpl, err := template.New("inventory-list.html").Funcs(funcMap).ParseFiles("templates/pages/inventory-list.html")
-	if err != nil {
-		log.Printf("Error parsing inventory template: %v", err)
-		http.Error(w, "Failed to load inventory", http.StatusInternalServerError)
-		return
-	}
-
-	// Execute template
-	if err := tmpl.Execute(w, data); err != nil {
+	// Execute template using pre-parsed global templates
+	if err := h.Templates.ExecuteTemplate(w, "inventory-list.html", data); err != nil {
 		log.Printf("Error executing inventory template: %v", err)
 		http.Error(w, "Failed to render inventory", http.StatusInternalServerError)
 		return
@@ -145,22 +112,8 @@ func (h *InventoryHandler) LaptopDetail(w http.ResponseWriter, r *http.Request) 
 		"Laptop": laptop,
 	}
 
-	// Create custom template functions
-	funcMap := template.FuncMap{
-		"title":   strings.Title,
-		"replace": strings.ReplaceAll,
-	}
-
-	// Parse template with custom functions
-	tmpl, err := template.New("laptop-detail.html").Funcs(funcMap).ParseFiles("templates/pages/laptop-detail.html")
-	if err != nil {
-		log.Printf("Error parsing laptop detail template: %v", err)
-		http.Error(w, "Failed to load laptop details", http.StatusInternalServerError)
-		return
-	}
-
-	// Execute template
-	if err := tmpl.Execute(w, data); err != nil {
+	// Execute template using pre-parsed global templates
+	if err := h.Templates.ExecuteTemplate(w, "laptop-detail.html", data); err != nil {
 		log.Printf("Error executing laptop detail template: %v", err)
 		http.Error(w, "Failed to render laptop details", http.StatusInternalServerError)
 		return
@@ -191,22 +144,8 @@ func (h *InventoryHandler) AddLaptopPage(w http.ResponseWriter, r *http.Request)
 		},
 	}
 
-	// Create custom template functions
-	funcMap := template.FuncMap{
-		"title":   strings.Title,
-		"replace": strings.ReplaceAll,
-	}
-
-	// Parse template
-	tmpl, err := template.New("laptop-form.html").Funcs(funcMap).ParseFiles("templates/pages/laptop-form.html")
-	if err != nil {
-		log.Printf("Error parsing laptop form template: %v", err)
-		http.Error(w, "Failed to load form", http.StatusInternalServerError)
-		return
-	}
-
-	// Execute template
-	if err := tmpl.Execute(w, data); err != nil {
+	// Execute template using pre-parsed global templates
+	if err := h.Templates.ExecuteTemplate(w, "laptop-form.html", data); err != nil {
 		log.Printf("Error executing laptop form template: %v", err)
 		http.Error(w, "Failed to render form", http.StatusInternalServerError)
 		return
@@ -301,22 +240,8 @@ func (h *InventoryHandler) EditLaptopPage(w http.ResponseWriter, r *http.Request
 		"IsEdit": true,
 	}
 
-	// Create custom template functions
-	funcMap := template.FuncMap{
-		"title":   strings.Title,
-		"replace": strings.ReplaceAll,
-	}
-
-	// Parse template
-	tmpl, err := template.New("laptop-form.html").Funcs(funcMap).ParseFiles("templates/pages/laptop-form.html")
-	if err != nil {
-		log.Printf("Error parsing laptop form template: %v", err)
-		http.Error(w, "Failed to load form", http.StatusInternalServerError)
-		return
-	}
-
-	// Execute template
-	if err := tmpl.Execute(w, data); err != nil {
+	// Execute template using pre-parsed global templates
+	if err := h.Templates.ExecuteTemplate(w, "laptop-form.html", data); err != nil {
 		log.Printf("Error executing laptop form template: %v", err)
 		http.Error(w, "Failed to render form", http.StatusInternalServerError)
 		return

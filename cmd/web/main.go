@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -44,7 +45,17 @@ func main() {
 		"replace": func(old, new, s string) string {
 			return strings.ReplaceAll(s, old, new)
 		},
-		"title": func(s string) string {
+		"title": func(v interface{}) string {
+			// Convert interface{} to string
+			var s string
+			switch val := v.(type) {
+			case string:
+				s = val
+			case models.UserRole:
+				s = string(val)
+			default:
+				s = fmt.Sprintf("%v", val)
+			}
 			return strings.Title(s)
 		},
 		// Calendar template functions
@@ -100,6 +111,25 @@ func main() {
 				return "bg-gray-400"
 			default:
 				return "bg-gray-400"
+			}
+		},
+		// Inventory template specific statusColor (with text color)
+		"inventoryStatusColor": func(status models.LaptopStatus) string {
+			switch status {
+			case models.LaptopStatusAvailable:
+				return "bg-green-100 text-green-800"
+			case models.LaptopStatusInTransitToWarehouse:
+				return "bg-purple-100 text-purple-800"
+			case models.LaptopStatusAtWarehouse:
+				return "bg-indigo-100 text-indigo-800"
+			case models.LaptopStatusInTransitToEngineer:
+				return "bg-cyan-100 text-cyan-800"
+			case models.LaptopStatusDelivered:
+				return "bg-blue-100 text-blue-800"
+			case models.LaptopStatusRetired:
+				return "bg-gray-100 text-gray-800"
+			default:
+				return "bg-gray-100 text-gray-800"
 			}
 		},
 	}

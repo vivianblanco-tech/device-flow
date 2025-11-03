@@ -81,35 +81,8 @@ func (h *CalendarHandler) Calendar(w http.ResponseWriter, r *http.Request) {
 		"CurrentMonth": startDate.Format("January 2006"),
 	}
 
-	// Create custom template functions
-	funcMap := template.FuncMap{
-		"formatDate": func(t time.Time) string {
-			return t.Format("Jan 2, 2006")
-		},
-		"formatTime": func(t time.Time) string {
-			return t.Format("3:04 PM")
-		},
-		"formatDateShort": func(t time.Time) string {
-			return t.Format("Jan 2")
-		},
-		"daysInMonth": func(year int, month time.Month) int {
-			return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
-		},
-		"firstWeekday": func(year int, month time.Month) time.Weekday {
-			return time.Date(year, month, 1, 0, 0, 0, 0, time.UTC).Weekday()
-		},
-	}
-
-	// Parse template with custom functions
-	tmpl, err := template.New("calendar.html").Funcs(funcMap).ParseFiles("templates/pages/calendar.html")
-	if err != nil {
-		log.Printf("Error parsing calendar template: %v", err)
-		http.Error(w, "Failed to load calendar", http.StatusInternalServerError)
-		return
-	}
-
-	// Execute template
-	if err := tmpl.Execute(w, data); err != nil {
+	// Execute template using pre-parsed global templates
+	if err := h.Templates.ExecuteTemplate(w, "calendar.html", data); err != nil {
 		log.Printf("Error executing calendar template: %v", err)
 		http.Error(w, "Failed to render calendar", http.StatusInternalServerError)
 		return
