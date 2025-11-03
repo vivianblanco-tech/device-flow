@@ -97,6 +97,7 @@ func main() {
 
 	dashboardHandler := handlers.NewDashboardHandler(db, templates)
 	chartsHandler := handlers.NewChartsHandler(db)
+	calendarHandler := handlers.NewCalendarHandler(db, templates)
 	pickupFormHandler := handlers.NewPickupFormHandler(db, templates, notifier)
 	receptionReportHandler := handlers.NewReceptionReportHandler(db, templates, notifier)
 	deliveryFormHandler := handlers.NewDeliveryFormHandler(db, templates, notifier)
@@ -138,6 +139,9 @@ func main() {
 
 	// Dashboard
 	protected.HandleFunc("/dashboard", dashboardHandler.Dashboard).Methods("GET")
+
+	// Calendar
+	protected.HandleFunc("/calendar", calendarHandler.Calendar).Methods("GET")
 
 	// Chart API endpoints
 	protected.HandleFunc("/api/charts/shipments-over-time", chartsHandler.ShipmentsOverTimeAPI).Methods("GET")
