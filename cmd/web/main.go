@@ -96,6 +96,7 @@ func main() {
 	authHandler.OAuthDomain = cfg.Google.AllowedDomain
 
 	dashboardHandler := handlers.NewDashboardHandler(db, templates)
+	chartsHandler := handlers.NewChartsHandler(db)
 	pickupFormHandler := handlers.NewPickupFormHandler(db, templates, notifier)
 	receptionReportHandler := handlers.NewReceptionReportHandler(db, templates, notifier)
 	deliveryFormHandler := handlers.NewDeliveryFormHandler(db, templates, notifier)
@@ -137,6 +138,11 @@ func main() {
 
 	// Dashboard
 	protected.HandleFunc("/dashboard", dashboardHandler.Dashboard).Methods("GET")
+
+	// Chart API endpoints
+	protected.HandleFunc("/api/charts/shipments-over-time", chartsHandler.ShipmentsOverTimeAPI).Methods("GET")
+	protected.HandleFunc("/api/charts/status-distribution", chartsHandler.StatusDistributionAPI).Methods("GET")
+	protected.HandleFunc("/api/charts/delivery-time-trends", chartsHandler.DeliveryTimeTrendsAPI).Methods("GET")
 
 	// Pickup form routes
 	protected.HandleFunc("/pickup-form", pickupFormHandler.PickupFormPage).Methods("GET")
