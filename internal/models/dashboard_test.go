@@ -331,6 +331,159 @@ func TestGetAvailableLaptopCount(t *testing.T) {
 	}
 }
 
+// TestGetDashboardStats tests retrieving all dashboard statistics in one call
+func TestGetDashboardStats(t *testing.T) {
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Create test client company
+	company := &ClientCompany{
+		Name:        "Test Company",
+		ContactInfo: "test@example.com",
+	}
+	err := createClientCompany(db, company)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
+	// Create test shipments with different statuses and delivery times
+	baseTime := time.Now().Add(-20 * 24 * time.Hour)
+	
+	// Shipment 1: Delivered (took 5 days)
+	pickup1 := baseTime
+	delivery1 := baseTime.Add(5 * 24 * time.Hour)
+	shipment1 := &Shipment{
+		ClientCompanyID: company.ID,
+		Status:          ShipmentStatusDelivered,
+		PickedUpAt:      &pickup1,
+		DeliveredAt:     &delivery1,
+	}
+	err = createShipment(db, shipment1)
+	if err != nil {
+		t.Fatalf("Failed to create shipment 1: %v", err)
+	}
+
+	// Shipment 2: Delivered (took 15 days)
+	pickup2 := baseTime.Add(-10 * 24 * time.Hour)
+	delivery2 := baseTime.Add(5 * 24 * time.Hour)
+	shipment2 := &Shipment{
+		ClientCompanyID: company.ID,
+		Status:          ShipmentStatusDelivered,
+		PickedUpAt:      &pickup2,
+		DeliveredAt:     &delivery2,
+	}
+	err = createShipment(db, shipment2)
+	if err != nil {
+		t.Fatalf("Failed to create shipment 2: %v", err)
+	}
+
+	// Shipment 3: Pending pickup
+	shipment3 := &Shipment{
+		ClientCompanyID: company.ID,
+		Status:          ShipmentStatusPendingPickup,
+	}
+	err = createShipment(db, shipment3)
+	if err != nil {
+		t.Fatalf("Failed to create shipment 3: %v", err)
+	}
+
+	// Shipment 4: In transit to warehouse
+	shipment4 := &Shipment{
+		ClientCompanyID: company.ID,
+		Status:          ShipmentStatusInTransitToWarehouse,
+	}
+	err = createShipment(db, shipment4)
+	if err != nil {
+		t.Fatalf("Failed to create shipment 4: %v", err)
+	}
+
+	// Shipment 5: In transit to engineer
+	shipment5 := &Shipment{
+		ClientCompanyID: company.ID,
+		Status:          ShipmentStatusInTransitToEngineer,
+	}
+	err = createShipment(db, shipment5)
+	if err != nil {
+		t.Fatalf("Failed to create shipment 5: %v", err)
+	}
+
+	// Create test laptops
+	laptops := []Laptop{
+		{SerialNumber: "SN001", Status: LaptopStatusAvailable},
+		{SerialNumber: "SN002", Status: LaptopStatusAvailable},
+		{SerialNumber: "SN003", Status: LaptopStatusDelivered},
+		{SerialNumber: "SN004", Status: LaptopStatusAtWarehouse},
+	}
+	for i := range laptops {
+		err := createLaptop(db, &laptops[i])
+		if err != nil {
+			t.Fatalf("Failed to create laptop: %v", err)
+		}
+	}
+
+	// Get dashboard stats
+	stats, err := GetDashboardStats(db)
+	if err != nil {
+		t.Fatalf("GetDashboardStats failed: %v", err)
+	}
+
+	// Verify total shipments
+	if stats.TotalShipments != 5 {
+		t.Errorf("Expected 5 total shipments, got %d", stats.TotalShipments)
+	}
+
+	// Verify pending pickups
+	if stats.PendingPickups != 1 {
+		t.Errorf("Expected 1 pending pickup, got %d", stats.PendingPickups)
+	}
+
+	// Verify in transit
+	if stats.InTransit != 2 {
+		t.Errorf("Expected 2 in-transit shipments, got %d", stats.InTransit)
+	}
+
+	// Verify delivered
+	if stats.Delivered != 2 {
+		t.Errorf("Expected 2 delivered shipments, got %d", stats.Delivered)
+	}
+
+	// Verify average delivery time (should be 10 days: (5+15)/2)
+	expectedAvg := 10.0
+	if stats.AvgDeliveryDays < expectedAvg-0.1 || stats.AvgDeliveryDays > expectedAvg+0.1 {
+		t.Errorf("Expected average delivery time of %.1f days, got %.1f", 
+			expectedAvg, stats.AvgDeliveryDays)
+	}
+
+	// Verify shipments by status
+	if stats.ShipmentsByStatus[ShipmentStatusDelivered] != 2 {
+		t.Errorf("Expected 2 delivered in status map, got %d", 
+			stats.ShipmentsByStatus[ShipmentStatusDelivered])
+	}
+	if stats.ShipmentsByStatus[ShipmentStatusPendingPickup] != 1 {
+		t.Errorf("Expected 1 pending pickup in status map, got %d", 
+			stats.ShipmentsByStatus[ShipmentStatusPendingPickup])
+	}
+
+	// Verify available laptops
+	if stats.AvailableLaptops != 2 {
+		t.Errorf("Expected 2 available laptops, got %d", stats.AvailableLaptops)
+	}
+
+	// Verify laptops by status
+	if stats.LaptopsByStatus[LaptopStatusAvailable] != 2 {
+		t.Errorf("Expected 2 available laptops in status map, got %d", 
+			stats.LaptopsByStatus[LaptopStatusAvailable])
+	}
+	if stats.LaptopsByStatus[LaptopStatusDelivered] != 1 {
+		t.Errorf("Expected 1 delivered laptop in status map, got %d", 
+			stats.LaptopsByStatus[LaptopStatusDelivered])
+	}
+	if stats.LaptopsByStatus[LaptopStatusAtWarehouse] != 1 {
+		t.Errorf("Expected 1 warehouse laptop in status map, got %d", 
+			stats.LaptopsByStatus[LaptopStatusAtWarehouse])
+	}
+}
+
 // Helper function to create a client company in the test database
 func createClientCompany(db *sql.DB, c *ClientCompany) error {
 	c.BeforeCreate()
