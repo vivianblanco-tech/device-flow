@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/yourusername/laptop-tracking-system/internal/database"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
@@ -199,7 +200,8 @@ func TestShipmentDetail(t *testing.T) {
 	handler := NewShipmentsHandler(db, templates)
 
 	t.Run("authenticated user can view shipment detail", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/shipments/detail?id="+strconv.FormatInt(shipmentID, 10), nil)
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
 		
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
@@ -229,7 +231,8 @@ func TestShipmentDetail(t *testing.T) {
 	})
 
 	t.Run("invalid shipment ID returns error", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/shipments/detail?id=invalid", nil)
+		req := httptest.NewRequest(http.MethodGet, "/shipments/invalid", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "invalid"})
 		
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
@@ -244,7 +247,8 @@ func TestShipmentDetail(t *testing.T) {
 	})
 
 	t.Run("non-existent shipment returns not found", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/shipments/detail?id=99999", nil)
+		req := httptest.NewRequest(http.MethodGet, "/shipments/99999", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "99999"})
 		
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
