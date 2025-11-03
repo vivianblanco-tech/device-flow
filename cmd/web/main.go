@@ -42,7 +42,19 @@ func main() {
 
 	// Load templates with custom functions
 	funcMap := template.FuncMap{
-		"replace": func(old, new, s string) string {
+		"replace": func(old, new string, v interface{}) string {
+			// Convert interface{} to string first
+			var s string
+			switch val := v.(type) {
+			case string:
+				s = val
+			case models.UserRole:
+				s = string(val)
+			case models.LaptopStatus:
+				s = string(val)
+			default:
+				s = fmt.Sprintf("%v", val)
+			}
 			return strings.ReplaceAll(s, old, new)
 		},
 		"title": func(v interface{}) string {
@@ -52,6 +64,8 @@ func main() {
 			case string:
 				s = val
 			case models.UserRole:
+				s = string(val)
+			case models.LaptopStatus:
 				s = string(val)
 			default:
 				s = fmt.Sprintf("%v", val)

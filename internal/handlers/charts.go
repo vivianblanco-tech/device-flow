@@ -40,19 +40,27 @@ func (h *ChartsHandler) ShipmentsOverTimeAPI(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	// Set content type before any writes
+	w.Header().Set("Content-Type", "application/json")
+
 	// Get chart data
 	data, err := models.GetShipmentsOverTime(h.DB, days)
 	if err != nil {
 		log.Printf("Error getting shipments over time: %v", err)
-		http.Error(w, "Failed to fetch chart data", http.StatusInternalServerError)
+		// Return empty array instead of error to keep frontend happy
+		json.NewEncoder(w).Encode([]models.ChartDataPoint{})
 		return
 	}
 
+	// Ensure we always return an array, even if empty
+	if data == nil {
+		data = []models.ChartDataPoint{}
+	}
+
 	// Return JSON response
-	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		json.NewEncoder(w).Encode([]models.ChartDataPoint{})
 		return
 	}
 }
@@ -66,19 +74,27 @@ func (h *ChartsHandler) StatusDistributionAPI(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// Set content type before any writes
+	w.Header().Set("Content-Type", "application/json")
+
 	// Get distribution data
 	data, err := models.GetShipmentStatusDistribution(h.DB)
 	if err != nil {
 		log.Printf("Error getting status distribution: %v", err)
-		http.Error(w, "Failed to fetch chart data", http.StatusInternalServerError)
+		// Return empty array instead of error to keep frontend happy
+		json.NewEncoder(w).Encode([]models.StatusDistribution{})
 		return
 	}
 
+	// Ensure we always return an array, even if empty
+	if data == nil {
+		data = []models.StatusDistribution{}
+	}
+
 	// Return JSON response
-	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		json.NewEncoder(w).Encode([]models.StatusDistribution{})
 		return
 	}
 }
@@ -100,19 +116,27 @@ func (h *ChartsHandler) DeliveryTimeTrendsAPI(w http.ResponseWriter, r *http.Req
 		}
 	}
 
+	// Set content type before any writes
+	w.Header().Set("Content-Type", "application/json")
+
 	// Get trends data
 	data, err := models.GetDeliveryTimeTrends(h.DB, weeks)
 	if err != nil {
 		log.Printf("Error getting delivery time trends: %v", err)
-		http.Error(w, "Failed to fetch chart data", http.StatusInternalServerError)
+		// Return empty array instead of error to keep frontend happy
+		json.NewEncoder(w).Encode([]models.DeliveryTimeTrend{})
 		return
 	}
 
+	// Ensure we always return an array, even if empty
+	if data == nil {
+		data = []models.DeliveryTimeTrend{}
+	}
+
 	// Return JSON response
-	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		json.NewEncoder(w).Encode([]models.DeliveryTimeTrend{})
 		return
 	}
 }

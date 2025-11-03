@@ -30,15 +30,16 @@ type DeliveryTimeTrend struct {
 // GetShipmentsOverTime returns shipment counts grouped by date for timeline charts
 // days parameter specifies how many days back to retrieve
 func GetShipmentsOverTime(db *sql.DB, days int) ([]ChartDataPoint, error) {
+	// Use parameterized query with proper interval calculation
 	query := `
 		SELECT DATE(created_at) as date, COUNT(*) as count
 		FROM shipments
-		WHERE DATE(created_at) >= CURRENT_DATE - INTERVAL '%d days'
+		WHERE DATE(created_at) >= CURRENT_DATE - ($1 || ' days')::INTERVAL
 		GROUP BY DATE(created_at)
 		ORDER BY date ASC
 	`
 
-	rows, err := db.Query(fmt.Sprintf(query, days))
+	rows, err := db.Query(query, days)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query shipments over time: %w", err)
 	}
@@ -115,6 +116,7 @@ func GetShipmentStatusDistribution(db *sql.DB) ([]StatusDistribution, error) {
 // GetDeliveryTimeTrends returns average delivery time grouped by week
 // weeks parameter specifies how many weeks back to retrieve
 func GetDeliveryTimeTrends(db *sql.DB, weeks int) ([]DeliveryTimeTrend, error) {
+	// Use parameterized query with proper interval calculation
 	query := `
 		SELECT 
 			DATE_TRUNC('week', delivered_at) as week_start,
@@ -124,12 +126,12 @@ func GetDeliveryTimeTrends(db *sql.DB, weeks int) ([]DeliveryTimeTrend, error) {
 		WHERE status = $1 
 		  AND picked_up_at IS NOT NULL 
 		  AND delivered_at IS NOT NULL
-		  AND delivered_at >= NOW() - INTERVAL '%d weeks'
+		  AND delivered_at >= NOW() - ($2 || ' weeks')::INTERVAL
 		GROUP BY DATE_TRUNC('week', delivered_at)
 		ORDER BY week_start ASC
 	`
 
-	rows, err := db.Query(fmt.Sprintf(query, weeks), ShipmentStatusDelivered)
+	rows, err := db.Query(query, ShipmentStatusDelivered, weeks)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query delivery time trends: %w", err)
 	}
