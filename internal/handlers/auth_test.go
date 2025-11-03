@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -19,11 +20,108 @@ import (
 // loadTestTemplates loads templates for testing
 func loadTestTemplates(t *testing.T) *template.Template {
 	funcMap := template.FuncMap{
-		"replace": func(old, new, s string) string {
+		"replace": func(old, new string, v interface{}) string {
+			// Convert interface{} to string first
+			var s string
+			switch val := v.(type) {
+			case string:
+				s = val
+			case models.UserRole:
+				s = string(val)
+			case models.LaptopStatus:
+				s = string(val)
+			default:
+				s = fmt.Sprintf("%v", val)
+			}
 			return strings.ReplaceAll(s, old, new)
 		},
-		"title": func(s string) string {
+		"title": func(v interface{}) string {
+			// Convert interface{} to string
+			var s string
+			switch val := v.(type) {
+			case string:
+				s = val
+			case models.UserRole:
+				s = string(val)
+			case models.LaptopStatus:
+				s = string(val)
+			default:
+				s = fmt.Sprintf("%v", val)
+			}
 			return strings.Title(s)
+		},
+		// Calendar template functions
+		"formatDate": func(t time.Time) string {
+			return t.Format("Jan 2, 2006")
+		},
+		"formatTime": func(t time.Time) string {
+			return t.Format("3:04 PM")
+		},
+		"formatDateShort": func(t time.Time) string {
+			return t.Format("Jan 2")
+		},
+		"daysInMonth": func(year int, month time.Month) int {
+			return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+		},
+		"firstWeekday": func(year int, month time.Month) time.Weekday {
+			return time.Date(year, month, 1, 0, 0, 0, 0, time.UTC).Weekday()
+		},
+		// Dashboard template functions
+		"statusColor": func(status models.ShipmentStatus) string {
+			switch status {
+			case models.ShipmentStatusPendingPickup:
+				return "bg-yellow-400"
+			case models.ShipmentStatusPickedUpFromClient:
+				return "bg-orange-400"
+			case models.ShipmentStatusInTransitToWarehouse:
+				return "bg-purple-400"
+			case models.ShipmentStatusAtWarehouse:
+				return "bg-indigo-400"
+			case models.ShipmentStatusReleasedFromWarehouse:
+				return "bg-blue-400"
+			case models.ShipmentStatusInTransitToEngineer:
+				return "bg-cyan-400"
+			case models.ShipmentStatusDelivered:
+				return "bg-green-400"
+			default:
+				return "bg-gray-400"
+			}
+		},
+		"laptopStatusColor": func(status models.LaptopStatus) string {
+			switch status {
+			case models.LaptopStatusAvailable:
+				return "bg-green-400"
+			case models.LaptopStatusInTransitToWarehouse:
+				return "bg-purple-400"
+			case models.LaptopStatusAtWarehouse:
+				return "bg-indigo-400"
+			case models.LaptopStatusInTransitToEngineer:
+				return "bg-cyan-400"
+			case models.LaptopStatusDelivered:
+				return "bg-blue-400"
+			case models.LaptopStatusRetired:
+				return "bg-gray-400"
+			default:
+				return "bg-gray-400"
+			}
+		},
+		"inventoryStatusColor": func(status models.LaptopStatus) string {
+			switch status {
+			case models.LaptopStatusAvailable:
+				return "bg-green-100 text-green-800"
+			case models.LaptopStatusInTransitToWarehouse:
+				return "bg-purple-100 text-purple-800"
+			case models.LaptopStatusAtWarehouse:
+				return "bg-indigo-100 text-indigo-800"
+			case models.LaptopStatusInTransitToEngineer:
+				return "bg-cyan-100 text-cyan-800"
+			case models.LaptopStatusDelivered:
+				return "bg-blue-100 text-blue-800"
+			case models.LaptopStatusRetired:
+				return "bg-gray-100 text-gray-800"
+			default:
+				return "bg-gray-100 text-gray-800"
+			}
 		},
 	}
 
@@ -32,6 +130,92 @@ func loadTestTemplates(t *testing.T) *template.Template {
 		t.Fatalf("Failed to parse templates: %v", err)
 	}
 	return templates
+}
+
+func TestLoginRedirectByRole(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	templates := loadTestTemplates(t)
+	handler := NewAuthHandler(db, templates)
+
+	// Create test users with different roles
+	testUsers := []struct {
+		email            string
+		role             models.UserRole
+		expectedRedirect string
+	}{
+		{
+			email:            "logistics.test@bairesdev.com",
+			role:             models.RoleLogistics,
+			expectedRedirect: "/dashboard",
+		},
+		{
+			email:            "client.test@bairesdev.com",
+			role:             models.RoleClient,
+			expectedRedirect: "/shipments",
+		},
+		{
+			email:            "warehouse.test@bairesdev.com",
+			role:             models.RoleWarehouse,
+			expectedRedirect: "/inventory",
+		},
+		{
+			email:            "pm.test@bairesdev.com",
+			role:             models.RoleProjectManager,
+			expectedRedirect: "/dashboard",
+		},
+	}
+
+	ctx := context.Background()
+	password := "Test123!"
+	passwordHash, _ := auth.HashPassword(password)
+
+	for _, tt := range testUsers {
+		t.Run(fmt.Sprintf("%s user redirects to %s", tt.role, tt.expectedRedirect), func(t *testing.T) {
+			// Create user
+			var userID int64
+			err := db.QueryRowContext(ctx,
+				`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+				VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+				tt.email, passwordHash, tt.role, time.Now(), time.Now(),
+			).Scan(&userID)
+			if err != nil {
+				t.Fatalf("Failed to create test user: %v", err)
+			}
+
+			// Create login request
+			form := url.Values{}
+			form.Add("email", tt.email)
+			form.Add("password", password)
+
+			req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			w := httptest.NewRecorder()
+
+			// Call login handler
+			handler.Login(w, req)
+
+			// Check status code
+			if w.Code != http.StatusSeeOther {
+				t.Errorf("expected status %d, got %d", http.StatusSeeOther, w.Code)
+			}
+
+			// Check redirect location
+			location := w.Header().Get("Location")
+			if location != tt.expectedRedirect {
+				t.Errorf("expected redirect to %s, got %s", tt.expectedRedirect, location)
+			}
+
+			// Cleanup: delete user
+			_, _ = db.ExecContext(ctx, "DELETE FROM sessions WHERE user_id = $1", userID)
+			_, _ = db.ExecContext(ctx, "DELETE FROM users WHERE id = $1", userID)
+		})
+	}
 }
 
 func TestLoginPage(t *testing.T) {

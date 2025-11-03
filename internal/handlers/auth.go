@@ -37,10 +37,30 @@ func NewAuthHandler(db *sql.DB, templates *template.Template) *AuthHandler {
 	}
 }
 
+// getRedirectURLForRole returns the appropriate redirect URL based on user role
+func getRedirectURLForRole(role models.UserRole) string {
+	switch role {
+	case models.RoleClient:
+		return "/shipments"
+	case models.RoleWarehouse:
+		return "/inventory"
+	case models.RoleLogistics, models.RoleProjectManager:
+		return "/dashboard"
+	default:
+		return "/dashboard"
+	}
+}
+
 // LoginPage displays the login form
 func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
-	// If already authenticated, redirect to dashboard
+	// If already authenticated, redirect to appropriate page for their role
 	if middleware.IsAuthenticated(r) {
+		user := middleware.GetUserFromContext(r.Context())
+		if user != nil {
+			redirectURL := getRedirectURLForRole(user.Role)
+			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+			return
+		}
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
@@ -134,8 +154,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 
-	// Redirect to dashboard
-	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	// Redirect based on user role
+	redirectURL := getRedirectURLForRole(user.Role)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 // Logout handles user logout
@@ -503,6 +524,7 @@ func (h *AuthHandler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 
-	// Redirect to dashboard
-	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	// Redirect based on user role
+	redirectURL := getRedirectURLForRole(user.Role)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
