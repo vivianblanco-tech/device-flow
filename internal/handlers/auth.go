@@ -37,18 +37,21 @@ func NewAuthHandler(db *sql.DB, templates *template.Template) *AuthHandler {
 	}
 }
 
+// roleRedirects maps user roles to their default landing pages
+var roleRedirects = map[models.UserRole]string{
+	models.RoleClient:         "/shipments",
+	models.RoleWarehouse:      "/inventory",
+	models.RoleLogistics:      "/dashboard",
+	models.RoleProjectManager: "/dashboard",
+}
+
 // getRedirectURLForRole returns the appropriate redirect URL based on user role
 func getRedirectURLForRole(role models.UserRole) string {
-	switch role {
-	case models.RoleClient:
-		return "/shipments"
-	case models.RoleWarehouse:
-		return "/inventory"
-	case models.RoleLogistics, models.RoleProjectManager:
-		return "/dashboard"
-	default:
-		return "/dashboard"
+	if url, ok := roleRedirects[role]; ok {
+		return url
 	}
+	// Default fallback for any unmapped roles
+	return "/dashboard"
 }
 
 // LoginPage displays the login form
