@@ -36,6 +36,10 @@ Expected template data:
                 {{if .Nav.ReceptionReports}}
                 <a href="/reception-reports" class="text-sm {{if eq .CurrentPage "reception-reports"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Reception Reports</a>
                 {{end}}
+                
+                {{if .Nav.MagicLinks}}
+                <a href="/magic-links" class="text-sm {{if eq .CurrentPage "magic-links"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Magic Links</a>
+                {{end}}
             </div>
             
             <!-- User Info and Logout -->

@@ -8,9 +8,9 @@ import (
 
 func TestGetNavigationLinks(t *testing.T) {
 	tests := []struct {
-		name           string
-		userRole       models.UserRole
-		expectedLinks  map[string]bool
+		name          string
+		userRole      models.UserRole
+		expectedLinks map[string]bool
 	}{
 		{
 			name:     "logistics user has access to all links",
@@ -22,6 +22,7 @@ func TestGetNavigationLinks(t *testing.T) {
 				"calendar":          true,
 				"pickup_forms":      true,
 				"reception_reports": true,
+				"magic_links":       true,
 			},
 		},
 		{
@@ -34,6 +35,7 @@ func TestGetNavigationLinks(t *testing.T) {
 				"calendar":          true,
 				"pickup_forms":      false,
 				"reception_reports": false,
+				"magic_links":       false,
 			},
 		},
 		{
@@ -46,6 +48,7 @@ func TestGetNavigationLinks(t *testing.T) {
 				"calendar":          true,
 				"pickup_forms":      false,
 				"reception_reports": true,
+				"magic_links":       false,
 			},
 		},
 		{
@@ -58,6 +61,7 @@ func TestGetNavigationLinks(t *testing.T) {
 				"calendar":          true,
 				"pickup_forms":      true,
 				"reception_reports": false,
+				"magic_links":       false,
 			},
 		},
 	}
@@ -84,6 +88,9 @@ func TestGetNavigationLinks(t *testing.T) {
 			}
 			if nav.ReceptionReports != tt.expectedLinks["reception_reports"] {
 				t.Errorf("ReceptionReports visibility = %v, want %v", nav.ReceptionReports, tt.expectedLinks["reception_reports"])
+			}
+			if nav.MagicLinks != tt.expectedLinks["magic_links"] {
+				t.Errorf("MagicLinks visibility = %v, want %v", nav.MagicLinks, tt.expectedLinks["magic_links"])
 			}
 		})
 	}
@@ -138,4 +145,3 @@ func TestNavigationLinks_HasAnyLink(t *testing.T) {
 		})
 	}
 }
-

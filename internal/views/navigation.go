@@ -10,6 +10,7 @@ type NavigationLinks struct {
 	Calendar         bool
 	PickupForms      bool
 	ReceptionReports bool
+	MagicLinks       bool
 }
 
 // GetNavigationLinks returns the navigation links visible to a user based on their role
@@ -25,6 +26,7 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		nav.Calendar = true
 		nav.PickupForms = true
 		nav.ReceptionReports = true
+		nav.MagicLinks = true
 
 	case models.RoleProjectManager:
 		// Project Manager has access to dashboards and reports
@@ -34,6 +36,7 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		nav.Calendar = true
 		nav.PickupForms = false
 		nav.ReceptionReports = false
+		nav.MagicLinks = false
 
 	case models.RoleWarehouse:
 		// Warehouse has access to inventory and reception
@@ -43,6 +46,7 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		nav.Calendar = true
 		nav.PickupForms = false
 		nav.ReceptionReports = true
+		nav.MagicLinks = false
 
 	case models.RoleClient:
 		// Client has limited access
@@ -52,6 +56,7 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		nav.Calendar = true
 		nav.PickupForms = true
 		nav.ReceptionReports = false
+		nav.MagicLinks = false
 	}
 
 	return nav
@@ -59,6 +64,6 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 
 // HasAnyLink returns true if at least one navigation link is visible
 func (n NavigationLinks) HasAnyLink() bool {
-	return n.Dashboard || n.Shipments || n.Inventory || n.Calendar || n.PickupForms || n.ReceptionReports
+	return n.Dashboard || n.Shipments || n.Inventory || n.Calendar || n.PickupForms || n.ReceptionReports || n.MagicLinks
 }
 
