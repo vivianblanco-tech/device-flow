@@ -20,6 +20,7 @@ import (
 	"github.com/yourusername/laptop-tracking-system/internal/handlers"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
+	"github.com/yourusername/laptop-tracking-system/internal/views"
 )
 
 func main() {
@@ -71,6 +72,10 @@ func main() {
 				s = fmt.Sprintf("%v", val)
 			}
 			return strings.Title(s)
+		},
+		// Navigation helper function
+		"getNav": func(role models.UserRole) views.NavigationLinks {
+			return views.GetNavigationLinks(role)
 		},
 		// Calendar template functions
 		"formatDate": func(t time.Time) string {
@@ -150,7 +155,13 @@ func main() {
 
 	templates, err := template.New("").Funcs(funcMap).ParseGlob("templates/pages/*.html")
 	if err != nil {
-		log.Fatalf("Failed to parse templates: %v", err)
+		log.Fatalf("Failed to parse page templates: %v", err)
+	}
+
+	// Parse component templates (navbar, etc.)
+	templates, err = templates.ParseGlob("templates/components/*.html")
+	if err != nil {
+		log.Fatalf("Failed to parse component templates: %v", err)
 	}
 
 	// Set up Google OAuth config
