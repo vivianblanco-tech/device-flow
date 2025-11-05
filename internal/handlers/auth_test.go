@@ -129,8 +129,15 @@ func loadTestTemplates(t *testing.T) *template.Template {
 
 	templates, err := template.New("").Funcs(funcMap).ParseGlob("../../templates/pages/*.html")
 	if err != nil {
-		t.Fatalf("Failed to parse templates: %v", err)
+		t.Fatalf("Failed to parse page templates: %v", err)
 	}
+	
+	// Also load component templates
+	templates, err = templates.ParseGlob("../../templates/components/*.html")
+	if err != nil {
+		t.Fatalf("Failed to parse component templates: %v", err)
+	}
+	
 	return templates
 }
 

@@ -99,6 +99,9 @@
                                 Shipment ID
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                JIRA Ticket
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Company
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -120,6 +123,17 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 #{{.Shipment.ID}}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-mono">
+                                {{if .Shipment.JiraTicketNumber}}
+                                <a href="https://your-jira-instance.atlassian.net/browse/{{.Shipment.JiraTicketNumber}}" 
+                                   target="_blank" 
+                                   class="text-blue-600 hover:text-blue-800">
+                                    {{.Shipment.JiraTicketNumber}}
+                                </a>
+                                {{else}}
+                                <span class="text-gray-400">-</span>
+                                {{end}}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                 {{.CompanyName}}

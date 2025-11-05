@@ -88,6 +88,27 @@ func TestShipmentsList(t *testing.T) {
 		}
 	})
 
+	t.Run("shipments list displays JIRA ticket numbers", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments", nil)
+		
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentsList(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		// Verify the response contains at least one JIRA ticket from test data
+		responseBody := w.Body.String()
+		if !strings.Contains(responseBody, "TEST-1") && !strings.Contains(responseBody, "TEST-2") {
+			t.Errorf("Expected response to contain JIRA ticket numbers (TEST-1, TEST-2), but none were found")
+		}
+	})
+
 	t.Run("unauthenticated user redirects to login", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments", nil)
 		w := httptest.NewRecorder()
@@ -214,6 +235,39 @@ func TestShipmentDetail(t *testing.T) {
 
 		if w.Code != http.StatusOK {
 			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+	})
+
+	t.Run("shipment detail includes JIRA ticket number", func(t *testing.T) {
+		// Create a shipment with a specific JIRA ticket
+		var testShipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, notes, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "SCOP-12345", "Test shipment with JIRA", time.Now(), time.Now(),
+		).Scan(&testShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(testShipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(testShipmentID, 10)})
+		
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		// Verify the response contains the JIRA ticket number
+		responseBody := w.Body.String()
+		if !strings.Contains(responseBody, "SCOP-12345") {
+			t.Errorf("Expected response to contain JIRA ticket 'SCOP-12345', but it was not found")
 		}
 	})
 

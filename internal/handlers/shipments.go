@@ -53,7 +53,7 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 
 	baseQuery := `
 		SELECT s.id, s.client_company_id, s.software_engineer_id, s.status, 
-		       s.courier_name, s.tracking_number, s.pickup_scheduled_date,
+		       s.jira_ticket_number, s.courier_name, s.tracking_number, s.pickup_scheduled_date,
 		       s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, 
 		       s.delivered_at, s.notes, s.created_at, s.updated_at,
 		       c.name as company_name,
@@ -108,13 +108,14 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 		var s models.Shipment
 		var companyName string
 		var engineerName sql.NullString
+		var jiraTicket sql.NullString
 		var courierName sql.NullString
 		var trackingNumber sql.NullString
 		var notes sql.NullString
 
 		err := rows.Scan(
 			&s.ID, &s.ClientCompanyID, &s.SoftwareEngineerID, &s.Status,
-			&courierName, &trackingNumber, &s.PickupScheduledDate,
+			&jiraTicket, &courierName, &trackingNumber, &s.PickupScheduledDate,
 			&s.PickedUpAt, &s.ArrivedWarehouseAt, &s.ReleasedWarehouseAt,
 			&s.DeliveredAt, &notes, &s.CreatedAt, &s.UpdatedAt,
 			&companyName, &engineerName,
@@ -124,6 +125,7 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 		}
 
 		// Convert nullable strings
+		s.JiraTicketNumber = jiraTicket.String
 		s.CourierName = courierName.String
 		s.TrackingNumber = trackingNumber.String
 		s.Notes = notes.String
@@ -204,6 +206,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 
 	err = h.DB.QueryRowContext(r.Context(),
 		`SELECT s.id, s.client_company_id, s.software_engineer_id, s.status, 
+		        COALESCE(s.jira_ticket_number, '') as jira_ticket_number,
 		        COALESCE(s.courier_name, '') as courier_name, 
 		        COALESCE(s.tracking_number, '') as tracking_number, 
 		        s.pickup_scheduled_date,
@@ -218,7 +221,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		shipmentID,
 	).Scan(
 		&s.ID, &s.ClientCompanyID, &s.SoftwareEngineerID, &s.Status,
-		&s.CourierName, &s.TrackingNumber, &s.PickupScheduledDate,
+		&s.JiraTicketNumber, &s.CourierName, &s.TrackingNumber, &s.PickupScheduledDate,
 		&s.PickedUpAt, &s.ArrivedWarehouseAt, &s.ReleasedWarehouseAt,
 		&s.DeliveredAt, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
 		&companyName, &engineerName, &engineerEmail,
