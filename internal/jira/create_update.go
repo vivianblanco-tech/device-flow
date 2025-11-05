@@ -309,7 +309,7 @@ func (c *Client) SyncShipmentStatusToJira(issueKey string, shipment *models.Ship
 	var jiraStatus string
 	switch shipment.Status {
 	case models.ShipmentStatusPendingPickup:
-		jiraStatus = "Pending Pickup"
+		jiraStatus = "Pending Pickup from Client"
 	case models.ShipmentStatusPickedUpFromClient:
 		jiraStatus = "Picked Up"
 	case models.ShipmentStatusInTransitToWarehouse:
@@ -323,7 +323,7 @@ func (c *Client) SyncShipmentStatusToJira(issueKey string, shipment *models.Ship
 	case models.ShipmentStatusDelivered:
 		jiraStatus = "Delivered"
 	default:
-		jiraStatus = "Pending Pickup"
+		jiraStatus = "Pending Pickup from Client"
 	}
 
 	// Update the ticket status

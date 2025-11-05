@@ -562,13 +562,13 @@ BEGIN
         NOW() - INTERVAL '5 days', NOW() - INTERVAL '1 day'
     );
     
-    -- Shipment 12: Pending Pickup
+    -- Shipment 12: Pending Pickup from Client
     INSERT INTO shipments (
         client_company_id, software_engineer_id, status, courier_name, tracking_number,
         pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
         notes, created_at, updated_at
     ) VALUES (
-        global_id, NULL, 'pending_pickup', 'UPS', NULL,
+        global_id, NULL, 'pending_pickup_from_client', 'UPS', NULL,
         NOW() + INTERVAL '2 days', NULL, NULL,
         NULL, NULL,
         'Pickup scheduled for future date',

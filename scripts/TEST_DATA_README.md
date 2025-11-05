@@ -74,7 +74,7 @@ Get-Content scripts/create-test-data.sql | docker exec -i laptop-tracking-db psq
 - At Warehouse: 3
 - In Transit to Engineer: 2
 - In Transit to Warehouse: 1
-- Pending Pickup: 1
+- Pending Pickup from Client: 1
 - Picked Up from Client: 1
 
 ## Useful Test Queries
@@ -237,7 +237,7 @@ The test data includes various scenarios for comprehensive testing:
 - **Shipment ID: 22** - Dell XPS 15 at warehouse
 - No engineer assigned yet, ready for assignment
 
-### Scenario 4: Pending Pickup
+### Scenario 4: Pending Pickup from Client
 - **Shipment ID: 27** - Scheduled for future pickup
 - Tests the early stages of the workflow
 

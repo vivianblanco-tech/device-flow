@@ -153,7 +153,7 @@ func TestShipment_IsValidStatus(t *testing.T) {
 		status ShipmentStatus
 		want   bool
 	}{
-		{"pending_pickup", ShipmentStatusPendingPickup, true},
+		{"pending_pickup_from_client", ShipmentStatusPendingPickup, true},
 		{"picked_up_from_client", ShipmentStatusPickedUpFromClient, true},
 		{"in_transit_to_warehouse", ShipmentStatusInTransitToWarehouse, true},
 		{"at_warehouse", ShipmentStatusAtWarehouse, true},
@@ -224,7 +224,7 @@ func TestShipment_UpdateStatus(t *testing.T) {
 	}
 
 	if shipment.Status != ShipmentStatusPendingPickup {
-		t.Error("Expected initial status to be pending_pickup")
+		t.Error("Expected initial status to be pending_pickup_from_client")
 	}
 
 	shipment.UpdateStatus(ShipmentStatusPickedUpFromClient)

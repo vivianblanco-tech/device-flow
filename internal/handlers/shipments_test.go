@@ -75,7 +75,7 @@ func TestShipmentsList(t *testing.T) {
 
 	t.Run("authenticated user can view shipments list", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments", nil)
-		
+
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
@@ -90,7 +90,7 @@ func TestShipmentsList(t *testing.T) {
 
 	t.Run("shipments list displays JIRA ticket numbers", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments", nil)
-		
+
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
@@ -127,7 +127,7 @@ func TestShipmentsList(t *testing.T) {
 
 	t.Run("status filter works", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments?status="+string(models.ShipmentStatusAtWarehouse), nil)
-		
+
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
@@ -142,7 +142,7 @@ func TestShipmentsList(t *testing.T) {
 
 	t.Run("search query works", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments?search=Test", nil)
-		
+
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
@@ -225,7 +225,7 @@ func TestShipmentDetail(t *testing.T) {
 	t.Run("authenticated user can view shipment detail", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
 		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
-		
+
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
@@ -252,7 +252,7 @@ func TestShipmentDetail(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(testShipmentID, 10), nil)
 		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(testShipmentID, 10)})
-		
+
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
@@ -273,7 +273,7 @@ func TestShipmentDetail(t *testing.T) {
 
 	t.Run("missing shipment ID returns error", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments/detail", nil)
-		
+
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
@@ -289,7 +289,7 @@ func TestShipmentDetail(t *testing.T) {
 	t.Run("invalid shipment ID returns error", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments/invalid", nil)
 		req = mux.SetURLVars(req, map[string]string{"id": "invalid"})
-		
+
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
@@ -305,7 +305,7 @@ func TestShipmentDetail(t *testing.T) {
 	t.Run("non-existent shipment returns not found", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments/99999", nil)
 		req = mux.SetURLVars(req, map[string]string{"id": "99999"})
-		
+
 		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
 		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
@@ -483,7 +483,7 @@ func TestCreateShipment(t *testing.T) {
 	}
 
 	templates := loadTestTemplates(t)
-	
+
 	// Mock JIRA validator that always succeeds
 	mockJiraValidator := func(ticketKey string) error {
 		if ticketKey == "INVALID-000" {
@@ -630,4 +630,3 @@ func TestCreateShipment(t *testing.T) {
 		}
 	})
 }
-

@@ -165,7 +165,7 @@ func GetDeliveryTimeTrends(db *sql.DB, weeks int) ([]DeliveryTimeTrend, error) {
 // formatStatusLabel converts a status enum to a human-readable label
 func formatStatusLabel(status ShipmentStatus) string {
 	labels := map[ShipmentStatus]string{
-		ShipmentStatusPendingPickup:         "Pending Pickup",
+		ShipmentStatusPendingPickup:         "Pending Pickup from Client",
 		ShipmentStatusPickedUpFromClient:    "Picked Up",
 		ShipmentStatusInTransitToWarehouse:  "In Transit to Warehouse",
 		ShipmentStatusAtWarehouse:           "At Warehouse",

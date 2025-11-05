@@ -11,7 +11,7 @@ type ShipmentStatus string
 
 // Shipment status constants matching the process steps
 const (
-	ShipmentStatusPendingPickup          ShipmentStatus = "pending_pickup"
+	ShipmentStatusPendingPickup          ShipmentStatus = "pending_pickup_from_client"
 	ShipmentStatusPickedUpFromClient     ShipmentStatus = "picked_up_from_client"
 	ShipmentStatusInTransitToWarehouse   ShipmentStatus = "in_transit_to_warehouse"
 	ShipmentStatusAtWarehouse            ShipmentStatus = "at_warehouse"

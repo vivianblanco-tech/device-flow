@@ -79,7 +79,7 @@ func TestMapJiraStatusToShipmentStatus(t *testing.T) {
 		expectedStatus models.ShipmentStatus
 	}{
 		{"To Do", models.ShipmentStatusPendingPickup},
-		{"Pending Pickup", models.ShipmentStatusPendingPickup},
+		{"Pending Pickup from Client", models.ShipmentStatusPendingPickup},
 		{"Picked Up", models.ShipmentStatusPickedUpFromClient},
 		{"In Transit to Warehouse", models.ShipmentStatusInTransitToWarehouse},
 		{"At Warehouse", models.ShipmentStatusAtWarehouse},
@@ -117,7 +117,7 @@ func TestCreateShipmentFromTicket(t *testing.T) {
 		Key:         "PROJ-125",
 		Summary:     "Deploy laptop to engineer",
 		Description: "Deploy laptop with serial SN987654321",
-		Status:      "Pending Pickup",
+		Status:      "Pending Pickup from Client",
 		Created:     "2023-10-01T10:00:00.000+0000",
 	}
 
