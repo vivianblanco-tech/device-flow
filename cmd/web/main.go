@@ -245,6 +245,10 @@ func main() {
 	// Calendar
 	protected.HandleFunc("/calendar", calendarHandler.Calendar).Methods("GET")
 
+	// Magic Links (logistics only)
+	protected.HandleFunc("/magic-links", authHandler.MagicLinksList).Methods("GET")
+	protected.HandleFunc("/auth/send-magic-link", authHandler.SendMagicLink).Methods("POST")
+
 	// Inventory routes
 	protected.HandleFunc("/inventory", inventoryHandler.InventoryList).Methods("GET")
 	protected.HandleFunc("/inventory/add", inventoryHandler.AddLaptopPage).Methods("GET")

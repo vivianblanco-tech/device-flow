@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic Links - Laptop Tracking System</title>
+    <link rel="stylesheet" href="/static/css/output.css" />
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center space-x-8">
+                    <h1 class="text-xl font-bold text-gray-900">Laptop Tracking System</h1>
+                    {{if or (eq .User.Role "logistics") (eq .User.Role "project_manager")}}<a href="/dashboard" class="text-sm text-gray-600 hover:text-gray-900">Dashboard</a>{{end}}
+                    <a href="/shipments" class="text-sm text-gray-600 hover:text-gray-900">Shipments</a>
+                    <a href="/magic-links" class="text-sm text-blue-600 font-medium">Magic Links</a>
+                </div>
+                <div class="flex items-center">
+                    {{if .User}}
+                    <span class="text-sm text-gray-600 mr-4">{{.User.Email}}</span>
+                    <a href="/logout" class="text-sm text-blue-600 hover:text-blue-700">Logout</a>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">Magic Links</h2>
+            <p class="mt-2 text-gray-600">View all sent magic links and their status</p>
+        </div>
+
+        <!-- Magic Links Table -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Sent To
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Shipment
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Created
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Expires
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {{if .MagicLinks}}
+                    {{range .MagicLinks}}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{.UserEmail}}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {{if .ShipmentID}}
+                            <a href="/shipments/{{.ShipmentID}}" class="text-sm text-blue-600 hover:text-blue-800">
+                                Shipment #{{.ShipmentID}}
+                            </a>
+                            <div class="text-xs text-gray-500">{{.CompanyName}}</div>
+                            {{else}}
+                            <span class="text-sm text-gray-400">No shipment</span>
+                            {{end}}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{.CreatedAt.Format "Jan 02, 2006"}}
+                            <div class="text-xs text-gray-400">{{.CreatedAt.Format "15:04"}}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{.ExpiresAt.Format "Jan 02, 2006"}}
+                            <div class="text-xs text-gray-400">{{.ExpiresAt.Format "15:04"}}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {{if .IsUsed}}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Used
+                            </span>
+                            <div class="text-xs text-gray-500 mt-1">{{.UsedAt.Format "Jan 02, 15:04"}}</div>
+                            {{else if .IsExpired}}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                Expired
+                            </span>
+                            {{else}}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                Active
+                            </span>
+                            {{end}}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{if not .IsUsed}}
+                            {{if not .IsExpired}}
+                            <button 
+                                onclick="copyToClipboard('http://localhost:8080/auth/magic-link?token={{.Token}}')"
+                                class="text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                                📋 Copy Link
+                            </button>
+                            {{else}}
+                            <span class="text-gray-400">—</span>
+                            {{end}}
+                            {{else}}
+                            <span class="text-green-600 font-medium">✓ Completed</span>
+                            {{end}}
+                        </td>
+                    </tr>
+                    {{end}}
+                    {{else}}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            <div class="text-lg font-medium mb-2">No magic links yet</div>
+                            <p class="text-sm">Magic links will appear here after you send them from shipment pages</p>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Info Box -->
+        <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 class="text-sm font-semibold text-blue-900 mb-2">ℹ️ About Magic Links</h3>
+            <ul class="text-sm text-blue-800 space-y-1">
+                <li>• Magic links provide one-time secure access to pickup forms</li>
+                <li>• Links expire after 24 hours or once used</li>
+                <li>• Send links from individual shipment pages</li>
+                <li>• Recipients can access forms without creating an account</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                alert('Magic link copied to clipboard!');
+            }, function(err) {
+                console.error('Could not copy text: ', err);
+            });
+        }
+    </script>
+</body>
+</html>
+

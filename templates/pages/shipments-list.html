@@ -17,6 +17,9 @@
                     <a href="/dashboard" class="text-sm text-gray-600 hover:text-gray-900">Dashboard</a>
                     {{end}}
                     <a href="/shipments" class="text-sm text-blue-600 font-medium">Shipments</a>
+                    {{if eq .User.Role "logistics"}}
+                    <a href="/magic-links" class="text-sm text-gray-600 hover:text-gray-900">Magic Links</a>
+                    {{end}}
                 </div>
                 <div class="flex items-center">
                     {{if .User}}

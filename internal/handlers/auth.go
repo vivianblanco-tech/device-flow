@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -428,12 +429,116 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: Send email with magic link
-	// For now, just return the magic link URL (in production, this would be sent via email)
-	magicLinkURL := fmt.Sprintf("https://yourdomain.com/auth/magic-link?token=%s", magicLink.Token)
+	// For now, show the magic link URL (in production, this would be sent via email)
+	baseURL := getBaseURL(r)
+	magicLinkURL := fmt.Sprintf("%s/auth/magic-link?token=%s", baseURL, magicLink.Token)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"magic_link_url": "%s", "message": "Magic link created successfully"}`, magicLinkURL)
+	// Redirect back to shipment detail with success message including the URL
+	redirectURL := fmt.Sprintf("/shipments/%d?success=Magic+link+sent+to+%s.+URL:+%s", 
+		sid, email, url.QueryEscape(magicLinkURL))
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// getBaseURL returns the base URL for the application
+func getBaseURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	host := r.Host
+	if host == "" {
+		host = "localhost:8080"
+	}
+	return fmt.Sprintf("%s://%s", scheme, host)
+}
+
+// MagicLinksList displays all magic links for logistics users
+func (h *AuthHandler) MagicLinksList(w http.ResponseWriter, r *http.Request) {
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Only logistics users can view magic links
+	if user.Role != models.RoleLogistics {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Query magic links with associated user and shipment info
+	query := `
+		SELECT 
+			ml.id, ml.token, ml.user_id, ml.shipment_id, ml.expires_at, 
+			ml.used_at, ml.created_at,
+			u.email as user_email,
+			COALESCE(s.id, 0) as shipment_id_coalesce,
+			COALESCE(cc.name, '') as company_name
+		FROM magic_links ml
+		JOIN users u ON u.id = ml.user_id
+		LEFT JOIN shipments s ON s.id = ml.shipment_id
+		LEFT JOIN client_companies cc ON cc.id = s.client_company_id
+		ORDER BY ml.created_at DESC
+		LIMIT 100
+	`
+
+	rows, err := h.DB.QueryContext(r.Context(), query)
+	if err != nil {
+		http.Error(w, "Failed to load magic links", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type MagicLinkDisplay struct {
+		ID          int64
+		Token       string
+		UserEmail   string
+		ShipmentID  *int64
+		CompanyName string
+		ExpiresAt   time.Time
+		UsedAt      *time.Time
+		CreatedAt   time.Time
+		IsExpired   bool
+		IsUsed      bool
+	}
+
+	var links []MagicLinkDisplay
+	for rows.Next() {
+		var link MagicLinkDisplay
+		var shipmentIDCoalesce int64
+		var companyName string
+		
+		err := rows.Scan(
+			&link.ID, &link.Token, new(int64), &link.ShipmentID, &link.ExpiresAt,
+			&link.UsedAt, &link.CreatedAt, &link.UserEmail,
+			&shipmentIDCoalesce, &companyName,
+		)
+		if err != nil {
+			continue
+		}
+
+		if shipmentIDCoalesce > 0 {
+			link.ShipmentID = &shipmentIDCoalesce
+			link.CompanyName = companyName
+		}
+
+		link.IsExpired = time.Now().After(link.ExpiresAt)
+		link.IsUsed = link.UsedAt != nil
+
+		links = append(links, link)
+	}
+
+	data := map[string]interface{}{
+		"User":       user,
+		"MagicLinks": links,
+	}
+
+	err = h.Templates.ExecuteTemplate(w, "magic-links-list.html", data)
+	if err != nil {
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+		return
+	}
 }
 
 // GoogleLogin initiates the Google OAuth flow
