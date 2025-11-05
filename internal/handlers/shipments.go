@@ -675,3 +675,239 @@ func (h *ShipmentsHandler) CreateShipment(w http.ResponseWriter, r *http.Request
 	redirectURL := fmt.Sprintf("/shipments/%d?success=Shipment+created+successfully", shipmentID)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
+
+// ShipmentPickupFormPage displays the pickup form for a specific shipment
+func (h *ShipmentsHandler) ShipmentPickupFormPage(w http.ResponseWriter, r *http.Request) {
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Get shipment ID from URL
+	vars := mux.Vars(r)
+	shipmentIDStr := vars["id"]
+	shipmentID, err := strconv.ParseInt(shipmentIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid shipment ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get shipment with JIRA ticket and company information
+	var shipment models.Shipment
+	var companyName string
+	var pickupScheduledDate sql.NullTime
+	var notes sql.NullString
+	err = h.DB.QueryRowContext(r.Context(),
+		`SELECT s.id, s.client_company_id, s.status, s.jira_ticket_number, 
+		        s.pickup_scheduled_date, s.notes, s.created_at, s.updated_at, c.name
+		FROM shipments s
+		JOIN client_companies c ON c.id = s.client_company_id
+		WHERE s.id = $1`,
+		shipmentID,
+	).Scan(&shipment.ID, &shipment.ClientCompanyID, &shipment.Status, &shipment.JiraTicketNumber,
+		&pickupScheduledDate, &notes, &shipment.CreatedAt, &shipment.UpdatedAt, &companyName)
+
+	if err == sql.ErrNoRows {
+		http.Error(w, "Shipment not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		fmt.Printf("Error loading shipment: %v\n", err)
+		http.Error(w, "Failed to load shipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Handle nullable fields
+	if pickupScheduledDate.Valid {
+		shipment.PickupScheduledDate = &pickupScheduledDate.Time
+	}
+	if notes.Valid {
+		shipment.Notes = notes.String
+	}
+
+	// Check if pickup form already exists
+	var pickupFormData map[string]interface{}
+	var formDataJSON []byte
+	var pickupFormID int64
+	err = h.DB.QueryRowContext(r.Context(),
+		`SELECT id, form_data FROM pickup_forms WHERE shipment_id = $1`,
+		shipmentID,
+	).Scan(&pickupFormID, &formDataJSON)
+
+	if err == nil {
+		// Pickup form exists, parse the JSON
+		if err := json.Unmarshal(formDataJSON, &pickupFormData); err != nil {
+			// Log error but continue
+			fmt.Printf("Error parsing pickup form data: %v\n", err)
+		}
+	} else if err != sql.ErrNoRows {
+		// Real error (not just missing form)
+		http.Error(w, "Failed to load pickup form", http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare template data
+	data := map[string]interface{}{
+		"User":           user,
+		"Shipment":       shipment,
+		"CompanyName":    companyName,
+		"PickupFormData": pickupFormData,
+		"IsEdit":         pickupFormData != nil,
+		"TimeSlots":      []string{"morning", "afternoon", "evening"},
+	}
+
+	if h.Templates != nil {
+		err := h.Templates.ExecuteTemplate(w, "shipment-pickup-form.html", data)
+		if err != nil {
+			http.Error(w, "Failed to render template", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// For testing without templates
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Shipment Pickup Form Page")
+	}
+}
+
+// ShipmentPickupFormSubmit handles pickup form submission for a specific shipment
+func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *http.Request) {
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Get shipment ID from URL
+	vars := mux.Vars(r)
+	shipmentIDStr := vars["id"]
+	shipmentID, err := strconv.ParseInt(shipmentIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid shipment ID", http.StatusBadRequest)
+		return
+	}
+
+	// Parse form data
+	err = r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	// Get form fields
+	contactName := r.FormValue("contact_name")
+	contactEmail := r.FormValue("contact_email")
+	contactPhone := r.FormValue("contact_phone")
+	pickupAddress := r.FormValue("pickup_address")
+	pickupDate := r.FormValue("pickup_date")
+	pickupTimeSlot := r.FormValue("pickup_time_slot")
+	numberOfLaptops := r.FormValue("number_of_laptops")
+	specialInstructions := r.FormValue("special_instructions")
+
+	// Validate required fields
+	if contactName == "" || contactEmail == "" || contactPhone == "" || 
+	   pickupAddress == "" || pickupDate == "" || pickupTimeSlot == "" || 
+	   numberOfLaptops == "" {
+		http.Error(w, "All required fields must be filled", http.StatusBadRequest)
+		return
+	}
+
+	// Verify shipment exists
+	var existingShipmentID int64
+	err = h.DB.QueryRowContext(r.Context(),
+		`SELECT id FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&existingShipmentID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Shipment not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Failed to verify shipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Parse pickup date
+	pickupDateTime, err := time.Parse("2006-01-02", pickupDate)
+	if err != nil {
+		http.Error(w, "Invalid date format", http.StatusBadRequest)
+		return
+	}
+
+	// Create form data JSON
+	formData := map[string]interface{}{
+		"contact_name":         contactName,
+		"contact_email":        contactEmail,
+		"contact_phone":        contactPhone,
+		"pickup_address":       pickupAddress,
+		"pickup_date":          pickupDate,
+		"pickup_time_slot":     pickupTimeSlot,
+		"number_of_laptops":    numberOfLaptops,
+		"special_instructions": specialInstructions,
+	}
+	formDataJSON, err := json.Marshal(formData)
+	if err != nil {
+		http.Error(w, "Failed to encode form data", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if pickup form already exists
+	var existingFormID int64
+	err = h.DB.QueryRowContext(r.Context(),
+		`SELECT id FROM pickup_forms WHERE shipment_id = $1`,
+		shipmentID,
+	).Scan(&existingFormID)
+
+	if err == sql.ErrNoRows {
+		// Create new pickup form
+		_, err = h.DB.ExecContext(r.Context(),
+			`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+			VALUES ($1, $2, $3, $4)`,
+			shipmentID, user.ID, time.Now(), formDataJSON,
+		)
+		if err != nil {
+			http.Error(w, "Failed to create pickup form", http.StatusInternalServerError)
+			return
+		}
+
+		// Update shipment pickup_scheduled_date
+		_, err = h.DB.ExecContext(r.Context(),
+			`UPDATE shipments SET pickup_scheduled_date = $1, updated_at = $2 WHERE id = $3`,
+			pickupDateTime, time.Now(), shipmentID,
+		)
+		if err != nil {
+			// Non-critical, log and continue
+			fmt.Printf("Warning: Failed to update shipment pickup date: %v\n", err)
+		}
+	} else if err == nil {
+		// Update existing pickup form
+		_, err = h.DB.ExecContext(r.Context(),
+			`UPDATE pickup_forms SET form_data = $1, submitted_at = $2, submitted_by_user_id = $3
+			WHERE id = $4`,
+			formDataJSON, time.Now(), user.ID, existingFormID,
+		)
+		if err != nil {
+			http.Error(w, "Failed to update pickup form", http.StatusInternalServerError)
+			return
+		}
+
+		// Update shipment pickup_scheduled_date
+		_, err = h.DB.ExecContext(r.Context(),
+			`UPDATE shipments SET pickup_scheduled_date = $1, updated_at = $2 WHERE id = $3`,
+			pickupDateTime, time.Now(), shipmentID,
+		)
+		if err != nil {
+			// Non-critical, log and continue
+			fmt.Printf("Warning: Failed to update shipment pickup date: %v\n", err)
+		}
+	} else {
+		http.Error(w, "Failed to check existing form", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect to shipment detail page with success message
+	redirectURL := fmt.Sprintf("/shipments/%d?success=Pickup+form+submitted+successfully", shipmentID)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
