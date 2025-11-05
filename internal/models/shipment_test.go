@@ -18,6 +18,7 @@ func TestShipment_Validate(t *testing.T) {
 				ClientCompanyID:     1,
 				SoftwareEngineerID:  int64Ptr(10),
 				Status:              ShipmentStatusPendingPickup,
+				JiraTicketNumber:    "SCOP-67702",
 				CourierName:         "FedEx",
 				TrackingNumber:      "TRACK123456",
 				PickupScheduledDate: timePtr(time.Now().Add(24 * time.Hour)),
@@ -25,17 +26,88 @@ func TestShipment_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "valid shipment with minimal fields",
+			name: "valid shipment with minimal fields and JIRA ticket",
 			shipment: Shipment{
-				ClientCompanyID: 2,
-				Status:          ShipmentStatusPendingPickup,
+				ClientCompanyID:  2,
+				Status:           ShipmentStatusPendingPickup,
+				JiraTicketNumber: "PROJECT-12345",
 			},
 			wantErr: false,
 		},
 		{
+			name: "invalid - missing JIRA ticket number",
+			shipment: Shipment{
+				ClientCompanyID: 1,
+				Status:          ShipmentStatusPendingPickup,
+			},
+			wantErr: true,
+			errMsg:  "JIRA ticket number is required",
+		},
+		{
+			name: "invalid - empty JIRA ticket number",
+			shipment: Shipment{
+				ClientCompanyID:  1,
+				Status:           ShipmentStatusPendingPickup,
+				JiraTicketNumber: "",
+			},
+			wantErr: true,
+			errMsg:  "JIRA ticket number is required",
+		},
+		{
+			name: "invalid - malformed JIRA ticket (missing dash)",
+			shipment: Shipment{
+				ClientCompanyID:  1,
+				Status:           ShipmentStatusPendingPickup,
+				JiraTicketNumber: "SCOP67702",
+			},
+			wantErr: true,
+			errMsg:  "JIRA ticket number must be in format PROJECT-NUMBER (e.g., SCOP-67702)",
+		},
+		{
+			name: "invalid - malformed JIRA ticket (no project key)",
+			shipment: Shipment{
+				ClientCompanyID:  1,
+				Status:           ShipmentStatusPendingPickup,
+				JiraTicketNumber: "-67702",
+			},
+			wantErr: true,
+			errMsg:  "JIRA ticket number must be in format PROJECT-NUMBER (e.g., SCOP-67702)",
+		},
+		{
+			name: "invalid - malformed JIRA ticket (no number)",
+			shipment: Shipment{
+				ClientCompanyID:  1,
+				Status:           ShipmentStatusPendingPickup,
+				JiraTicketNumber: "SCOP-",
+			},
+			wantErr: true,
+			errMsg:  "JIRA ticket number must be in format PROJECT-NUMBER (e.g., SCOP-67702)",
+		},
+		{
+			name: "invalid - malformed JIRA ticket (lowercase)",
+			shipment: Shipment{
+				ClientCompanyID:  1,
+				Status:           ShipmentStatusPendingPickup,
+				JiraTicketNumber: "scop-67702",
+			},
+			wantErr: true,
+			errMsg:  "JIRA ticket number must be in format PROJECT-NUMBER (e.g., SCOP-67702)",
+		},
+		{
+			name: "invalid - malformed JIRA ticket (special characters)",
+			shipment: Shipment{
+				ClientCompanyID:  1,
+				Status:           ShipmentStatusPendingPickup,
+				JiraTicketNumber: "SC@P-67702",
+			},
+			wantErr: true,
+			errMsg:  "JIRA ticket number must be in format PROJECT-NUMBER (e.g., SCOP-67702)",
+		},
+		{
 			name: "invalid - missing client company ID",
 			shipment: Shipment{
-				Status: ShipmentStatusPendingPickup,
+				Status:           ShipmentStatusPendingPickup,
+				JiraTicketNumber: "SCOP-67702",
 			},
 			wantErr: true,
 			errMsg:  "client company ID is required",
@@ -43,7 +115,8 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - missing status",
 			shipment: Shipment{
-				ClientCompanyID: 1,
+				ClientCompanyID:  1,
+				JiraTicketNumber: "SCOP-67702",
 			},
 			wantErr: true,
 			errMsg:  "status is required",
@@ -51,8 +124,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - invalid status",
 			shipment: Shipment{
-				ClientCompanyID: 1,
-				Status:          "invalid_status",
+				ClientCompanyID:  1,
+				Status:           "invalid_status",
+				JiraTicketNumber: "SCOP-67702",
 			},
 			wantErr: true,
 			errMsg:  "invalid status",

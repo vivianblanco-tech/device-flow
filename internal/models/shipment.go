@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"regexp"
 	"time"
 )
 
@@ -25,6 +26,7 @@ type Shipment struct {
 	ClientCompanyID     int64           `json:"client_company_id" db:"client_company_id"`
 	SoftwareEngineerID  *int64          `json:"software_engineer_id,omitempty" db:"software_engineer_id"`
 	Status              ShipmentStatus  `json:"status" db:"status"`
+	JiraTicketNumber    string          `json:"jira_ticket_number" db:"jira_ticket_number"`
 	CourierName         string          `json:"courier_name,omitempty" db:"courier_name"`
 	TrackingNumber      string          `json:"tracking_number,omitempty" db:"tracking_number"`
 	
@@ -60,7 +62,40 @@ func (s *Shipment) Validate() error {
 		return errors.New("invalid status")
 	}
 
+	// JIRA ticket validation
+	if s.JiraTicketNumber == "" {
+		return errors.New("JIRA ticket number is required")
+	}
+	if !IsValidJiraTicketFormat(s.JiraTicketNumber) {
+		return errors.New("JIRA ticket number must be in format PROJECT-NUMBER (e.g., SCOP-67702)")
+	}
+
 	return nil
+}
+
+// IsValidJiraTicketFormat validates the JIRA ticket number format (PROJECT-NUMBER)
+func IsValidJiraTicketFormat(ticket string) bool {
+	// Pattern: uppercase letters, dash, digits
+	// Example: SCOP-67702, PROJECT-12345
+	pattern := `^[A-Z]+\-[0-9]+$`
+	matched, _ := regexp.MatchString(pattern, ticket)
+	return matched
+}
+
+// JiraTicketValidator is a function type that validates if a JIRA ticket exists
+// Returns nil if ticket exists, error otherwise
+type JiraTicketValidator func(ticketKey string) error
+
+// ValidateJiraTicketExists validates that a JIRA ticket exists using the provided validator
+// If validator is nil, validation is skipped (for sample/test data)
+func ValidateJiraTicketExists(ticketKey string, validator JiraTicketValidator) error {
+	// Skip validation if no validator provided (sample data mode)
+	if validator == nil {
+		return nil
+	}
+
+	// Use the validator to check if ticket exists
+	return validator(ticketKey)
 }
 
 // IsValidShipmentStatus checks if a given status is valid

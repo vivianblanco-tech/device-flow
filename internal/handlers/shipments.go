@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -18,8 +19,9 @@ import (
 
 // ShipmentsHandler handles shipment-related requests
 type ShipmentsHandler struct {
-	DB        *sql.DB
-	Templates *template.Template
+	DB            *sql.DB
+	Templates     *template.Template
+	JiraValidator models.JiraTicketValidator
 }
 
 // NewShipmentsHandler creates a new ShipmentsHandler
@@ -516,5 +518,150 @@ func (h *ShipmentsHandler) AssignEngineer(w http.ResponseWriter, r *http.Request
 
 	// Redirect back to shipment detail
 	redirectURL := fmt.Sprintf("/shipments/%d?success=Engineer+assigned+successfully", shipmentID)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// CreateShipment handles creating a new shipment (GET shows form, POST creates shipment)
+func (h *ShipmentsHandler) CreateShipment(w http.ResponseWriter, r *http.Request) {
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Only logistics users can create shipments
+	if user.Role != models.RoleLogistics {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// GET request - show create shipment form
+	if r.Method == http.MethodGet {
+		// Get list of client companies for the dropdown
+		rows, err := h.DB.QueryContext(r.Context(),
+			`SELECT id, name FROM client_companies ORDER BY name`,
+		)
+		if err != nil {
+			http.Error(w, "Failed to load companies", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		var companies []struct {
+			ID   int64
+			Name string
+		}
+		for rows.Next() {
+			var company struct {
+				ID   int64
+				Name string
+			}
+			if err := rows.Scan(&company.ID, &company.Name); err != nil {
+				http.Error(w, "Failed to read companies", http.StatusInternalServerError)
+				return
+			}
+			companies = append(companies, company)
+		}
+
+		data := map[string]interface{}{
+			"User":      user,
+			"Companies": companies,
+		}
+
+		err = h.Templates.ExecuteTemplate(w, "create-shipment.html", data)
+		if err != nil {
+			http.Error(w, "Failed to render template", http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+
+	// POST request - create shipment
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse form data
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	// Get form fields
+	clientCompanyIDStr := r.FormValue("client_company_id")
+	jiraTicketNumber := strings.TrimSpace(r.FormValue("jira_ticket_number"))
+	notes := r.FormValue("notes")
+
+	// Validate client company ID
+	if clientCompanyIDStr == "" {
+		http.Error(w, "Client company is required", http.StatusBadRequest)
+		return
+	}
+	clientCompanyID, err := strconv.ParseInt(clientCompanyIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid client company ID", http.StatusBadRequest)
+		return
+	}
+
+	// Create shipment model for validation
+	shipment := models.Shipment{
+		ClientCompanyID:  clientCompanyID,
+		Status:           models.ShipmentStatusPendingPickup,
+		JiraTicketNumber: jiraTicketNumber,
+		Notes:            notes,
+	}
+
+	// Validate shipment (includes JIRA ticket format validation)
+	if err := shipment.Validate(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Validate JIRA ticket exists (if validator is configured)
+	if err := models.ValidateJiraTicketExists(jiraTicketNumber, h.JiraValidator); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Set timestamps
+	shipment.BeforeCreate()
+
+	// Insert shipment into database
+	var shipmentID int64
+	err = h.DB.QueryRowContext(r.Context(),
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, notes, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id`,
+		shipment.ClientCompanyID, shipment.Status, shipment.JiraTicketNumber,
+		shipment.Notes, shipment.CreatedAt, shipment.UpdatedAt,
+	).Scan(&shipmentID)
+	if err != nil {
+		fmt.Printf("Error creating shipment: %v\n", err)
+		http.Error(w, "Failed to create shipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Create audit log
+	auditDetails, _ := json.Marshal(map[string]interface{}{
+		"action":             "shipment_created",
+		"jira_ticket_number": jiraTicketNumber,
+		"client_company_id":  clientCompanyID,
+	})
+
+	_, err = h.DB.ExecContext(r.Context(),
+		`INSERT INTO audit_logs (user_id, action, entity_type, entity_id, timestamp, details)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		user.ID, "shipment_created", "shipment", shipmentID, time.Now(), auditDetails,
+	)
+	if err != nil {
+		// Non-critical error
+		fmt.Printf("Failed to create audit log: %v\n", err)
+	}
+
+	// Redirect to shipment detail page
+	redirectURL := fmt.Sprintf("/shipments/%d?success=Shipment+created+successfully", shipmentID)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }

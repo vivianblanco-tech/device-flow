@@ -16,7 +16,7 @@ func TestConnect(t *testing.T) {
 			Host:     "localhost",
 			Port:     "5432",
 			User:     "postgres",
-			Password: "postgres",
+			Password: "password",
 			Name:     "laptop_tracking_test",
 			SSLMode:  "disable",
 		}
@@ -45,7 +45,7 @@ func TestConnect(t *testing.T) {
 			Host:     "invalid-host-that-does-not-exist",
 			Port:     "5432",
 			User:     "postgres",
-			Password: "postgres",
+			Password: "password",
 			Name:     "laptop_tracking_test",
 			SSLMode:  "disable",
 		}
@@ -62,7 +62,7 @@ func TestConnect(t *testing.T) {
 			Host:     "localhost",
 			Port:     "5432",
 			User:     "postgres",
-			Password: "postgres",
+			Password: "password",
 			Name:     "nonexistent_database_12345",
 			SSLMode:  "disable",
 		}
@@ -101,7 +101,7 @@ func TestDatabaseConnectionPool(t *testing.T) {
 		Host:     "localhost",
 		Port:     "5432",
 		User:     "postgres",
-		Password: "postgres",
+		Password: "password",
 		Name:     "laptop_tracking_test",
 		SSLMode:  "disable",
 	}

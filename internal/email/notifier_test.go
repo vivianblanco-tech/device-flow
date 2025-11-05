@@ -2,6 +2,7 @@ package email
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -194,9 +195,9 @@ func TestNotifier_getShipmentDetails(t *testing.T) {
 
 	notifier := NewNotifier(client, db)
 
-	// Create test client company
+	// Create test client company with unique name to avoid duplicate key errors
 	company := &models.ClientCompany{
-		Name:        "Test Company",
+		Name:        fmt.Sprintf("Test Company %d", time.Now().UnixNano()),
 		ContactInfo: "contact@test.com",
 	}
 	company.BeforeCreate()

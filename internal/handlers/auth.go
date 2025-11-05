@@ -355,6 +355,40 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Shipment ID is required
+	if shipmentIDStr == "" {
+		http.Error(w, "Shipment ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Parse shipment ID
+	var sid int64
+	_, err = fmt.Sscanf(shipmentIDStr, "%d", &sid)
+	if err != nil {
+		http.Error(w, "Invalid shipment ID", http.StatusBadRequest)
+		return
+	}
+
+	// Verify shipment exists and has a JIRA ticket
+	var jiraTicket string
+	err = h.DB.QueryRowContext(
+		r.Context(),
+		`SELECT jira_ticket_number FROM shipments WHERE id = $1`,
+		sid,
+	).Scan(&jiraTicket)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Shipment not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Failed to verify shipment", http.StatusInternalServerError)
+		return
+	}
+
+	if jiraTicket == "" {
+		http.Error(w, "Shipment must have a JIRA ticket", http.StatusBadRequest)
+		return
+	}
+
 	// Find or create user by email
 	var userID int64
 	err = h.DB.QueryRowContext(
@@ -383,15 +417,8 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse shipment ID if provided
-	var shipmentID *int64
-	if shipmentIDStr != "" {
-		var sid int64
-		_, err := fmt.Sscanf(shipmentIDStr, "%d", &sid)
-		if err == nil {
-			shipmentID = &sid
-		}
-	}
+	// Set shipment ID (now required)
+	shipmentID := &sid
 
 	// Create magic link
 	magicLink, err := auth.CreateMagicLink(r.Context(), h.DB, userID, shipmentID, auth.DefaultMagicLinkDuration)

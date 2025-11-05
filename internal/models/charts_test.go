@@ -36,12 +36,13 @@ func TestGetShipmentsOverTime(t *testing.T) {
 		now, // today
 	}
 
-	for _, date := range dates {
+	for i, date := range dates {
 		shipment := &Shipment{
-			ClientCompanyID: company.ID,
-			Status:          ShipmentStatusPendingPickup,
-			CreatedAt:       date,
-			UpdatedAt:       date,
+			ClientCompanyID:  company.ID,
+			Status:           ShipmentStatusPendingPickup,
+			JiraTicketNumber: "TEST-" + strconv.Itoa(i+1),
+			CreatedAt:        date,
+			UpdatedAt:        date,
 		}
 		err := createShipmentWithDate(db, shipment)
 		if err != nil {
@@ -99,10 +100,11 @@ func TestGetShipmentStatusDistribution(t *testing.T) {
 		ShipmentStatusDelivered,
 	}
 
-	for _, status := range statuses {
+	for i, status := range statuses {
 		shipment := &Shipment{
-			ClientCompanyID: company.ID,
-			Status:          status,
+			ClientCompanyID:  company.ID,
+			Status:           status,
+			JiraTicketNumber: "TEST-" + strconv.Itoa(i+1),
 		}
 		err := createShipment(db, shipment)
 		if err != nil {
@@ -172,15 +174,16 @@ func TestGetDeliveryTimeTrends(t *testing.T) {
 		{4, 9},  // Week 4: 9 days
 	}
 
-	for _, dt := range deliveryTimes {
+	for i, dt := range deliveryTimes {
 		pickupTime := baseTime.AddDate(0, 0, (dt.week-1)*7)
 		deliveryTime := pickupTime.AddDate(0, 0, dt.days)
 		
 		shipment := &Shipment{
-			ClientCompanyID: company.ID,
-			Status:          ShipmentStatusDelivered,
-			PickedUpAt:      &pickupTime,
-			DeliveredAt:     &deliveryTime,
+			ClientCompanyID:  company.ID,
+			Status:           ShipmentStatusDelivered,
+			JiraTicketNumber: "TEST-" + strconv.Itoa(i+1),
+			PickedUpAt:       &pickupTime,
+			DeliveredAt:      &deliveryTime,
 		}
 		err := createShipmentWithDate(db, shipment)
 		if err != nil {
@@ -224,17 +227,17 @@ func createShipmentWithDate(db *sql.DB, s *Shipment) error {
 	
 	query := `
 		INSERT INTO shipments (
-			client_company_id, software_engineer_id, status, courier_name, 
+			client_company_id, software_engineer_id, status, jira_ticket_number, courier_name, 
 			tracking_number, pickup_scheduled_date, picked_up_at, 
 			arrived_warehouse_at, released_warehouse_at, delivered_at, 
 			notes, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id
 	`
 	
 	return db.QueryRow(
 		query,
-		s.ClientCompanyID, s.SoftwareEngineerID, s.Status, s.CourierName,
+		s.ClientCompanyID, s.SoftwareEngineerID, s.Status, s.JiraTicketNumber, s.CourierName,
 		s.TrackingNumber, s.PickupScheduledDate, s.PickedUpAt,
 		s.ArrivedWarehouseAt, s.ReleasedWarehouseAt, s.DeliveredAt,
 		s.Notes, s.CreatedAt, s.UpdatedAt,

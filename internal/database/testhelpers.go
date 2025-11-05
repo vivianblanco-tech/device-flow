@@ -19,7 +19,7 @@ func SetupTestDB(t *testing.T) (*sql.DB, func()) {
 	// Get test database URL from environment or use default
 	dbURL := os.Getenv("TEST_DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://postgres:postgres@localhost:5432/laptop_tracking_test?sslmode=disable"
+		dbURL = "postgres://postgres:password@localhost:5432/laptop_tracking_test?sslmode=disable"
 	}
 
 	db, err := sql.Open("postgres", dbURL)

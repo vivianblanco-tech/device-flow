@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -57,11 +59,11 @@ func TestShipmentsList(t *testing.T) {
 		models.ShipmentStatusDelivered,
 	}
 
-	for _, status := range statuses {
+	for i, status := range statuses {
 		_, err := db.ExecContext(ctx,
-			`INSERT INTO shipments (client_company_id, status, tracking_number, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5)`,
-			companyID, status, "TRACK-"+string(status), time.Now(), time.Now(),
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, tracking_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6)`,
+			companyID, status, fmt.Sprintf("TEST-%d", i+1), "TRACK-"+string(status), time.Now(), time.Now(),
 		)
 		if err != nil {
 			t.Fatalf("Failed to create test shipment: %v", err)
@@ -168,9 +170,9 @@ func TestShipmentDetail(t *testing.T) {
 	// Create test shipment
 	var shipmentID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO shipments (client_company_id, status, tracking_number, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		companyID, models.ShipmentStatusInTransitToWarehouse, "TRACK-12345", time.Now(), time.Now(),
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, tracking_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		companyID, models.ShipmentStatusInTransitToWarehouse, "TEST-12345", "TRACK-12345", time.Now(), time.Now(),
 	).Scan(&shipmentID)
 	if err != nil {
 		t.Fatalf("Failed to create test shipment: %v", err)
@@ -298,9 +300,9 @@ func TestUpdateShipmentStatus(t *testing.T) {
 	// Create test shipment
 	var shipmentID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO shipments (client_company_id, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4) RETURNING id`,
-		companyID, models.ShipmentStatusPendingPickup, time.Now(), time.Now(),
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		companyID, models.ShipmentStatusPendingPickup, "TEST-999", time.Now(), time.Now(),
 	).Scan(&shipmentID)
 	if err != nil {
 		t.Fatalf("Failed to create test shipment: %v", err)
@@ -390,6 +392,187 @@ func TestUpdateShipmentStatus(t *testing.T) {
 
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("Expected status 400, got %d", w.Code)
+		}
+	})
+}
+
+func TestCreateShipment(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test logistics user
+	var logisticsUserID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	
+	// Mock JIRA validator that always succeeds
+	mockJiraValidator := func(ticketKey string) error {
+		if ticketKey == "INVALID-000" {
+			return errors.New("JIRA ticket INVALID-000 does not exist")
+		}
+		return nil
+	}
+
+	handler := &ShipmentsHandler{
+		DB:            db,
+		Templates:     templates,
+		JiraValidator: mockJiraValidator,
+	}
+
+	t.Run("logistics user can create shipment with valid JIRA ticket", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("client_company_id", strconv.FormatInt(companyID, 10))
+		formData.Set("jira_ticket_number", "SCOP-67702")
+		formData.Set("notes", "Test shipment")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/create", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.CreateShipment(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify shipment was created
+		var count int
+		err := db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM shipments WHERE jira_ticket_number = $1`,
+			"SCOP-67702",
+		).Scan(&count)
+		if err != nil {
+			t.Fatalf("Failed to query shipment: %v", err)
+		}
+		if count != 1 {
+			t.Errorf("Expected 1 shipment with JIRA ticket SCOP-67702, got %d", count)
+		}
+	})
+
+	t.Run("cannot create shipment without JIRA ticket", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("client_company_id", strconv.FormatInt(companyID, 10))
+		formData.Set("notes", "Test shipment")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/create", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.CreateShipment(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400, got %d", w.Code)
+		}
+	})
+
+	t.Run("cannot create shipment with invalid JIRA ticket format", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("client_company_id", strconv.FormatInt(companyID, 10))
+		formData.Set("jira_ticket_number", "invalid-format")
+		formData.Set("notes", "Test shipment")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/create", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.CreateShipment(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400, got %d", w.Code)
+		}
+	})
+
+	t.Run("cannot create shipment with non-existent JIRA ticket", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("client_company_id", strconv.FormatInt(companyID, 10))
+		formData.Set("jira_ticket_number", "INVALID-000")
+		formData.Set("notes", "Test shipment")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/create", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.CreateShipment(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400, got %d", w.Code)
+		}
+	})
+
+	t.Run("non-logistics user cannot create shipment", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("client_company_id", strconv.FormatInt(companyID, 10))
+		formData.Set("jira_ticket_number", "SCOP-67702")
+		formData.Set("notes", "Test shipment")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/create", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "client@example.com", Role: models.RoleClient}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.CreateShipment(w, req)
+
+		if w.Code != http.StatusForbidden {
+			t.Errorf("Expected status 403, got %d", w.Code)
+		}
+	})
+
+	t.Run("GET request shows create shipment form", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments/create", nil)
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.CreateShipment(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
 		}
 	})
 }

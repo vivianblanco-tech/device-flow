@@ -282,6 +282,9 @@ func TestCleanupExpiredSessions(t *testing.T) {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
 
+	// Use a fixed reference time to avoid race conditions between session creation and cleanup
+	now := time.Now()
+
 	// Create multiple sessions with different expiration times
 	sessions := []struct {
 		token     string
@@ -290,22 +293,22 @@ func TestCleanupExpiredSessions(t *testing.T) {
 	}{
 		{
 			token:     "valid-session-1",
-			expiresAt: time.Now().Add(24 * time.Hour),
+			expiresAt: now.Add(24 * time.Hour),
 			shouldDelete: false,
 		},
 		{
 			token:     "expired-session-1",
-			expiresAt: time.Now().Add(-1 * time.Hour),
+			expiresAt: now.Add(-1 * time.Hour),
 			shouldDelete: true,
 		},
 		{
 			token:     "expired-session-2",
-			expiresAt: time.Now().Add(-24 * time.Hour),
+			expiresAt: now.Add(-24 * time.Hour),
 			shouldDelete: true,
 		},
 		{
 			token:     "valid-session-2",
-			expiresAt: time.Now().Add(48 * time.Hour),
+			expiresAt: now.Add(48 * time.Hour),
 			shouldDelete: false,
 		},
 	}

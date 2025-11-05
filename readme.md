@@ -20,6 +20,7 @@ A comprehensive web application for tracking laptop pickup and delivery from cli
 - **Backend**: Go 1.22+
 - **Database**: PostgreSQL 15+
 - **Frontend**: HTML templates with Tailwind CSS v4
+- **Charts**: Chart.js v4.4.1 (Line, Donut, Bar charts)
 - **Authentication**: Google OAuth 2.0, bcrypt for passwords
 - **Email**: SMTP (Mailhog for development)
 - **Migrations**: golang-migrate

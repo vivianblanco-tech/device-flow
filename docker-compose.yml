@@ -10,7 +10,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./db-data/postgres/:/var/lib/postgresql/data/
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -57,9 +57,10 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./uploads:/app/uploads
+      - uploads_data:/app/uploads
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  uploads_data:
 

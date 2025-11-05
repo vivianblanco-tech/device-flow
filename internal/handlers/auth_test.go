@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -718,12 +720,35 @@ func TestSendMagicLink(t *testing.T) {
 		t.Fatalf("Failed to create test user: %v", err)
 	}
 
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test shipment with JIRA ticket
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		companyID, models.ShipmentStatusPendingPickup, "TEST-1234", time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
 	templates := loadTestTemplates(t)
 	handler := NewAuthHandler(db, templates)
 
-	t.Run("logistics user can send magic link", func(t *testing.T) {
+	t.Run("logistics user can send magic link with valid shipment", func(t *testing.T) {
 		formData := url.Values{}
 		formData.Set("email", "newclient@example.com")
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 
 		req := httptest.NewRequest(http.MethodPost, "/auth/send-magic-link", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -737,6 +762,45 @@ func TestSendMagicLink(t *testing.T) {
 
 		if w.Code != http.StatusOK {
 			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+	})
+
+	t.Run("cannot send magic link without shipment ID", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("email", "newclient@example.com")
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/send-magic-link", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.SendMagicLink(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400, got %d", w.Code)
+		}
+	})
+
+	t.Run("cannot send magic link with non-existent shipment", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("email", "newclient@example.com")
+		formData.Set("shipment_id", "99999")
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/send-magic-link", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.SendMagicLink(w, req)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("Expected status 404, got %d", w.Code)
 		}
 	})
 
