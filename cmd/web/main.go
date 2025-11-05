@@ -273,6 +273,7 @@ func main() {
 
 	// Shipment routes
 	protected.HandleFunc("/shipments", shipmentsHandler.ShipmentsList).Methods("GET")
+	protected.HandleFunc("/shipments/create", shipmentsHandler.CreateShipment).Methods("GET", "POST")
 	protected.HandleFunc("/shipments/{id:[0-9]+}", shipmentsHandler.ShipmentDetail).Methods("GET")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/status", shipmentsHandler.UpdateShipmentStatus).Methods("POST")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/assign-engineer", shipmentsHandler.AssignEngineer).Methods("POST")

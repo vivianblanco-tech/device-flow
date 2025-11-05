@@ -37,9 +37,11 @@
                 <p class="mt-2 text-gray-600">Track and manage laptop shipments</p>
             </div>
             {{if eq .User.Role "logistics"}}
-            <a href="/pickup-form" class="mt-4 md:mt-0 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium">
-                + New Pickup Request
-            </a>
+            <div class="flex gap-3 mt-4 md:mt-0">
+                <a href="/shipments/create" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium">
+                    + Create Shipment
+                </a>
+            </div>
             {{end}}
         </div>
 
