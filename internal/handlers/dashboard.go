@@ -8,6 +8,7 @@ import (
 
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
+	"github.com/yourusername/laptop-tracking-system/internal/views"
 )
 
 // DashboardHandler handles dashboard-related requests
@@ -49,8 +50,10 @@ func (h *DashboardHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare template data
 	data := map[string]interface{}{
-		"User":  user,
-		"Stats": stats,
+		"User":        user,
+		"Stats":       stats,
+		"Nav":         views.GetNavigationLinks(user.Role),
+		"CurrentPage": "dashboard",
 	}
 
 	// Execute template using pre-parsed global templates

@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
+	"github.com/yourusername/laptop-tracking-system/internal/views"
 )
 
 // InventoryHandler handles inventory-related requests
@@ -59,6 +60,8 @@ func (h *InventoryHandler) InventoryList(w http.ResponseWriter, r *http.Request)
 	// Prepare template data
 	data := map[string]interface{}{
 		"User":         user,
+		"Nav":          views.GetNavigationLinks(user.Role),
+		"CurrentPage":  "inventory",
 		"Laptops":      laptops,
 		"SearchQuery":  searchQuery,
 		"StatusFilter": statusFilter,

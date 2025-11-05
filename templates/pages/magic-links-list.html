@@ -7,25 +7,7 @@
     <link rel="stylesheet" href="/static/css/output.css" />
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center space-x-8">
-                    <h1 class="text-xl font-bold text-gray-900">Laptop Tracking System</h1>
-                    {{if or (eq .User.Role "logistics") (eq .User.Role "project_manager")}}<a href="/dashboard" class="text-sm text-gray-600 hover:text-gray-900">Dashboard</a>{{end}}
-                    <a href="/shipments" class="text-sm text-gray-600 hover:text-gray-900">Shipments</a>
-                    <a href="/magic-links" class="text-sm text-blue-600 font-medium">Magic Links</a>
-                </div>
-                <div class="flex items-center">
-                    {{if .User}}
-                    <span class="text-sm text-gray-600 mr-4">{{.User.Email}}</span>
-                    <a href="/logout" class="text-sm text-blue-600 hover:text-blue-700">Logout</a>
-                    {{end}}
-                </div>
-            </div>
-        </div>
-    </nav>
+    {{template "navbar.html" .}}
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -154,4 +136,5 @@
     </script>
 </body>
 </html>
+
 

@@ -1,0 +1,266 @@
+package views
+
+import (
+	"bytes"
+	"html/template"
+	"strings"
+	"testing"
+
+	"github.com/yourusername/laptop-tracking-system/internal/models"
+)
+
+// TestNavbarComponentRendering tests that the navbar component renders correctly
+func TestNavbarComponentRendering(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Define template functions needed for navbar
+	funcMap := template.FuncMap{
+		"title": func(v interface{}) string {
+			// Convert interface{} to string
+			var s string
+			switch val := v.(type) {
+			case string:
+				s = val
+			case models.UserRole:
+				s = string(val)
+			default:
+				s = ""
+			}
+			return strings.Title(s)
+		},
+	}
+
+	tests := []struct {
+		name                string
+		userRole            models.UserRole
+		currentPage         string
+		expectedLinks       []string
+		unexpectedLinks     []string
+		expectedStickyClass bool
+	}{
+		{
+			name:        "logistics user sees all navigation links",
+			userRole:    models.RoleLogistics,
+			currentPage: "dashboard",
+			expectedLinks: []string{
+				`href="/dashboard"`,
+				`href="/shipments"`,
+				`href="/inventory"`,
+				`href="/calendar"`,
+				`href="/pickup-forms"`,
+				`href="/reception-reports"`,
+			},
+			unexpectedLinks:     []string{},
+			expectedStickyClass: true,
+		},
+		{
+			name:        "project manager sees dashboard and reports",
+			userRole:    models.RoleProjectManager,
+			currentPage: "dashboard",
+			expectedLinks: []string{
+				`href="/dashboard"`,
+				`href="/shipments"`,
+				`href="/inventory"`,
+				`href="/calendar"`,
+			},
+			unexpectedLinks: []string{
+				`href="/pickup-forms"`,
+				`href="/reception-reports"`,
+			},
+			expectedStickyClass: true,
+		},
+		{
+			name:        "warehouse user sees inventory and reception",
+			userRole:    models.RoleWarehouse,
+			currentPage: "inventory",
+			expectedLinks: []string{
+				`href="/shipments"`,
+				`href="/inventory"`,
+				`href="/calendar"`,
+				`href="/reception-reports"`,
+			},
+			unexpectedLinks: []string{
+				`href="/dashboard"`,
+				`href="/pickup-forms"`,
+			},
+			expectedStickyClass: true,
+		},
+		{
+			name:        "client user has limited access",
+			userRole:    models.RoleClient,
+			currentPage: "shipments",
+			expectedLinks: []string{
+				`href="/shipments"`,
+				`href="/calendar"`,
+				`href="/pickup-forms"`,
+			},
+			unexpectedLinks: []string{
+				`href="/dashboard"`,
+				`href="/inventory"`,
+				`href="/reception-reports"`,
+			},
+			expectedStickyClass: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Load the navbar template
+			tmpl, err := template.New("navbar.html").Funcs(funcMap).ParseFiles("../../templates/components/navbar.html")
+			if err != nil {
+				t.Fatalf("failed to parse navbar template: %v", err)
+			}
+
+			// Prepare template data
+			user := &models.User{
+				ID:    1,
+				Email: "test@bairesdev.com",
+				Role:  tt.userRole,
+			}
+
+			nav := GetNavigationLinks(tt.userRole)
+
+			data := map[string]interface{}{
+				"User":        user,
+				"Nav":         nav,
+				"CurrentPage": tt.currentPage,
+			}
+
+			// Render the template
+			var buf bytes.Buffer
+			if err := tmpl.Execute(&buf, data); err != nil {
+				t.Fatalf("failed to execute navbar template: %v", err)
+			}
+
+			html := buf.String()
+
+			// Check for sticky positioning classes
+			if tt.expectedStickyClass {
+				if !strings.Contains(html, "sticky") && !strings.Contains(html, "fixed") {
+					t.Errorf("expected sticky positioning class in navbar, but not found")
+				}
+			}
+
+			// Check expected links are present
+			for _, link := range tt.expectedLinks {
+				if !strings.Contains(html, link) {
+					t.Errorf("expected link %s in navbar HTML for %s role, but it was not found", link, tt.userRole)
+				}
+			}
+
+			// Check unexpected links are NOT present
+			for _, link := range tt.unexpectedLinks {
+				if strings.Contains(html, link) {
+					t.Errorf("did not expect link %s in navbar HTML for %s role, but it was found", link, tt.userRole)
+				}
+			}
+
+			// Check user info is displayed
+			if !strings.Contains(html, user.Email) {
+				t.Errorf("expected user email %s in navbar, but not found", user.Email)
+			}
+
+			// Check logout link is present
+			if !strings.Contains(html, `href="/logout"`) {
+				t.Error("expected logout link in navbar, but not found")
+			}
+
+			// Check logo/title is present
+			if !strings.Contains(html, "Laptop Tracking System") {
+				t.Error("expected application title in navbar, but not found")
+			}
+		})
+	}
+}
+
+// TestNavbarActiveLink tests that the current page is highlighted correctly
+func TestNavbarActiveLink(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	funcMap := template.FuncMap{
+		"title": func(v interface{}) string {
+			// Convert interface{} to string
+			var s string
+			switch val := v.(type) {
+			case string:
+				s = val
+			case models.UserRole:
+				s = string(val)
+			default:
+				s = ""
+			}
+			return strings.Title(s)
+		},
+	}
+
+	tests := []struct {
+		name            string
+		currentPage     string
+		expectedActive  string
+		expectedClasses []string
+	}{
+		{
+			name:           "dashboard page is active",
+			currentPage:    "dashboard",
+			expectedActive: "dashboard",
+			expectedClasses: []string{
+				"text-blue-600",
+				"font-medium",
+			},
+		},
+		{
+			name:           "inventory page is active",
+			currentPage:    "inventory",
+			expectedActive: "inventory",
+			expectedClasses: []string{
+				"text-blue-600",
+				"font-medium",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Load the navbar template
+			tmpl, err := template.New("navbar.html").Funcs(funcMap).ParseFiles("../../templates/components/navbar.html")
+			if err != nil {
+				t.Fatalf("failed to parse navbar template: %v", err)
+			}
+
+			// Prepare template data with logistics user (has all links)
+			user := &models.User{
+				ID:    1,
+				Email: "test@bairesdev.com",
+				Role:  models.RoleLogistics,
+			}
+
+			nav := GetNavigationLinks(models.RoleLogistics)
+
+			data := map[string]interface{}{
+				"User":        user,
+				"Nav":         nav,
+				"CurrentPage": tt.currentPage,
+			}
+
+			// Render the template
+			var buf bytes.Buffer
+			if err := tmpl.Execute(&buf, data); err != nil {
+				t.Fatalf("failed to execute navbar template: %v", err)
+			}
+
+			html := buf.String()
+
+			// Check that active classes are present
+			for _, class := range tt.expectedClasses {
+				if !strings.Contains(html, class) {
+					t.Errorf("expected active class %s in navbar for page %s, but not found", class, tt.currentPage)
+				}
+			}
+		})
+	}
+}
+

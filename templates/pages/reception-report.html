@@ -7,22 +7,7 @@
     <link rel="stylesheet" href="/static/css/output.css" />
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <h1 class="text-xl font-bold text-gray-900">Laptop Tracking System</h1>
-                </div>
-                <div class="flex items-center">
-                    {{if .User}}
-                    <span class="text-sm text-gray-600 mr-4">{{.User.Email}} (Warehouse)</span>
-                    <a href="/logout" class="text-sm text-blue-600 hover:text-blue-700">Logout</a>
-                    {{end}}
-                </div>
-            </div>
-        </div>
-    </nav>
+    {{template "navbar.html" .}}
 
     <!-- Main Content -->
     <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -210,4 +195,5 @@
     </script>
 </body>
 </html>
+
 

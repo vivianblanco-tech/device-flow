@@ -15,6 +15,7 @@ import (
 
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
+	"github.com/yourusername/laptop-tracking-system/internal/views"
 )
 
 // ShipmentsHandler handles shipment-related requests
@@ -143,6 +144,8 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 		"Error":        errorMsg,
 		"Success":      successMsg,
 		"User":         user,
+		"Nav":          views.GetNavigationLinks(user.Role),
+		"CurrentPage":  "shipments",
 		"Shipments":    shipments,
 		"StatusFilter": statusFilter,
 		"SearchQuery":  searchQuery,
@@ -329,6 +332,8 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		"Error":           errorMsg,
 		"Success":         successMsg,
 		"User":            user,
+		"Nav":             views.GetNavigationLinks(user.Role),
+		"CurrentPage":     "shipments",
 		"Shipment":        s,
 		"CompanyName":     companyName,
 		"EngineerName":    engineerName.String,
@@ -565,8 +570,10 @@ func (h *ShipmentsHandler) CreateShipment(w http.ResponseWriter, r *http.Request
 		}
 
 		data := map[string]interface{}{
-			"User":      user,
-			"Companies": companies,
+			"User":        user,
+			"Nav":         views.GetNavigationLinks(user.Role),
+			"CurrentPage": "shipments",
+			"Companies":   companies,
 		}
 
 		err = h.Templates.ExecuteTemplate(w, "create-shipment.html", data)
