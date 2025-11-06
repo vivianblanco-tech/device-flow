@@ -43,6 +43,7 @@ func TestGetCalendarEvents(t *testing.T) {
 		ClientCompanyID:     clientCompany.ID,
 		SoftwareEngineerID:  &engineer.ID,
 		Status:              ShipmentStatusPendingPickup,
+		JiraTicketNumber:    "TEST-600",
 		PickupScheduledDate: &tomorrow,
 	}
 	shipment1.BeforeCreate()
@@ -55,6 +56,7 @@ func TestGetCalendarEvents(t *testing.T) {
 		ClientCompanyID:     clientCompany.ID,
 		SoftwareEngineerID:  &engineer.ID,
 		Status:              ShipmentStatusDelivered,
+		JiraTicketNumber:    "TEST-601",
 		PickupScheduledDate: &now,
 		PickedUpAt:          &now,
 		DeliveredAt:         &nextWeek,
@@ -116,6 +118,7 @@ func TestGetCalendarEventsWithDateFilter(t *testing.T) {
 	shipment := &Shipment{
 		ClientCompanyID:     clientCompany.ID,
 		Status:              ShipmentStatusPendingPickup,
+		JiraTicketNumber:    "TEST-602",
 		PickupScheduledDate: &futureDate,
 	}
 	shipment.BeforeCreate()

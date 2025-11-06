@@ -98,16 +98,17 @@ func TestNotifier_logNotification(t *testing.T) {
 
 	// Create test shipment
 	shipment := &models.Shipment{
-		ClientCompanyID: company.ID,
-		Status:          models.ShipmentStatusPendingPickup,
+		ClientCompanyID:  company.ID,
+		Status:           models.ShipmentStatusPendingPickup,
+		JiraTicketNumber: "TEST-300",
 	}
 	shipment.BeforeCreate()
 
 	err = db.QueryRowContext(
 		context.Background(),
-		`INSERT INTO shipments (client_company_id, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4) RETURNING id`,
-		shipment.ClientCompanyID, shipment.Status, shipment.CreatedAt, shipment.UpdatedAt,
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		shipment.ClientCompanyID, shipment.Status, shipment.JiraTicketNumber, shipment.CreatedAt, shipment.UpdatedAt,
 	).Scan(&shipment.ID)
 	if err != nil {
 		t.Fatalf("Failed to create test shipment: %v", err)
@@ -218,6 +219,7 @@ func TestNotifier_getShipmentDetails(t *testing.T) {
 	shipment := &models.Shipment{
 		ClientCompanyID:     company.ID,
 		Status:              models.ShipmentStatusPendingPickup,
+		JiraTicketNumber:    "TEST-301",
 		TrackingNumber:      "UPS123456789",
 		PickupScheduledDate: &pickupScheduledDate,
 	}
@@ -225,10 +227,10 @@ func TestNotifier_getShipmentDetails(t *testing.T) {
 
 	err = db.QueryRowContext(
 		context.Background(),
-		`INSERT INTO shipments (client_company_id, status, tracking_number, 
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, tracking_number, 
 		pickup_scheduled_date, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-		shipment.ClientCompanyID, shipment.Status, shipment.TrackingNumber,
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		shipment.ClientCompanyID, shipment.Status, shipment.JiraTicketNumber, shipment.TrackingNumber,
 		shipment.PickupScheduledDate, shipment.CreatedAt, shipment.UpdatedAt,
 	).Scan(&shipment.ID)
 	if err != nil {
@@ -338,4 +340,3 @@ func TestNotifier_generatePlainTextFromHTML(t *testing.T) {
 	// For now, we just check it returns something
 	// In future, could implement proper HTML to text conversion
 }
-

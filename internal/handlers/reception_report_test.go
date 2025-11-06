@@ -51,9 +51,9 @@ func TestReceptionReportPage(t *testing.T) {
 	// Create test shipment
 	var shipmentID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO shipments (client_company_id, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4) RETURNING id`,
-		companyID, models.ShipmentStatusInTransitToWarehouse, time.Now(), time.Now(),
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		companyID, models.ShipmentStatusInTransitToWarehouse, "TEST-200", time.Now(), time.Now(),
 	).Scan(&shipmentID)
 	if err != nil {
 		t.Fatalf("Failed to create test shipment: %v", err)
@@ -161,9 +161,9 @@ func TestReceptionReportSubmit(t *testing.T) {
 	// Create test shipment
 	var shipmentID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO shipments (client_company_id, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4) RETURNING id`,
-		companyID, models.ShipmentStatusInTransitToWarehouse, time.Now(), time.Now(),
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		companyID, models.ShipmentStatusInTransitToWarehouse, "TEST-201", time.Now(), time.Now(),
 	).Scan(&shipmentID)
 	if err != nil {
 		t.Fatalf("Failed to create test shipment: %v", err)

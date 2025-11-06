@@ -1,670 +1,553 @@
--- =====================================================
+-- ============================================
 -- Test Data for Laptop Tracking System
--- =====================================================
--- This script populates the following tables with test data:
--- 1. client_companies
--- 2. software_engineers
--- 3. laptops
--- 4. shipments
--- =====================================================
+-- ============================================
+-- This script creates comprehensive test data for development and testing
+-- Run this after migrations and user creation
 
-\echo ''
-\echo '======================================='
-\echo 'Creating Test Data for Laptop Tracking'
-\echo '======================================='
-\echo ''
+-- Start transaction
+BEGIN;
 
--- =====================================================
+-- ============================================
 -- 1. CLIENT COMPANIES
--- =====================================================
-
-\echo 'Creating test client companies...'
+-- ============================================
+\echo ''
+\echo '>>> Creating Client Companies...'
 
 INSERT INTO client_companies (name, contact_info, created_at, updated_at)
 VALUES 
-    (
-        'TechCorp Solutions',
-        'Contact: John Smith
-Email: contact@techcorp-solutions.com
-Phone: +1 (555) 123-4567
-Address: 123 Tech Street, San Francisco, CA 94102',
-        NOW() - INTERVAL '60 days',
-        NOW() - INTERVAL '60 days'
-    ),
-    (
-        'Global Innovations Inc',
-        'Contact: Sarah Johnson
-Email: info@globalinnovations.com
-Phone: +1 (555) 234-5678
-Address: 456 Innovation Blvd, Austin, TX 78701',
-        NOW() - INTERVAL '45 days',
-        NOW() - INTERVAL '45 days'
-    ),
-    (
-        'Digital Dynamics LLC',
-        'Contact: Michael Chen
-Email: support@digitaldynamics.com
-Phone: +1 (555) 345-6789
-Address: 789 Digital Ave, Seattle, WA 98101',
-        NOW() - INTERVAL '30 days',
-        NOW() - INTERVAL '30 days'
-    ),
-    (
-        'CloudFirst Technologies',
-        'Contact: Emma Williams
-Email: hello@cloudfirst.tech
-Phone: +1 (555) 456-7890
-Address: 321 Cloud Way, Boston, MA 02101',
-        NOW() - INTERVAL '20 days',
-        NOW() - INTERVAL '20 days'
-    ),
-    (
-        'NextGen Software Group',
-        'Contact: David Rodriguez
-Email: contact@nextgensoftware.com
-Phone: +1 (555) 567-8901
-Address: 555 Future Pkwy, Denver, CO 80202',
-        NOW() - INTERVAL '15 days',
-        NOW() - INTERVAL '15 days'
-    )
-ON CONFLICT ((LOWER(name))) DO UPDATE
-SET 
-    contact_info = EXCLUDED.contact_info,
-    updated_at = EXCLUDED.updated_at;
+    ('Google LLC', 'contact@google.com | +1-650-253-0000 | Mountain View, CA', NOW() - INTERVAL '90 days', NOW() - INTERVAL '30 days'),
+    ('Microsoft Corporation', 'support@microsoft.com | +1-425-882-8080 | Redmond, WA', NOW() - INTERVAL '85 days', NOW() - INTERVAL '25 days'),
+    ('Amazon Web Services', 'aws-support@amazon.com | +1-206-266-1000 | Seattle, WA', NOW() - INTERVAL '80 days', NOW() - INTERVAL '20 days'),
+    ('Meta Platforms Inc', 'tech@meta.com | +1-650-543-4800 | Menlo Park, CA', NOW() - INTERVAL '75 days', NOW() - INTERVAL '15 days'),
+    ('Apple Inc', 'enterprise@apple.com | +1-408-996-1010 | Cupertino, CA', NOW() - INTERVAL '70 days', NOW() - INTERVAL '10 days')
+ON CONFLICT (LOWER(name)) DO NOTHING;
 
-\echo 'Created 5 client companies'
+\echo '>>> Client companies created.'
 
--- =====================================================
+-- ============================================
 -- 2. SOFTWARE ENGINEERS
--- =====================================================
-
-\echo 'Creating test software engineers...'
+-- ============================================
+\echo ''
+\echo '>>> Creating Software Engineers...'
 
 INSERT INTO software_engineers (name, email, address, phone, address_confirmed, address_confirmation_at, created_at, updated_at)
 VALUES 
-    (
-        'Alex Thompson',
-        'alex.thompson@email.com',
-        '100 Main St, Apt 4B, New York, NY 10001',
-        '+1 (555) 111-2222',
-        TRUE,
-        NOW() - INTERVAL '25 days',
-        NOW() - INTERVAL '30 days',
-        NOW() - INTERVAL '25 days'
-    ),
-    (
-        'Maria Garcia',
-        'maria.garcia@email.com',
-        '250 Oak Avenue, Unit 12, Los Angeles, CA 90001',
-        '+1 (555) 222-3333',
-        TRUE,
-        NOW() - INTERVAL '20 days',
-        NOW() - INTERVAL '28 days',
-        NOW() - INTERVAL '20 days'
-    ),
-    (
-        'James Wilson',
-        'james.wilson@email.com',
-        '789 Pine Street, Chicago, IL 60601',
-        '+1 (555) 333-4444',
-        TRUE,
-        NOW() - INTERVAL '15 days',
-        NOW() - INTERVAL '25 days',
-        NOW() - INTERVAL '15 days'
-    ),
-    (
-        'Emily Chen',
-        'emily.chen@email.com',
-        '456 Elm Drive, Miami, FL 33101',
-        '+1 (555) 444-5555',
-        TRUE,
-        NOW() - INTERVAL '10 days',
-        NOW() - INTERVAL '20 days',
-        NOW() - INTERVAL '10 days'
-    ),
-    (
-        'Robert Martinez',
-        'robert.martinez@email.com',
-        '321 Maple Road, Phoenix, AZ 85001',
-        '+1 (555) 555-6666',
-        TRUE,
-        NOW() - INTERVAL '8 days',
-        NOW() - INTERVAL '18 days',
-        NOW() - INTERVAL '8 days'
-    ),
-    (
-        'Sarah Anderson',
-        'sarah.anderson@email.com',
-        '654 Cedar Lane, Philadelphia, PA 19101',
-        '+1 (555) 666-7777',
-        TRUE,
-        NOW() - INTERVAL '5 days',
-        NOW() - INTERVAL '15 days',
-        NOW() - INTERVAL '5 days'
-    ),
-    (
-        'David Kim',
-        'david.kim@email.com',
-        '987 Birch Court, San Diego, CA 92101',
-        '+1 (555) 777-8888',
-        TRUE,
-        NOW() - INTERVAL '3 days',
-        NOW() - INTERVAL '12 days',
-        NOW() - INTERVAL '3 days'
-    ),
-    (
-        'Jessica Taylor',
-        'jessica.taylor@email.com',
-        '147 Willow Way, Dallas, TX 75201',
-        '+1 (555) 888-9999',
-        FALSE,
-        NULL,
-        NOW() - INTERVAL '10 days',
-        NOW() - INTERVAL '10 days'
-    ),
-    (
-        'Michael Brown',
-        'michael.brown@email.com',
-        '258 Spruce Street, San Jose, CA 95101',
-        '+1 (555) 999-0000',
-        FALSE,
-        NULL,
-        NOW() - INTERVAL '7 days',
-        NOW() - INTERVAL '7 days'
-    ),
-    (
-        'Lisa Johnson',
-        'lisa.johnson@email.com',
-        '369 Redwood Avenue, Austin, TX 78701',
-        '+1 (555) 000-1111',
-        FALSE,
-        NULL,
-        NOW() - INTERVAL '5 days',
-        NOW() - INTERVAL '5 days'
-    )
-ON CONFLICT ((LOWER(email))) DO UPDATE
-SET 
-    name = EXCLUDED.name,
-    address = EXCLUDED.address,
-    phone = EXCLUDED.phone,
-    address_confirmed = EXCLUDED.address_confirmed,
-    address_confirmation_at = EXCLUDED.address_confirmation_at,
-    updated_at = EXCLUDED.updated_at;
+    -- Engineers with confirmed addresses
+    ('John Smith', 'john.smith@example.com', '123 Main St, Apt 4B, New York, NY 10001', '+1-212-555-0101', TRUE, NOW() - INTERVAL '5 days', NOW() - INTERVAL '60 days', NOW() - INTERVAL '5 days'),
+    ('Maria Garcia', 'maria.garcia@example.com', '456 Oak Avenue, San Francisco, CA 94102', '+1-415-555-0102', TRUE, NOW() - INTERVAL '4 days', NOW() - INTERVAL '58 days', NOW() - INTERVAL '4 days'),
+    ('David Chen', 'david.chen@example.com', '789 Pine Street, Suite 301, Seattle, WA 98101', '+1-206-555-0103', TRUE, NOW() - INTERVAL '6 days', NOW() - INTERVAL '55 days', NOW() - INTERVAL '6 days'),
+    ('Sarah Johnson', 'sarah.johnson@example.com', '321 Elm Drive, Austin, TX 78701', '+1-512-555-0104', TRUE, NOW() - INTERVAL '3 days', NOW() - INTERVAL '50 days', NOW() - INTERVAL '3 days'),
+    ('Michael Brown', 'michael.brown@example.com', '654 Maple Court, Boston, MA 02101', '+1-617-555-0105', TRUE, NOW() - INTERVAL '7 days', NOW() - INTERVAL '48 days', NOW() - INTERVAL '7 days'),
+    
+    -- Engineers pending confirmation
+    ('Emily Wilson', 'emily.wilson@example.com', '987 Cedar Lane, Denver, CO 80201', '+1-303-555-0106', FALSE, NULL, NOW() - INTERVAL '45 days', NOW() - INTERVAL '2 days'),
+    ('James Martinez', 'james.martinez@example.com', '147 Birch Road, Miami, FL 33101', '+1-305-555-0107', FALSE, NULL, NOW() - INTERVAL '40 days', NOW() - INTERVAL '1 day'),
+    ('Linda Anderson', 'linda.anderson@example.com', '258 Spruce Street, Chicago, IL 60601', '+1-312-555-0108', TRUE, NOW() - INTERVAL '8 days', NOW() - INTERVAL '35 days', NOW() - INTERVAL '8 days'),
+    ('Robert Taylor', 'robert.taylor@example.com', '369 Willow Way, Portland, OR 97201', '+1-503-555-0109', TRUE, NOW() - INTERVAL '9 days', NOW() - INTERVAL '30 days', NOW() - INTERVAL '9 days'),
+    ('Jennifer Lee', 'jennifer.lee@example.com', '741 Ash Boulevard, Atlanta, GA 30301', '+1-404-555-0110', FALSE, NULL, NOW() - INTERVAL '25 days', NOW() - INTERVAL '1 day'),
+    
+    -- More engineers
+    ('William Thomas', 'william.thomas@example.com', '852 Redwood Drive, San Diego, CA 92101', '+1-619-555-0111', TRUE, NOW() - INTERVAL '10 days', NOW() - INTERVAL '20 days', NOW() - INTERVAL '10 days'),
+    ('Jessica White', 'jessica.white@example.com', '963 Cypress Street, Phoenix, AZ 85001', '+1-602-555-0112', FALSE, NULL, NOW() - INTERVAL '15 days', NOW()),
+    ('Christopher Harris', 'chris.harris@example.com', '159 Palm Avenue, Las Vegas, NV 89101', '+1-702-555-0113', TRUE, NOW() - INTERVAL '12 days', NOW() - INTERVAL '18 days', NOW() - INTERVAL '12 days'),
+    ('Amanda Clark', 'amanda.clark@example.com', '357 Magnolia Court, Nashville, TN 37201', '+1-615-555-0114', TRUE, NOW() - INTERVAL '11 days', NOW() - INTERVAL '16 days', NOW() - INTERVAL '11 days'),
+    ('Daniel Robinson', 'daniel.robinson@example.com', '753 Dogwood Lane, Philadelphia, PA 19101', '+1-215-555-0115', FALSE, NULL, NOW() - INTERVAL '10 days', NOW())
+ON CONFLICT (LOWER(email)) DO NOTHING;
 
-\echo 'Created 10 software engineers'
+\echo '>>> Software engineers created.'
 
--- =====================================================
+-- ============================================
 -- 3. LAPTOPS
--- =====================================================
-
-\echo 'Creating test laptops...'
+-- ============================================
+\echo ''
+\echo '>>> Creating Laptops...'
 
 INSERT INTO laptops (serial_number, brand, model, specs, status, created_at, updated_at)
 VALUES 
     -- Dell Laptops
-    (
-        'DELL-XPS13-SN001',
-        'Dell',
-        'XPS 13 9310',
-        'Intel Core i7-1165G7, 16GB RAM, 512GB SSD, 13.3" FHD Display',
-        'delivered',
-        NOW() - INTERVAL '25 days',
-        NOW() - INTERVAL '5 days'
-    ),
-    (
-        'DELL-XPS15-SN002',
-        'Dell',
-        'XPS 15 9520',
-        'Intel Core i7-12700H, 32GB RAM, 1TB SSD, 15.6" 4K Display, NVIDIA RTX 3050 Ti',
-        'at_warehouse',
-        NOW() - INTERVAL '20 days',
-        NOW() - INTERVAL '8 days'
-    ),
-    (
-        'DELL-LAT7420-SN003',
-        'Dell',
-        'Latitude 7420',
-        'Intel Core i5-1145G7, 16GB RAM, 256GB SSD, 14" FHD Display',
-        'delivered',
-        NOW() - INTERVAL '22 days',
-        NOW() - INTERVAL '3 days'
-    ),
-    -- Lenovo Laptops
-    (
-        'LNVO-X1C9-SN004',
-        'Lenovo',
-        'ThinkPad X1 Carbon Gen 9',
-        'Intel Core i7-1185G7, 16GB RAM, 512GB SSD, 14" FHD Display',
-        'in_transit_to_engineer',
-        NOW() - INTERVAL '18 days',
-        NOW() - INTERVAL '2 days'
-    ),
-    (
-        'LNVO-P1G4-SN005',
-        'Lenovo',
-        'ThinkPad P1 Gen 4',
-        'Intel Core i9-11950H, 32GB RAM, 1TB SSD, 16" 4K Display, NVIDIA RTX A2000',
-        'delivered',
-        NOW() - INTERVAL '15 days',
-        NOW() - INTERVAL '1 day'
-    ),
-    (
-        'LNVO-T14G2-SN006',
-        'Lenovo',
-        'ThinkPad T14 Gen 2',
-        'AMD Ryzen 7 PRO 5850U, 16GB RAM, 512GB SSD, 14" FHD Display',
-        'at_warehouse',
-        NOW() - INTERVAL '12 days',
-        NOW() - INTERVAL '6 days'
-    ),
+    ('DELL-SN-001', 'Dell', 'XPS 15 9520', 'Intel Core i7-12700H, 16GB RAM, 512GB SSD, NVIDIA RTX 3050 Ti', 'delivered', NOW() - INTERVAL '50 days', NOW() - INTERVAL '10 days'),
+    ('DELL-SN-002', 'Dell', 'XPS 15 9520', 'Intel Core i7-12700H, 16GB RAM, 512GB SSD, NVIDIA RTX 3050 Ti', 'delivered', NOW() - INTERVAL '48 days', NOW() - INTERVAL '8 days'),
+    ('DELL-SN-003', 'Dell', 'Latitude 7430', 'Intel Core i5-1245U, 16GB RAM, 256GB SSD', 'at_warehouse', NOW() - INTERVAL '45 days', NOW() - INTERVAL '5 days'),
+    ('DELL-SN-004', 'Dell', 'Latitude 7430', 'Intel Core i5-1245U, 16GB RAM, 256GB SSD', 'in_transit_to_engineer', NOW() - INTERVAL '40 days', NOW() - INTERVAL '2 days'),
+    ('DELL-SN-005', 'Dell', 'Precision 5570', 'Intel Core i9-12900H, 32GB RAM, 1TB SSD, NVIDIA RTX A2000', 'delivered', NOW() - INTERVAL '35 days', NOW() - INTERVAL '5 days'),
+    
     -- HP Laptops
-    (
-        'HP-ELITE840-SN007',
-        'HP',
-        'EliteBook 840 G8',
-        'Intel Core i7-1185G7, 16GB RAM, 512GB SSD, 14" FHD Display',
-        'delivered',
-        NOW() - INTERVAL '10 days',
-        NOW() - INTERVAL '2 days'
-    ),
-    (
-        'HP-ZB15G8-SN008',
-        'HP',
-        'ZBook 15 G8',
-        'Intel Core i9-11950H, 32GB RAM, 1TB SSD, 15.6" 4K Display, NVIDIA RTX A3000',
-        'in_transit_to_warehouse',
-        NOW() - INTERVAL '8 days',
-        NOW() - INTERVAL '1 day'
-    ),
-    -- MacBook Laptops
-    (
-        'APPLE-MBP14-SN009',
-        'Apple',
-        'MacBook Pro 14" 2021',
-        'Apple M1 Pro, 16GB RAM, 512GB SSD, 14.2" Liquid Retina XDR Display',
-        'delivered',
-        NOW() - INTERVAL '6 days',
-        NOW() - INTERVAL '1 day'
-    ),
-    (
-        'APPLE-MBP16-SN010',
-        'Apple',
-        'MacBook Pro 16" 2021',
-        'Apple M1 Max, 32GB RAM, 1TB SSD, 16.2" Liquid Retina XDR Display',
-        'at_warehouse',
-        NOW() - INTERVAL '5 days',
-        NOW() - INTERVAL '4 days'
-    ),
-    -- ASUS Laptops
-    (
-        'ASUS-ZEN14-SN011',
-        'ASUS',
-        'ZenBook 14 UX425',
-        'Intel Core i7-1165G7, 16GB RAM, 512GB SSD, 14" FHD Display',
-        'available',
-        NOW() - INTERVAL '4 days',
-        NOW() - INTERVAL '4 days'
-    ),
-    (
-        'ASUS-ROG15-SN012',
-        'ASUS',
-        'ROG Zephyrus G15',
-        'AMD Ryzen 9 5900HS, 32GB RAM, 1TB SSD, 15.6" QHD Display, NVIDIA RTX 3070',
-        'available',
-        NOW() - INTERVAL '3 days',
-        NOW() - INTERVAL '3 days'
-    ),
+    ('HP-SN-001', 'HP', 'EliteBook 840 G9', 'Intel Core i7-1265U, 16GB RAM, 512GB SSD', 'delivered', NOW() - INTERVAL '55 days', NOW() - INTERVAL '15 days'),
+    ('HP-SN-002', 'HP', 'EliteBook 840 G9', 'Intel Core i7-1265U, 16GB RAM, 512GB SSD', 'at_warehouse', NOW() - INTERVAL '30 days', NOW() - INTERVAL '3 days'),
+    ('HP-SN-003', 'HP', 'ZBook Studio G9', 'Intel Core i7-12800H, 32GB RAM, 1TB SSD, NVIDIA RTX A2000', 'in_transit_to_warehouse', NOW() - INTERVAL '25 days', NOW() - INTERVAL '1 day'),
+    ('HP-SN-004', 'HP', 'ProBook 450 G9', 'Intel Core i5-1235U, 8GB RAM, 256GB SSD', 'in_transit_to_engineer', NOW() - INTERVAL '20 days', NOW() - INTERVAL '1 day'),
+    ('HP-SN-005', 'HP', 'EliteBook 1040 G9', 'Intel Core i7-1265U, 16GB RAM, 512GB SSD', 'available', NOW() - INTERVAL '15 days', NOW()),
+    
+    -- Lenovo Laptops
+    ('LENOVO-SN-001', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 'Intel Core i7-1260P, 16GB RAM, 512GB SSD', 'delivered', NOW() - INTERVAL '60 days', NOW() - INTERVAL '20 days'),
+    ('LENOVO-SN-002', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 'Intel Core i7-1260P, 16GB RAM, 512GB SSD', 'at_warehouse', NOW() - INTERVAL '28 days', NOW() - INTERVAL '3 days'),
+    ('LENOVO-SN-003', 'Lenovo', 'ThinkPad P1 Gen 5', 'Intel Core i9-12900H, 32GB RAM, 1TB SSD, NVIDIA RTX A3000', 'in_transit_to_warehouse', NOW() - INTERVAL '22 days', NOW() - INTERVAL '1 day'),
+    ('LENOVO-SN-004', 'Lenovo', 'ThinkPad T14s Gen 3', 'AMD Ryzen 7 PRO 6850U, 16GB RAM, 512GB SSD', 'delivered', NOW() - INTERVAL '18 days', NOW() - INTERVAL '3 days'),
+    ('LENOVO-SN-005', 'Lenovo', 'ThinkPad X13 Gen 3', 'Intel Core i5-1235U, 16GB RAM, 256GB SSD', 'available', NOW() - INTERVAL '12 days', NOW()),
+    
+    -- Apple MacBooks
+    ('APPLE-SN-001', 'Apple', 'MacBook Pro 16" M2 Max', 'Apple M2 Max, 32GB RAM, 1TB SSD', 'delivered', NOW() - INTERVAL '42 days', NOW() - INTERVAL '7 days'),
+    ('APPLE-SN-002', 'Apple', 'MacBook Pro 14" M2 Pro', 'Apple M2 Pro, 16GB RAM, 512GB SSD', 'at_warehouse', NOW() - INTERVAL '26 days', NOW() - INTERVAL '2 days'),
+    ('APPLE-SN-003', 'Apple', 'MacBook Air 13" M2', 'Apple M2, 16GB RAM, 512GB SSD', 'in_transit_to_warehouse', NOW() - INTERVAL '19 days', NOW() - INTERVAL '1 day'),
+    ('APPLE-SN-004', 'Apple', 'MacBook Pro 16" M2 Max', 'Apple M2 Max, 64GB RAM, 2TB SSD', 'available', NOW() - INTERVAL '14 days', NOW()),
+    ('APPLE-SN-005', 'Apple', 'MacBook Pro 14" M2 Pro', 'Apple M2 Pro, 32GB RAM, 1TB SSD', 'available', NOW() - INTERVAL '10 days', NOW()),
+    
+    -- Asus Laptops
+    ('ASUS-SN-001', 'Asus', 'ROG Zephyrus G15', 'AMD Ryzen 9 6900HS, 32GB RAM, 1TB SSD, NVIDIA RTX 3080 Ti', 'delivered', NOW() - INTERVAL '38 days', NOW() - INTERVAL '8 days'),
+    ('ASUS-SN-002', 'Asus', 'ZenBook Pro 15', 'Intel Core i7-12700H, 16GB RAM, 1TB SSD, NVIDIA RTX 3050', 'at_warehouse', NOW() - INTERVAL '24 days', NOW() - INTERVAL '2 days'),
+    ('ASUS-SN-003', 'Asus', 'VivoBook S15', 'Intel Core i5-1235U, 16GB RAM, 512GB SSD', 'available', NOW() - INTERVAL '16 days', NOW()),
+    
     -- Microsoft Surface
-    (
-        'MSFT-SL4-SN013',
-        'Microsoft',
-        'Surface Laptop 4',
-        'Intel Core i7-1185G7, 16GB RAM, 512GB SSD, 13.5" PixelSense Display',
-        'in_transit_to_engineer',
-        NOW() - INTERVAL '2 days',
-        NOW() - INTERVAL '1 day'
-    ),
-    -- Additional Dell laptops
-    (
-        'DELL-PRE5550-SN014',
-        'Dell',
-        'Precision 5550',
-        'Intel Core i7-10875H, 32GB RAM, 1TB SSD, 15.6" 4K Display, NVIDIA Quadro T2000',
-        'in_transit_to_warehouse',
-        NOW() - INTERVAL '7 days',
-        NOW() - INTERVAL '2 days'
-    ),
-    (
-        'DELL-INS7590-SN015',
-        'Dell',
-        'Inspiron 15 7590',
-        'Intel Core i7-9750H, 16GB RAM, 512GB SSD, 15.6" FHD Display, NVIDIA GTX 1650',
-        'available',
-        NOW() - INTERVAL '9 days',
-        NOW() - INTERVAL '9 days'
-    )
-ON CONFLICT (serial_number) DO UPDATE
-SET 
-    brand = EXCLUDED.brand,
-    model = EXCLUDED.model,
-    specs = EXCLUDED.specs,
-    status = EXCLUDED.status,
-    updated_at = EXCLUDED.updated_at;
+    ('MSFT-SN-001', 'Microsoft', 'Surface Laptop Studio', 'Intel Core i7-11370H, 32GB RAM, 1TB SSD, NVIDIA RTX 3050 Ti', 'in_transit_to_engineer', NOW() - INTERVAL '21 days', NOW() - INTERVAL '1 day'),
+    ('MSFT-SN-002', 'Microsoft', 'Surface Laptop 5', 'Intel Core i7-1255U, 16GB RAM, 512GB SSD', 'available', NOW() - INTERVAL '11 days', NOW())
+ON CONFLICT (LOWER(serial_number)) DO NOTHING;
 
-\echo 'Created 15 laptops'
+\echo '>>> Laptops created.'
 
--- =====================================================
+-- ============================================
+-- 4. LINK CLIENT USER TO COMPANY
+-- ============================================
+\echo ''
+\echo '>>> Linking client user to Google...'
+
+-- Update client user to link with Google (using subquery to avoid variable conflicts)
+UPDATE users 
+SET client_company_id = (SELECT id FROM client_companies WHERE LOWER(name) = 'google llc')
+WHERE email = 'client@bairesdev.com';
+
+\echo '>>> Client user linked to company.'
+
+-- ============================================
 -- 4. SHIPMENTS
--- =====================================================
+-- ============================================
+\echo ''
+\echo '>>> Creating Shipments...'
 
-\echo 'Creating test shipments...'
-
--- Get IDs for reference
-DO $$
-DECLARE
-    techcorp_id BIGINT;
-    global_id BIGINT;
-    digital_id BIGINT;
-    cloudfirst_id BIGINT;
-    nextgen_id BIGINT;
-    
-    alex_id BIGINT;
-    maria_id BIGINT;
-    james_id BIGINT;
-    emily_id BIGINT;
-    robert_id BIGINT;
-    sarah_id BIGINT;
-    david_id BIGINT;
-    
-    dell_xps13_id BIGINT;
-    dell_lat_id BIGINT;
-    lnvo_x1c_id BIGINT;
-    lnvo_p1_id BIGINT;
-    hp_elite_id BIGINT;
-    apple_mbp14_id BIGINT;
-    dell_xps15_id BIGINT;
-    lnvo_t14_id BIGINT;
-    apple_mbp16_id BIGINT;
-    hp_zbook_id BIGINT;
-    msft_sl4_id BIGINT;
-    dell_pre_id BIGINT;
-BEGIN
-    -- Get client company IDs
-    SELECT id INTO techcorp_id FROM client_companies WHERE LOWER(name) = 'techcorp solutions';
-    SELECT id INTO global_id FROM client_companies WHERE LOWER(name) = 'global innovations inc';
-    SELECT id INTO digital_id FROM client_companies WHERE LOWER(name) = 'digital dynamics llc';
-    SELECT id INTO cloudfirst_id FROM client_companies WHERE LOWER(name) = 'cloudfirst technologies';
-    SELECT id INTO nextgen_id FROM client_companies WHERE LOWER(name) = 'nextgen software group';
-    
-    -- Get software engineer IDs
-    SELECT id INTO alex_id FROM software_engineers WHERE LOWER(email) = 'alex.thompson@email.com';
-    SELECT id INTO maria_id FROM software_engineers WHERE LOWER(email) = 'maria.garcia@email.com';
-    SELECT id INTO james_id FROM software_engineers WHERE LOWER(email) = 'james.wilson@email.com';
-    SELECT id INTO emily_id FROM software_engineers WHERE LOWER(email) = 'emily.chen@email.com';
-    SELECT id INTO robert_id FROM software_engineers WHERE LOWER(email) = 'robert.martinez@email.com';
-    SELECT id INTO sarah_id FROM software_engineers WHERE LOWER(email) = 'sarah.anderson@email.com';
-    SELECT id INTO david_id FROM software_engineers WHERE LOWER(email) = 'david.kim@email.com';
-    
-    -- Get laptop IDs
-    SELECT id INTO dell_xps13_id FROM laptops WHERE serial_number = 'DELL-XPS13-SN001';
-    SELECT id INTO dell_lat_id FROM laptops WHERE serial_number = 'DELL-LAT7420-SN003';
-    SELECT id INTO lnvo_x1c_id FROM laptops WHERE serial_number = 'LNVO-X1C9-SN004';
-    SELECT id INTO lnvo_p1_id FROM laptops WHERE serial_number = 'LNVO-P1G4-SN005';
-    SELECT id INTO hp_elite_id FROM laptops WHERE serial_number = 'HP-ELITE840-SN007';
-    SELECT id INTO apple_mbp14_id FROM laptops WHERE serial_number = 'APPLE-MBP14-SN009';
-    SELECT id INTO dell_xps15_id FROM laptops WHERE serial_number = 'DELL-XPS15-SN002';
-    SELECT id INTO lnvo_t14_id FROM laptops WHERE serial_number = 'LNVO-T14G2-SN006';
-    SELECT id INTO apple_mbp16_id FROM laptops WHERE serial_number = 'APPLE-MBP16-SN010';
-    SELECT id INTO hp_zbook_id FROM laptops WHERE serial_number = 'HP-ZB15G8-SN008';
-    SELECT id INTO msft_sl4_id FROM laptops WHERE serial_number = 'MSFT-SL4-SN013';
-    SELECT id INTO dell_pre_id FROM laptops WHERE serial_number = 'DELL-PRE5550-SN014';
-    
-    -- Shipment 1: Delivered (Dell XPS 13 to Alex)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        techcorp_id, alex_id, 'delivered', 'FedEx', 'FDX1234567890',
-        NOW() - INTERVAL '25 days', NOW() - INTERVAL '24 days', NOW() - INTERVAL '22 days',
-        NOW() - INTERVAL '20 days', NOW() - INTERVAL '18 days',
-        'Standard delivery, all documentation verified',
-        NOW() - INTERVAL '26 days', NOW() - INTERVAL '18 days'
-    );
-    
-    -- Shipment 2: Delivered (Dell Latitude to Maria)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        global_id, maria_id, 'delivered', 'UPS', 'UPS9876543210',
-        NOW() - INTERVAL '22 days', NOW() - INTERVAL '21 days', NOW() - INTERVAL '19 days',
-        NOW() - INTERVAL '17 days', NOW() - INTERVAL '15 days',
-        'Express delivery requested by client',
-        NOW() - INTERVAL '23 days', NOW() - INTERVAL '15 days'
-    );
-    
-    -- Shipment 3: In Transit to Engineer (Lenovo X1 Carbon to James)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        digital_id, james_id, 'in_transit_to_engineer', 'DHL', 'DHL5678901234',
-        NOW() - INTERVAL '18 days', NOW() - INTERVAL '17 days', NOW() - INTERVAL '15 days',
-        NOW() - INTERVAL '2 days', NULL,
-        'Engineer confirmed address, shipment dispatched',
-        NOW() - INTERVAL '19 days', NOW() - INTERVAL '2 days'
-    );
-    
-    -- Shipment 4: Delivered (Lenovo P1 to Emily)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        cloudfirst_id, emily_id, 'delivered', 'FedEx', 'FDX2345678901',
-        NOW() - INTERVAL '15 days', NOW() - INTERVAL '14 days', NOW() - INTERVAL '12 days',
-        NOW() - INTERVAL '10 days', NOW() - INTERVAL '8 days',
-        'High-value shipment, signature required',
-        NOW() - INTERVAL '16 days', NOW() - INTERVAL '8 days'
-    );
-    
-    -- Shipment 5: Delivered (HP EliteBook to Robert)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        nextgen_id, robert_id, 'delivered', 'UPS', 'UPS1234567890',
-        NOW() - INTERVAL '10 days', NOW() - INTERVAL '9 days', NOW() - INTERVAL '7 days',
-        NOW() - INTERVAL '5 days', NOW() - INTERVAL '3 days',
-        'Standard processing',
-        NOW() - INTERVAL '11 days', NOW() - INTERVAL '3 days'
-    );
-    
-    -- Shipment 6: Delivered (MacBook Pro 14 to Sarah)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        techcorp_id, sarah_id, 'delivered', 'FedEx', 'FDX3456789012',
-        NOW() - INTERVAL '6 days', NOW() - INTERVAL '5 days', NOW() - INTERVAL '4 days',
-        NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day',
-        'Premium device, extra care taken during shipping',
-        NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 day'
-    );
-    
-    -- Shipment 7: At Warehouse (Dell XPS 15)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        global_id, NULL, 'at_warehouse', 'DHL', 'DHL6789012345',
-        NOW() - INTERVAL '8 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '5 days',
-        NULL, NULL,
-        'Awaiting engineer assignment',
-        NOW() - INTERVAL '9 days', NOW() - INTERVAL '5 days'
-    );
-    
-    -- Shipment 8: At Warehouse (Lenovo T14)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        digital_id, NULL, 'at_warehouse', 'UPS', 'UPS2345678901',
-        NOW() - INTERVAL '6 days', NOW() - INTERVAL '5 days', NOW() - INTERVAL '4 days',
-        NULL, NULL,
-        'Standard laptop, ready for assignment',
-        NOW() - INTERVAL '7 days', NOW() - INTERVAL '4 days'
-    );
-    
-    -- Shipment 9: At Warehouse (MacBook Pro 16)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        cloudfirst_id, NULL, 'at_warehouse', 'FedEx', 'FDX4567890123',
-        NOW() - INTERVAL '5 days', NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days',
-        NULL, NULL,
-        'High-spec device, needs careful handling',
-        NOW() - INTERVAL '6 days', NOW() - INTERVAL '3 days'
-    );
-    
-    -- Shipment 10: In Transit to Warehouse (HP ZBook)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        nextgen_id, NULL, 'in_transit_to_warehouse', 'DHL', 'DHL7890123456',
-        NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day', NULL,
-        NULL, NULL,
-        'En route to warehouse, ETA 2 days',
-        NOW() - INTERVAL '3 days', NOW() - INTERVAL '1 day'
-    );
-    
-    -- Shipment 11: In Transit to Engineer (Surface Laptop to David)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        techcorp_id, david_id, 'in_transit_to_engineer', 'FedEx', 'FDX5678901234',
-        NOW() - INTERVAL '4 days', NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 days',
-        NOW() - INTERVAL '1 day', NULL,
-        'Priority shipment, delivery expected tomorrow',
-        NOW() - INTERVAL '5 days', NOW() - INTERVAL '1 day'
-    );
-    
-    -- Shipment 12: Pending Pickup from Client
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        global_id, NULL, 'pending_pickup_from_client', 'UPS', NULL,
-        NOW() + INTERVAL '2 days', NULL, NULL,
-        NULL, NULL,
-        'Pickup scheduled for future date',
-        NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'
-    );
-    
-    -- Shipment 13: Picked Up from Client (Dell Precision)
-    INSERT INTO shipments (
-        client_company_id, software_engineer_id, status, courier_name, tracking_number,
-        pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
-        notes, created_at, updated_at
-    ) VALUES (
-        digital_id, NULL, 'picked_up_from_client', 'DHL', 'DHL8901234567',
-        NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day', NULL,
-        NULL, NULL,
-        'Picked up from client, in transit',
-        NOW() - INTERVAL '3 days', NOW() - INTERVAL '1 day'
-    );
-    
-END $$;
-
-\echo 'Created 13 shipments with various statuses'
-
--- =====================================================
--- SHIPMENT-LAPTOP JUNCTION TABLE
--- =====================================================
-
-\echo 'Linking laptops to shipments...'
-
--- Link laptops to shipments based on serial numbers and shipment details
-INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at)
-SELECT s.id, l.id, s.created_at
-FROM shipments s
-JOIN laptops l ON (
-    (s.status = 'delivered' AND l.status = 'delivered' AND l.serial_number = 'DELL-XPS13-SN001' AND s.courier_name = 'FedEx' AND s.tracking_number = 'FDX1234567890')
-    OR (s.status = 'delivered' AND l.status = 'delivered' AND l.serial_number = 'DELL-LAT7420-SN003' AND s.courier_name = 'UPS' AND s.tracking_number = 'UPS9876543210')
-    OR (s.status = 'in_transit_to_engineer' AND l.status = 'in_transit_to_engineer' AND l.serial_number = 'LNVO-X1C9-SN004')
-    OR (s.status = 'delivered' AND l.status = 'delivered' AND l.serial_number = 'LNVO-P1G4-SN005')
-    OR (s.status = 'delivered' AND l.status = 'delivered' AND l.serial_number = 'HP-ELITE840-SN007')
-    OR (s.status = 'delivered' AND l.status = 'delivered' AND l.serial_number = 'APPLE-MBP14-SN009')
-    OR (s.status = 'at_warehouse' AND l.status = 'at_warehouse' AND l.serial_number = 'DELL-XPS15-SN002')
-    OR (s.status = 'at_warehouse' AND l.status = 'at_warehouse' AND l.serial_number = 'LNVO-T14G2-SN006')
-    OR (s.status = 'at_warehouse' AND l.status = 'at_warehouse' AND l.serial_number = 'APPLE-MBP16-SN010')
-    OR (s.status = 'in_transit_to_warehouse' AND l.status = 'in_transit_to_warehouse' AND l.serial_number = 'HP-ZB15G8-SN008')
-    OR (s.status = 'in_transit_to_engineer' AND l.status = 'in_transit_to_engineer' AND l.serial_number = 'MSFT-SL4-SN013')
-    OR (s.status = 'picked_up_from_client' AND l.status = 'in_transit_to_warehouse' AND l.serial_number = 'DELL-PRE5550-SN014')
+-- Shipment 1: Delivered (Complete workflow)
+INSERT INTO shipments (
+    client_company_id, software_engineer_id, status, courier_name, tracking_number,
+    pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
+    notes, jira_ticket_number, created_at, updated_at
 )
-ON CONFLICT (shipment_id, laptop_id) DO NOTHING;
+VALUES (
+    (SELECT id FROM client_companies WHERE LOWER(name) = 'google llc'),
+    (SELECT id FROM software_engineers WHERE email = 'john.smith@example.com'),
+    'delivered',
+    'FedEx Express',
+    'FDX-123456789',
+    NOW() - INTERVAL '50 days',
+    NOW() - INTERVAL '48 days',
+    NOW() - INTERVAL '45 days',
+    NOW() - INTERVAL '40 days',
+    NOW() - INTERVAL '38 days',
+    'Delivered successfully. Engineer confirmed receipt.',
+    'LTS-101',
+    NOW() - INTERVAL '52 days',
+    NOW() - INTERVAL '38 days'
+);
 
-\echo 'Linked laptops to shipments'
+-- Shipment 2: Delivered (Multiple laptops)
+INSERT INTO shipments (
+    client_company_id, software_engineer_id, status, courier_name, tracking_number,
+    pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
+    notes, jira_ticket_number, created_at, updated_at
+)
+VALUES (
+    (SELECT id FROM client_companies WHERE LOWER(name) = 'microsoft corporation'),
+    (SELECT id FROM software_engineers WHERE email = 'maria.garcia@example.com'),
+    'delivered',
+    'UPS Next Day Air',
+    'UPS-987654321',
+    NOW() - INTERVAL '45 days',
+    NOW() - INTERVAL '43 days',
+    NOW() - INTERVAL '40 days',
+    NOW() - INTERVAL '35 days',
+    NOW() - INTERVAL '33 days',
+    'High priority delivery completed.',
+    'LTS-102',
+    NOW() - INTERVAL '47 days',
+    NOW() - INTERVAL '33 days'
+);
 
--- =====================================================
--- DISPLAY SUMMARY
--- =====================================================
+-- Shipment 3: In Transit to Engineer
+INSERT INTO shipments (
+    client_company_id, software_engineer_id, status, courier_name, tracking_number,
+    pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at,
+    notes, jira_ticket_number, created_at, updated_at
+)
+VALUES (
+    (SELECT id FROM client_companies WHERE LOWER(name) = 'amazon web services'),
+    (SELECT id FROM software_engineers WHERE email = 'david.chen@example.com'),
+    'in_transit_to_engineer',
+    'DHL Express',
+    'DHL-456789123',
+    NOW() - INTERVAL '10 days',
+    NOW() - INTERVAL '8 days',
+    NOW() - INTERVAL '5 days',
+    NOW() - INTERVAL '2 days',
+    'Out for delivery. Expected delivery today.',
+    'LTS-103',
+    NOW() - INTERVAL '12 days',
+    NOW() - INTERVAL '1 day'
+);
+
+-- Shipment 4: At Warehouse (Pending assignment)
+INSERT INTO shipments (
+    client_company_id, software_engineer_id, status, courier_name, tracking_number,
+    pickup_scheduled_date, picked_up_at, arrived_warehouse_at,
+    notes, jira_ticket_number, created_at, updated_at
+)
+VALUES (
+    (SELECT id FROM client_companies WHERE LOWER(name) = 'meta platforms inc'),
+    NULL,  -- No engineer assigned yet
+    'at_warehouse',
+    'FedEx Ground',
+    'FDX-789456123',
+    NOW() - INTERVAL '8 days',
+    NOW() - INTERVAL '6 days',
+    NOW() - INTERVAL '3 days',
+    'Awaiting engineer assignment and address confirmation.',
+    'LTS-104',
+    NOW() - INTERVAL '10 days',
+    NOW() - INTERVAL '3 days'
+);
+
+-- Shipment 5: In Transit to Warehouse
+INSERT INTO shipments (
+    client_company_id, software_engineer_id, status, courier_name, tracking_number,
+    pickup_scheduled_date, picked_up_at,
+    notes, jira_ticket_number, created_at, updated_at
+)
+VALUES (
+    (SELECT id FROM client_companies WHERE LOWER(name) = 'apple inc'),
+    (SELECT id FROM software_engineers WHERE email = 'sarah.johnson@example.com'),
+    'in_transit_to_warehouse',
+    'UPS Ground',
+    'UPS-321654987',
+    NOW() - INTERVAL '5 days',
+    NOW() - INTERVAL '3 days',
+    'Expected arrival at warehouse tomorrow.',
+    'LTS-105',
+    NOW() - INTERVAL '7 days',
+    NOW() - INTERVAL '1 day'
+);
+
+-- Shipment 6: Picked up from Client
+INSERT INTO shipments (
+    client_company_id, software_engineer_id, status, courier_name, tracking_number,
+    pickup_scheduled_date, picked_up_at,
+    notes, jira_ticket_number, created_at, updated_at
+)
+VALUES (
+    (SELECT id FROM client_companies WHERE LOWER(name) = 'google llc'),
+    (SELECT id FROM software_engineers WHERE email = 'michael.brown@example.com'),
+    'picked_up_from_client',
+    'FedEx Priority',
+    'FDX-654321789',
+    NOW() - INTERVAL '3 days',
+    NOW() - INTERVAL '1 day',
+    'Just picked up. Processing through courier network.',
+    'LTS-106',
+    NOW() - INTERVAL '5 days',
+    NOW() - INTERVAL '1 day'
+);
+
+-- Shipment 7: Pending Pickup (Recently created)
+INSERT INTO shipments (
+    client_company_id, software_engineer_id, status, courier_name,
+    pickup_scheduled_date,
+    notes, jira_ticket_number, created_at, updated_at
+)
+VALUES (
+    (SELECT id FROM client_companies WHERE LOWER(name) = 'microsoft corporation'),
+    (SELECT id FROM software_engineers WHERE email = 'linda.anderson@example.com'),
+    'pending_pickup',
+    'DHL Standard',
+    NOW() + INTERVAL '2 days',
+    'Pickup scheduled for next week.',
+    'LTS-107',
+    NOW() - INTERVAL '2 days',
+    NOW()
+);
+
+-- Shipment 8: At Warehouse (Ready for release)
+INSERT INTO shipments (
+    client_company_id, software_engineer_id, status, courier_name, tracking_number,
+    pickup_scheduled_date, picked_up_at, arrived_warehouse_at,
+    notes, jira_ticket_number, created_at, updated_at
+)
+VALUES (
+    (SELECT id FROM client_companies WHERE LOWER(name) = 'amazon web services'),
+    (SELECT id FROM software_engineers WHERE email = 'robert.taylor@example.com'),
+    'at_warehouse',
+    'FedEx Express',
+    'FDX-111222333',
+    NOW() - INTERVAL '15 days',
+    NOW() - INTERVAL '13 days',
+    NOW() - INTERVAL '10 days',
+    'Waiting for engineer address confirmation.',
+    'LTS-108',
+    NOW() - INTERVAL '17 days',
+    NOW() - INTERVAL '2 days'
+);
+
+-- Shipment 9: Delivered (Old shipment)
+INSERT INTO shipments (
+    client_company_id, software_engineer_id, status, courier_name, tracking_number,
+    pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
+    notes, jira_ticket_number, created_at, updated_at
+)
+VALUES (
+    (SELECT id FROM client_companies WHERE LOWER(name) = 'meta platforms inc'),
+    (SELECT id FROM software_engineers WHERE email = 'william.thomas@example.com'),
+    'delivered',
+    'UPS Next Day',
+    'UPS-444555666',
+    NOW() - INTERVAL '60 days',
+    NOW() - INTERVAL '58 days',
+    NOW() - INTERVAL '55 days',
+    NOW() - INTERVAL '52 days',
+    NOW() - INTERVAL '50 days',
+    'Completed delivery for new hire onboarding.',
+    'LTS-109',
+    NOW() - INTERVAL '62 days',
+    NOW() - INTERVAL '50 days'
+);
+
+-- Shipment 10: Delivered
+INSERT INTO shipments (
+    client_company_id, software_engineer_id, status, courier_name, tracking_number,
+    pickup_scheduled_date, picked_up_at, arrived_warehouse_at, released_warehouse_at, delivered_at,
+    notes, jira_ticket_number, created_at, updated_at
+)
+VALUES (
+    (SELECT id FROM client_companies WHERE LOWER(name) = 'apple inc'),
+    (SELECT id FROM software_engineers WHERE email = 'chris.harris@example.com'),
+    'delivered',
+    'DHL Express',
+    'DHL-777888999',
+    NOW() - INTERVAL '35 days',
+    NOW() - INTERVAL '33 days',
+    NOW() - INTERVAL '30 days',
+    NOW() - INTERVAL '27 days',
+    NOW() - INTERVAL '25 days',
+    'MacBook delivery completed.',
+    'LTS-110',
+    NOW() - INTERVAL '37 days',
+    NOW() - INTERVAL '25 days'
+);
+
+\echo '>>> Shipments created.'
+
+-- ============================================
+-- 5. SHIPMENT-LAPTOP ASSOCIATIONS
+-- ============================================
+\echo ''
+\echo '>>> Linking Laptops to Shipments...'
+
+-- Link laptops to shipments using JIRA ticket numbers to find shipments
+INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at)
+VALUES 
+    -- Shipment LTS-101 (Delivered): Dell XPS and Lenovo
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-101'), (SELECT id FROM laptops WHERE serial_number = 'DELL-SN-001'), NOW() - INTERVAL '52 days'),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-101'), (SELECT id FROM laptops WHERE serial_number = 'LENOVO-SN-004'), NOW() - INTERVAL '52 days'),
+    
+    -- Shipment LTS-102 (Delivered): HP EliteBook and Apple MacBook
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-102'), (SELECT id FROM laptops WHERE serial_number = 'HP-SN-001'), NOW() - INTERVAL '47 days'),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-102'), (SELECT id FROM laptops WHERE serial_number = 'APPLE-SN-001'), NOW() - INTERVAL '47 days'),
+    
+    -- Shipment LTS-103 (In Transit to Engineer): 2 laptops
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-103'), (SELECT id FROM laptops WHERE serial_number = 'DELL-SN-004'), NOW() - INTERVAL '12 days'),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-103'), (SELECT id FROM laptops WHERE serial_number = 'MSFT-SN-001'), NOW() - INTERVAL '12 days'),
+    
+    -- Shipment LTS-104 (At Warehouse): 3 laptops
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-104'), (SELECT id FROM laptops WHERE serial_number = 'DELL-SN-003'), NOW() - INTERVAL '10 days'),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-104'), (SELECT id FROM laptops WHERE serial_number = 'HP-SN-002'), NOW() - INTERVAL '10 days'),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-104'), (SELECT id FROM laptops WHERE serial_number = 'LENOVO-SN-002'), NOW() - INTERVAL '10 days'),
+    
+    -- Shipment LTS-105 (In Transit to Warehouse): 2 laptops
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-105'), (SELECT id FROM laptops WHERE serial_number = 'HP-SN-003'), NOW() - INTERVAL '7 days'),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-105'), (SELECT id FROM laptops WHERE serial_number = 'LENOVO-SN-003'), NOW() - INTERVAL '7 days'),
+    
+    -- Shipment LTS-106 (Picked Up): 1 Apple MacBook
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-106'), (SELECT id FROM laptops WHERE serial_number = 'APPLE-SN-002'), NOW() - INTERVAL '5 days'),
+    
+    -- Shipment LTS-107 (Pending Pickup): 1 HP
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-107'), (SELECT id FROM laptops WHERE serial_number = 'HP-SN-004'), NOW() - INTERVAL '2 days'),
+    
+    -- Shipment LTS-108 (At Warehouse): 2 laptops
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-108'), (SELECT id FROM laptops WHERE serial_number = 'ASUS-SN-002'), NOW() - INTERVAL '17 days'),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-108'), (SELECT id FROM laptops WHERE serial_number = 'APPLE-SN-003'), NOW() - INTERVAL '17 days'),
+    
+    -- Shipment LTS-109 (Delivered): 2 laptops
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-109'), (SELECT id FROM laptops WHERE serial_number = 'LENOVO-SN-001'), NOW() - INTERVAL '62 days'),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-109'), (SELECT id FROM laptops WHERE serial_number = 'ASUS-SN-001'), NOW() - INTERVAL '62 days'),
+    
+    -- Shipment LTS-110 (Delivered): 2 Dell laptops
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-110'), (SELECT id FROM laptops WHERE serial_number = 'DELL-SN-002'), NOW() - INTERVAL '37 days'),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-110'), (SELECT id FROM laptops WHERE serial_number = 'DELL-SN-005'), NOW() - INTERVAL '37 days');
+
+\echo '>>> Laptop-Shipment associations created.'
+
+-- ============================================
+-- 6. PICKUP FORMS
+-- ============================================
+\echo ''
+\echo '>>> Creating Pickup Forms...'
+
+-- Pickup forms using JIRA ticket numbers to reference shipments
+INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+VALUES (
+    (SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-101'),
+    (SELECT id FROM users WHERE email = 'client@bairesdev.com'),
+    NOW() - INTERVAL '52 days',
+    '{
+        "company_name": "Google LLC",
+        "contact_person": "Jane Doe",
+        "contact_email": "jane.doe@google.com",
+        "contact_phone": "+1-650-555-0001",
+        "pickup_address": "1600 Amphitheatre Parkway, Mountain View, CA 94043",
+        "preferred_date": "2024-09-15",
+        "num_laptops": 2,
+        "special_instructions": "Please call 30 minutes before arrival"
+    }'::jsonb
+);
+
+INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+VALUES (
+    (SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-102'),
+    (SELECT id FROM users WHERE email = 'logistics@bairesdev.com'),
+    NOW() - INTERVAL '47 days',
+    '{
+        "company_name": "Microsoft Corporation",
+        "contact_person": "Bob Smith",
+        "contact_email": "bob.smith@microsoft.com",
+        "contact_phone": "+1-425-555-0002",
+        "pickup_address": "One Microsoft Way, Redmond, WA 98052",
+        "preferred_date": "2024-09-20",
+        "num_laptops": 2,
+        "special_instructions": "Building 92, reception desk"
+    }'::jsonb
+);
+
+-- More pickup forms for other shipments
+INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+VALUES 
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-103'), (SELECT id FROM users WHERE email = 'client@bairesdev.com'), NOW() - INTERVAL '12 days', 
+     '{"company_name": "Amazon Web Services", "contact_person": "Alice Johnson", "contact_email": "alice@aws.com", "pickup_address": "410 Terry Ave N, Seattle, WA 98109", "num_laptops": 2}'::jsonb),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-104'), (SELECT id FROM users WHERE email = 'logistics@bairesdev.com'), NOW() - INTERVAL '10 days',
+     '{"company_name": "Meta Platforms Inc", "contact_person": "Mark Davis", "contact_email": "mark@meta.com", "pickup_address": "1 Hacker Way, Menlo Park, CA 94025", "num_laptops": 3}'::jsonb),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-105'), (SELECT id FROM users WHERE email = 'client@bairesdev.com'), NOW() - INTERVAL '7 days',
+     '{"company_name": "Apple Inc", "contact_person": "Steve Wilson", "contact_email": "steve@apple.com", "pickup_address": "One Apple Park Way, Cupertino, CA 95014", "num_laptops": 2}'::jsonb),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-106'), (SELECT id FROM users WHERE email = 'logistics@bairesdev.com'), NOW() - INTERVAL '5 days',
+     '{"company_name": "Google LLC", "contact_person": "Larry Page", "contact_email": "larry@google.com", "pickup_address": "1600 Amphitheatre Parkway, Mountain View, CA", "num_laptops": 1}'::jsonb),
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-107'), (SELECT id FROM users WHERE email = 'client@bairesdev.com'), NOW() - INTERVAL '2 days',
+     '{"company_name": "Microsoft Corporation", "contact_person": "Satya N", "contact_email": "satya@microsoft.com", "pickup_address": "One Microsoft Way, Redmond, WA", "num_laptops": 1}'::jsonb);
+
+\echo '>>> Pickup forms created.'
+
+-- ============================================
+-- 7. RECEPTION REPORTS
+-- ============================================
+\echo ''
+\echo '>>> Creating Reception Reports...'
+
+-- Reception reports using JIRA ticket numbers
+INSERT INTO reception_reports (shipment_id, warehouse_user_id, received_at, notes, photo_urls)
+VALUES 
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-101'), (SELECT id FROM users WHERE email = 'warehouse@bairesdev.com'), NOW() - INTERVAL '45 days',
+     'All items received in good condition. Dell XPS 15 and Lenovo verified. No visible damage.', 
+     ARRAY['https://example.com/photos/shipment1_photo1.jpg', 'https://example.com/photos/shipment1_photo2.jpg']),
+    
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-102'), (SELECT id FROM users WHERE email = 'warehouse@bairesdev.com'), NOW() - INTERVAL '40 days',
+     'HP EliteBook and MacBook Pro received. Original packaging intact. Serial numbers verified.',
+     ARRAY['https://example.com/photos/shipment2_photo1.jpg']),
+    
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-103'), (SELECT id FROM users WHERE email = 'warehouse@bairesdev.com'), NOW() - INTERVAL '5 days',
+     'Two laptops received and inspected. Ready for delivery assignment.', 
+     ARRAY['https://example.com/photos/shipment3.jpg']),
+    
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-104'), (SELECT id FROM users WHERE email = 'warehouse@bairesdev.com'), NOW() - INTERVAL '3 days',
+     'Three laptops in excellent condition. Awaiting engineer assignment.', 
+     ARRAY['https://example.com/photos/shipment4_1.jpg', 'https://example.com/photos/shipment4_2.jpg']),
+    
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-108'), (SELECT id FROM users WHERE email = 'warehouse@bairesdev.com'), NOW() - INTERVAL '10 days',
+     'Asus laptops received. Waiting for address confirmation from engineer.', 
+     ARRAY[]::TEXT[]);
+
+\echo '>>> Reception reports created.'
+
+-- ============================================
+-- 8. DELIVERY FORMS
+-- ============================================
+\echo ''
+\echo '>>> Creating Delivery Forms...'
+
+-- Delivery forms using JIRA ticket numbers
+INSERT INTO delivery_forms (shipment_id, engineer_id, delivered_at, notes, photo_urls)
+VALUES 
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-101'), (SELECT id FROM software_engineers WHERE email = 'john.smith@example.com'), NOW() - INTERVAL '38 days',
+     'Laptops delivered and verified by engineer. Power adapters and all accessories included.',
+     ARRAY['https://example.com/photos/delivery1_signature.jpg']),
+    
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-102'), (SELECT id FROM software_engineers WHERE email = 'maria.garcia@example.com'), NOW() - INTERVAL '33 days',
+     'Successful delivery. Engineer confirmed laptops are working properly.',
+     ARRAY['https://example.com/photos/delivery2_signature.jpg', 'https://example.com/photos/delivery2_laptop.jpg']),
+    
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-109'), (SELECT id FROM software_engineers WHERE email = 'william.thomas@example.com'), NOW() - INTERVAL '50 days',
+     'Lenovo ThinkPad and Asus laptop delivered. Engineer satisfied with condition.', 
+     ARRAY['https://example.com/photos/delivery9.jpg']),
+    
+    ((SELECT id FROM shipments WHERE jira_ticket_number = 'LTS-110'), (SELECT id FROM software_engineers WHERE email = 'chris.harris@example.com'), NOW() - INTERVAL '25 days',
+     'Two Dell laptops delivered successfully. Setup completed on-site.', 
+     ARRAY['https://example.com/photos/delivery10.jpg']);
+
+\echo '>>> Delivery forms created.'
+
+-- ============================================
+-- COMMIT TRANSACTION
+-- ============================================
+
+COMMIT;
 
 \echo ''
 \echo '======================================='
-\echo 'Test Data Creation Complete!'
+\echo 'Test Data Created Successfully! ✓'
 \echo '======================================='
 \echo ''
-
--- Display summary statistics
-SELECT 'Client Companies' as entity, COUNT(*) as count FROM client_companies
-UNION ALL
-SELECT 'Software Engineers', COUNT(*) FROM software_engineers
-UNION ALL
-SELECT 'Laptops', COUNT(*) FROM laptops
-UNION ALL
-SELECT 'Shipments', COUNT(*) FROM shipments
-UNION ALL
-SELECT 'Shipment-Laptop Links', COUNT(*) FROM shipment_laptops;
-
+\echo 'Summary:'
+\echo '  - 5 Client Companies'
+\echo '  - 15 Software Engineers'
+\echo '  - 25 Laptops'
+\echo '  - 10 Shipments (various statuses)'
+\echo '  - 7 Pickup Forms'
+\echo '  - 5 Reception Reports'
+\echo '  - 4 Delivery Forms'
 \echo ''
-\echo '--- Shipment Status Breakdown ---'
-SELECT status, COUNT(*) as count
-FROM shipments
-GROUP BY status
-ORDER BY count DESC;
-
+\echo 'Shipment Status Distribution:'
+\echo '  - Delivered: 4 shipments'
+\echo '  - At Warehouse: 2 shipments'
+\echo '  - In Transit to Engineer: 1 shipment'
+\echo '  - In Transit to Warehouse: 1 shipment'
+\echo '  - Picked Up: 1 shipment'
+\echo '  - Pending Pickup: 1 shipment'
 \echo ''
-\echo '--- Laptop Status Breakdown ---'
-SELECT status, COUNT(*) as count
-FROM laptops
-GROUP BY status
-ORDER BY count DESC;
-
-\echo ''
-\echo '--- Laptops by Brand ---'
-SELECT brand, COUNT(*) as count
-FROM laptops
-GROUP BY brand
-ORDER BY count DESC;
-
-\echo ''
-\echo '======================================='
-\echo 'You can now test the application!'
-\echo '======================================='
+\echo 'You can now test the application with realistic data!'
 \echo ''
 
+-- Display some sample data
+\echo 'Recent Shipments:'
+SELECT 
+    s.id,
+    cc.name as company,
+    s.status,
+    s.tracking_number,
+    COUNT(sl.laptop_id) as laptop_count
+FROM shipments s
+JOIN client_companies cc ON cc.id = s.client_company_id
+LEFT JOIN shipment_laptops sl ON sl.shipment_id = s.id
+GROUP BY s.id, cc.name, s.status, s.tracking_number
+ORDER BY s.created_at DESC
+LIMIT 5;
+
+\echo ''

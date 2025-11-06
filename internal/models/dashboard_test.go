@@ -2,6 +2,8 @@ package models
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -25,13 +27,13 @@ func TestGetShipmentCountsByStatus(t *testing.T) {
 
 	// Create test shipments with different statuses
 	shipments := []Shipment{
-		{ClientCompanyID: company.ID, Status: ShipmentStatusPendingPickup},
-		{ClientCompanyID: company.ID, Status: ShipmentStatusPendingPickup},
-		{ClientCompanyID: company.ID, Status: ShipmentStatusAtWarehouse},
-		{ClientCompanyID: company.ID, Status: ShipmentStatusInTransitToEngineer},
-		{ClientCompanyID: company.ID, Status: ShipmentStatusDelivered},
-		{ClientCompanyID: company.ID, Status: ShipmentStatusDelivered},
-		{ClientCompanyID: company.ID, Status: ShipmentStatusDelivered},
+		{ClientCompanyID: company.ID, Status: ShipmentStatusPendingPickup, JiraTicketNumber: "TEST-400"},
+		{ClientCompanyID: company.ID, Status: ShipmentStatusPendingPickup, JiraTicketNumber: "TEST-401"},
+		{ClientCompanyID: company.ID, Status: ShipmentStatusAtWarehouse, JiraTicketNumber: "TEST-402"},
+		{ClientCompanyID: company.ID, Status: ShipmentStatusInTransitToEngineer, JiraTicketNumber: "TEST-403"},
+		{ClientCompanyID: company.ID, Status: ShipmentStatusDelivered, JiraTicketNumber: "TEST-404"},
+		{ClientCompanyID: company.ID, Status: ShipmentStatusDelivered, JiraTicketNumber: "TEST-405"},
+		{ClientCompanyID: company.ID, Status: ShipmentStatusDelivered, JiraTicketNumber: "TEST-406"},
 	}
 
 	for i := range shipments {
@@ -81,8 +83,9 @@ func TestGetTotalShipmentCount(t *testing.T) {
 	// Create 5 test shipments
 	for i := 0; i < 5; i++ {
 		shipment := &Shipment{
-			ClientCompanyID: company.ID,
-			Status:          ShipmentStatusPendingPickup,
+			ClientCompanyID:  company.ID,
+			Status:           ShipmentStatusPendingPickup,
+			JiraTicketNumber: fmt.Sprintf("TEST-41%d", i),
 		}
 		err := createShipment(db, shipment)
 		if err != nil {
@@ -128,15 +131,16 @@ func TestGetAverageDeliveryTime(t *testing.T) {
 		{0, 15}, // 15 days
 	}
 
-	for _, s := range shipments {
+	for i, s := range shipments {
 		pickupTime := baseTime.Add(time.Duration(s.pickupDays) * 24 * time.Hour)
 		deliveryTime := baseTime.Add(time.Duration(s.deliveryDays) * 24 * time.Hour)
 
 		shipment := &Shipment{
-			ClientCompanyID: company.ID,
-			Status:          ShipmentStatusDelivered,
-			PickedUpAt:      &pickupTime,
-			DeliveredAt:     &deliveryTime,
+			ClientCompanyID:  company.ID,
+			Status:           ShipmentStatusDelivered,
+			JiraTicketNumber: fmt.Sprintf("TEST-42%d", i),
+			PickedUpAt:       &pickupTime,
+			DeliveredAt:      &deliveryTime,
 		}
 		err := createShipment(db, shipment)
 		if err != nil {
@@ -181,10 +185,11 @@ func TestGetInTransitShipmentCount(t *testing.T) {
 		ShipmentStatusDelivered,   // Not in transit
 	}
 
-	for _, status := range statuses {
+	for i, status := range statuses {
 		shipment := &Shipment{
-			ClientCompanyID: company.ID,
-			Status:          status,
+			ClientCompanyID:  company.ID,
+			Status:           status,
+			JiraTicketNumber: fmt.Sprintf("TEST-43%d", i),
 		}
 		err := createShipment(db, shipment)
 		if err != nil {
@@ -228,10 +233,11 @@ func TestGetPendingPickupCount(t *testing.T) {
 		ShipmentStatusAtWarehouse,        // Not pending
 	}
 
-	for _, status := range statuses {
+	for i, status := range statuses {
 		shipment := &Shipment{
-			ClientCompanyID: company.ID,
-			Status:          status,
+			ClientCompanyID:  company.ID,
+			Status:           status,
+			JiraTicketNumber: fmt.Sprintf("TEST-44%d", i),
 		}
 		err := createShipment(db, shipment)
 		if err != nil {
@@ -353,10 +359,11 @@ func TestGetDashboardStats(t *testing.T) {
 	pickup1 := baseTime
 	delivery1 := baseTime.Add(5 * 24 * time.Hour)
 	shipment1 := &Shipment{
-		ClientCompanyID: company.ID,
-		Status:          ShipmentStatusDelivered,
-		PickedUpAt:      &pickup1,
-		DeliveredAt:     &delivery1,
+		ClientCompanyID:  company.ID,
+		Status:           ShipmentStatusDelivered,
+		JiraTicketNumber: "TEST-450",
+		PickedUpAt:       &pickup1,
+		DeliveredAt:      &delivery1,
 	}
 	err = createShipment(db, shipment1)
 	if err != nil {
@@ -367,10 +374,11 @@ func TestGetDashboardStats(t *testing.T) {
 	pickup2 := baseTime.Add(-10 * 24 * time.Hour)
 	delivery2 := baseTime.Add(5 * 24 * time.Hour)
 	shipment2 := &Shipment{
-		ClientCompanyID: company.ID,
-		Status:          ShipmentStatusDelivered,
-		PickedUpAt:      &pickup2,
-		DeliveredAt:     &delivery2,
+		ClientCompanyID:  company.ID,
+		Status:           ShipmentStatusDelivered,
+		JiraTicketNumber: "TEST-451",
+		PickedUpAt:       &pickup2,
+		DeliveredAt:      &delivery2,
 	}
 	err = createShipment(db, shipment2)
 	if err != nil {
@@ -379,8 +387,9 @@ func TestGetDashboardStats(t *testing.T) {
 
 	// Shipment 3: Pending pickup
 	shipment3 := &Shipment{
-		ClientCompanyID: company.ID,
-		Status:          ShipmentStatusPendingPickup,
+		ClientCompanyID:  company.ID,
+		Status:           ShipmentStatusPendingPickup,
+		JiraTicketNumber: "TEST-452",
 	}
 	err = createShipment(db, shipment3)
 	if err != nil {
@@ -389,8 +398,9 @@ func TestGetDashboardStats(t *testing.T) {
 
 	// Shipment 4: In transit to warehouse
 	shipment4 := &Shipment{
-		ClientCompanyID: company.ID,
-		Status:          ShipmentStatusInTransitToWarehouse,
+		ClientCompanyID:  company.ID,
+		Status:           ShipmentStatusInTransitToWarehouse,
+		JiraTicketNumber: "TEST-453",
 	}
 	err = createShipment(db, shipment4)
 	if err != nil {
@@ -399,8 +409,9 @@ func TestGetDashboardStats(t *testing.T) {
 
 	// Shipment 5: In transit to engineer
 	shipment5 := &Shipment{
-		ClientCompanyID: company.ID,
-		Status:          ShipmentStatusInTransitToEngineer,
+		ClientCompanyID:  company.ID,
+		Status:           ShipmentStatusInTransitToEngineer,
+		JiraTicketNumber: "TEST-454",
 	}
 	err = createShipment(db, shipment5)
 	if err != nil {
@@ -501,20 +512,25 @@ func createClientCompany(db *sql.DB, c *ClientCompany) error {
 func createShipment(db *sql.DB, s *Shipment) error {
 	s.BeforeCreate()
 
+	// Validate that JIRA ticket number is set (required field)
+	if s.JiraTicketNumber == "" {
+		return errors.New("JiraTicketNumber is required for shipment creation")
+	}
+
 	query := `
 		INSERT INTO shipments (
-			client_company_id, software_engineer_id, status, courier_name, 
-			tracking_number, pickup_scheduled_date, picked_up_at, 
+			client_company_id, software_engineer_id, status, jira_ticket_number, 
+			courier_name, tracking_number, pickup_scheduled_date, picked_up_at, 
 			arrived_warehouse_at, released_warehouse_at, delivered_at, 
 			notes, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id
 	`
 
 	return db.QueryRow(
 		query,
-		s.ClientCompanyID, s.SoftwareEngineerID, s.Status, s.CourierName,
-		s.TrackingNumber, s.PickupScheduledDate, s.PickedUpAt,
+		s.ClientCompanyID, s.SoftwareEngineerID, s.Status, s.JiraTicketNumber,
+		s.CourierName, s.TrackingNumber, s.PickupScheduledDate, s.PickedUpAt,
 		s.ArrivedWarehouseAt, s.ReleasedWarehouseAt, s.DeliveredAt,
 		s.Notes, s.CreatedAt, s.UpdatedAt,
 	).Scan(&s.ID)

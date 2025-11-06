@@ -17,6 +17,7 @@ type PickupFormInput struct {
 	PickupDate          string `json:"pickup_date"`
 	PickupTimeSlot      string `json:"pickup_time_slot"`
 	NumberOfLaptops     int    `json:"number_of_laptops"`
+	JiraTicketNumber    string `json:"jira_ticket_number"`
 	SpecialInstructions string `json:"special_instructions"`
 }
 
@@ -79,7 +80,24 @@ func ValidatePickupForm(input PickupFormInput) error {
 		return errors.New("number of laptops must be at least 1")
 	}
 
+	// Validate JIRA ticket number
+	if strings.TrimSpace(input.JiraTicketNumber) == "" {
+		return errors.New("JIRA ticket number is required")
+	}
+	if !isValidJiraTicketFormat(input.JiraTicketNumber) {
+		return errors.New("JIRA ticket number must be in format PROJECT-NUMBER (e.g., SCOP-67702)")
+	}
+
 	return nil
+}
+
+// isValidJiraTicketFormat validates the JIRA ticket number format (PROJECT-NUMBER)
+func isValidJiraTicketFormat(ticket string) bool {
+	// Pattern: uppercase letters, dash, digits
+	// Example: SCOP-67702, PROJECT-12345, TEST-100
+	pattern := `^[A-Z]+\-[0-9]+$`
+	matched, _ := regexp.MatchString(pattern, ticket)
+	return matched
 }
 
 // isValidEmail validates email format using a simple regex

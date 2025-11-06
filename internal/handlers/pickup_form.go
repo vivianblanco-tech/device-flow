@@ -145,6 +145,7 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 		PickupDate:          r.FormValue("pickup_date"),
 		PickupTimeSlot:      r.FormValue("pickup_time_slot"),
 		NumberOfLaptops:     numberOfLaptops,
+		JiraTicketNumber:    r.FormValue("jira_ticket_number"),
 		SpecialInstructions: r.FormValue("special_instructions"),
 	}
 
@@ -175,6 +176,7 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 	shipment := models.Shipment{
 		ClientCompanyID:     companyID,
 		Status:              models.ShipmentStatusPendingPickup,
+		JiraTicketNumber:    formInput.JiraTicketNumber,
 		PickupScheduledDate: &pickupDate,
 		Notes:               formInput.SpecialInstructions,
 	}
@@ -182,10 +184,10 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 
 	var shipmentID int64
 	err = tx.QueryRowContext(r.Context(),
-		`INSERT INTO shipments (client_company_id, status, pickup_scheduled_date, notes, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, pickup_scheduled_date, notes, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id`,
-		shipment.ClientCompanyID, shipment.Status, shipment.PickupScheduledDate,
+		shipment.ClientCompanyID, shipment.Status, shipment.JiraTicketNumber, shipment.PickupScheduledDate,
 		shipment.Notes, shipment.CreatedAt, shipment.UpdatedAt,
 	).Scan(&shipmentID)
 	if err != nil {
@@ -202,6 +204,7 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 		"pickup_date":          formInput.PickupDate,
 		"pickup_time_slot":     formInput.PickupTimeSlot,
 		"number_of_laptops":    formInput.NumberOfLaptops,
+		"jira_ticket_number":   formInput.JiraTicketNumber,
 		"special_instructions": formInput.SpecialInstructions,
 	})
 	if err != nil {
