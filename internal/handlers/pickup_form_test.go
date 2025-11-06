@@ -112,6 +112,7 @@ func TestPickupFormSubmit(t *testing.T) {
 		formData.Set("pickup_date", time.Now().Add(24*time.Hour).Format("2006-01-02"))
 		formData.Set("pickup_time_slot", "morning")
 		formData.Set("number_of_laptops", "3")
+		formData.Set("jira_ticket_number", "TEST-500")
 		formData.Set("special_instructions", "Please call before arrival")
 
 		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
