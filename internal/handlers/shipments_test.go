@@ -271,6 +271,150 @@ func TestShipmentDetail(t *testing.T) {
 		}
 	})
 
+	t.Run("tracking number displays as clickable link for known couriers", func(t *testing.T) {
+		// Test UPS tracking URL
+		var upsShipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, courier_name, tracking_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			companyID, models.ShipmentStatusInTransitToWarehouse, "SCOP-11111", "UPS", "1Z9999999999999999", time.Now(), time.Now(),
+		).Scan(&upsShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create UPS shipment: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(upsShipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(upsShipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+		expectedURL := "https://www.ups.com/track?tracknum=1Z9999999999999999"
+		if !strings.Contains(responseBody, expectedURL) {
+			t.Errorf("Expected response to contain UPS tracking URL '%s', but it was not found", expectedURL)
+		}
+
+		// Test DHL tracking URL
+		var dhlShipmentID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, courier_name, tracking_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			companyID, models.ShipmentStatusInTransitToWarehouse, "SCOP-22222", "DHL", "1234567890", time.Now(), time.Now(),
+		).Scan(&dhlShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create DHL shipment: %v", err)
+		}
+
+		req = httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(dhlShipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(dhlShipmentID, 10)})
+		
+		// Create fresh context for DHL request
+		reqCtx = context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w = httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody = w.Body.String()
+		expectedURL = "http://www.dhl.com/en/express/tracking.html?AWB=1234567890"
+		hasDHL := strings.Contains(responseBody, "dhl.com")
+		hasTracking := strings.Contains(responseBody, "1234567890")
+		
+		if !strings.Contains(responseBody, expectedURL) && (!hasDHL || !hasTracking) {
+			// Find where "Tracking Number" appears in the response
+			idx := strings.Index(responseBody, "Tracking Number")
+			if idx >= 0 && idx+200 < len(responseBody) {
+				t.Errorf("Expected DHL URL. Has dhl.com=%v, Has tracking=%v. Tracking section: %s", 
+					hasDHL, hasTracking, responseBody[idx:idx+200])
+			} else {
+				t.Errorf("Expected DHL URL. Has dhl.com=%v, Has tracking=%v", hasDHL, hasTracking)
+			}
+		}
+
+		// Test FedEx tracking URL
+		var fedexShipmentID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, courier_name, tracking_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			companyID, models.ShipmentStatusInTransitToWarehouse, "SCOP-33333", "FedEx", "999999999999", time.Now(), time.Now(),
+		).Scan(&fedexShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create FedEx shipment: %v", err)
+		}
+
+		req = httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(fedexShipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(fedexShipmentID, 10)})
+		
+		// Create fresh context for FedEx request
+		reqCtx = context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w = httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody = w.Body.String()
+		expectedURL = "https://www.fedex.com/fedextrack/?tracknumbers=999999999999"
+		if !strings.Contains(responseBody, expectedURL) {
+			// Check if it's HTML-encoded
+			if !strings.Contains(responseBody, "fedex.com") || !strings.Contains(responseBody, "999999999999") {
+				t.Errorf("Expected response to contain FedEx tracking URL '%s', but it was not found", expectedURL)
+			}
+		}
+	})
+
+	t.Run("tracking number displays as plain text for unknown courier", func(t *testing.T) {
+		var unknownShipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, courier_name, tracking_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			companyID, models.ShipmentStatusInTransitToWarehouse, "SCOP-44444", "Unknown Courier", "TRACK-UNKNOWN", time.Now(), time.Now(),
+		).Scan(&unknownShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create shipment with unknown courier: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(unknownShipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(unknownShipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+		// Should contain the tracking number as text
+		if !strings.Contains(responseBody, "TRACK-UNKNOWN") {
+			t.Errorf("Expected response to contain tracking number 'TRACK-UNKNOWN'")
+		}
+		// Should not contain any standard courier tracking URLs
+		if strings.Contains(responseBody, "ups.com") || strings.Contains(responseBody, "dhl.com") || strings.Contains(responseBody, "fedex.com") {
+			t.Errorf("Expected response NOT to contain tracking URLs for unknown courier")
+		}
+	})
+
 	t.Run("missing shipment ID returns error", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments/detail", nil)
 
@@ -804,7 +948,7 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 		formData.Set("number_of_laptops", "2")
 		formData.Set("special_instructions", "Please call before arrival")
 
-		req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/shipments/%d/form", shipmentID), 
+		req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/shipments/%d/form", shipmentID),
 			strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
@@ -822,8 +966,8 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 
 		// Verify pickup form was created
 		var count int
-		err := db.QueryRowContext(ctx, 
-			`SELECT COUNT(*) FROM pickup_forms WHERE shipment_id = $1`, 
+		err := db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM pickup_forms WHERE shipment_id = $1`,
 			shipmentID,
 		).Scan(&count)
 		if err != nil {
@@ -879,7 +1023,7 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 		updatedFormData.Set("number_of_laptops", "5")
 		updatedFormData.Set("special_instructions", "Updated instructions")
 
-		req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/shipments/%d/form", shipmentID2), 
+		req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/shipments/%d/form", shipmentID2),
 			strings.NewReader(updatedFormData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID2, 10)})
@@ -897,8 +1041,8 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 
 		// Verify there's still only 1 pickup form (updated, not duplicated)
 		var count int
-		err = db.QueryRowContext(ctx, 
-			`SELECT COUNT(*) FROM pickup_forms WHERE shipment_id = $1`, 
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM pickup_forms WHERE shipment_id = $1`,
 			shipmentID2,
 		).Scan(&count)
 		if err != nil {

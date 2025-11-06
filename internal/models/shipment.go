@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -163,5 +164,32 @@ func (s *Shipment) IsAtWarehouse() bool {
 // GetLaptopCount returns the number of laptops in this shipment
 func (s *Shipment) GetLaptopCount() int {
 	return len(s.Laptops)
+}
+
+// GetTrackingURL returns the courier's tracking URL for this shipment's tracking number
+// Returns an empty string if the courier is not recognized or if courier name is empty
+func (s *Shipment) GetTrackingURL() string {
+	if s.CourierName == "" || s.TrackingNumber == "" {
+		if s.CourierName == "" {
+			return ""
+		}
+	}
+
+	// Normalize courier name to lowercase for comparison
+	courierLower := strings.ToLower(strings.TrimSpace(s.CourierName))
+
+	// Map of courier tracking URL patterns
+	trackingURLs := map[string]string{
+		"ups":   "https://www.ups.com/track?tracknum=",
+		"dhl":   "http://www.dhl.com/en/express/tracking.html?AWB=",
+		"fedex": "https://www.fedex.com/fedextrack/?tracknumbers=",
+	}
+
+	baseURL, exists := trackingURLs[courierLower]
+	if !exists {
+		return ""
+	}
+
+	return baseURL + s.TrackingNumber
 }
 

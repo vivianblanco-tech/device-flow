@@ -331,6 +331,9 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	errorMsg := r.URL.Query().Get("error")
 	successMsg := r.URL.Query().Get("success")
 
+	// Generate tracking URL if courier and tracking number are present
+	trackingURL := s.GetTrackingURL()
+
 	data := map[string]interface{}{
 		"Error":           errorMsg,
 		"Success":         successMsg,
@@ -338,6 +341,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		"Nav":             views.GetNavigationLinks(user.Role),
 		"CurrentPage":     "shipments",
 		"Shipment":        s,
+		"TrackingURL":     trackingURL,
 		"CompanyName":     companyName,
 		"EngineerName":    engineerName.String,
 		"EngineerEmail":   engineerEmail.String,

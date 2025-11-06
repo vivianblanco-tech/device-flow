@@ -94,7 +94,18 @@
                         {{if .Shipment.TrackingNumber}}
                         <div>
                             <dt class="text-sm font-medium text-gray-500">Tracking Number</dt>
-                            <dd class="mt-1 text-sm text-gray-900 font-mono">{{.Shipment.TrackingNumber}}</dd>
+                            <dd class="mt-1 text-sm text-gray-900 font-mono">
+                                {{if ne .TrackingURL ""}}
+                                <a href="{{.TrackingURL}}" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   class="text-blue-600 hover:text-blue-800 hover:underline">
+                                    {{.Shipment.TrackingNumber}} ↗
+                                </a>
+                                {{else}}
+                                {{.Shipment.TrackingNumber}}
+                                {{end}}
+                            </dd>
                         </div>
                         {{end}}
                         <div>

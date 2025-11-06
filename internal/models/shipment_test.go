@@ -341,6 +341,84 @@ func TestShipment_GetLaptopCount(t *testing.T) {
 	}
 }
 
+// TestShipment_GetTrackingURL tests the generation of tracking URLs for different couriers
+func TestShipment_GetTrackingURL(t *testing.T) {
+	tests := []struct {
+		name           string
+		courierName    string
+		trackingNumber string
+		expectedURL    string
+	}{
+		{
+			name:           "UPS tracking URL",
+			courierName:    "UPS",
+			trackingNumber: "1Z9999999999999999",
+			expectedURL:    "https://www.ups.com/track?tracknum=1Z9999999999999999",
+		},
+		{
+			name:           "DHL tracking URL",
+			courierName:    "DHL",
+			trackingNumber: "1234567890",
+			expectedURL:    "http://www.dhl.com/en/express/tracking.html?AWB=1234567890",
+		},
+		{
+			name:           "FedEx tracking URL",
+			courierName:    "FedEx",
+			trackingNumber: "999999999999",
+			expectedURL:    "https://www.fedex.com/fedextrack/?tracknumbers=999999999999",
+		},
+		{
+			name:           "Case insensitive - ups (lowercase)",
+			courierName:    "ups",
+			trackingNumber: "1Z9999999999999999",
+			expectedURL:    "https://www.ups.com/track?tracknum=1Z9999999999999999",
+		},
+		{
+			name:           "Case insensitive - fedex (lowercase)",
+			courierName:    "fedex",
+			trackingNumber: "999999999999",
+			expectedURL:    "https://www.fedex.com/fedextrack/?tracknumbers=999999999999",
+		},
+		{
+			name:           "Case insensitive - dhl (lowercase)",
+			courierName:    "dhl",
+			trackingNumber: "1234567890",
+			expectedURL:    "http://www.dhl.com/en/express/tracking.html?AWB=1234567890",
+		},
+		{
+			name:           "Unknown courier returns empty string",
+			courierName:    "Unknown Courier",
+			trackingNumber: "TRACK123",
+			expectedURL:    "",
+		},
+		{
+			name:           "Empty courier name returns empty string",
+			courierName:    "",
+			trackingNumber: "TRACK123",
+			expectedURL:    "",
+		},
+		{
+			name:           "Empty tracking number still generates URL",
+			courierName:    "UPS",
+			trackingNumber: "",
+			expectedURL:    "https://www.ups.com/track?tracknum=",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shipment := Shipment{
+				CourierName:    tt.courierName,
+				TrackingNumber: tt.trackingNumber,
+			}
+			got := shipment.GetTrackingURL()
+			if got != tt.expectedURL {
+				t.Errorf("Shipment.GetTrackingURL() = %v, want %v", got, tt.expectedURL)
+			}
+		})
+	}
+}
+
 // Helper function for creating int64 pointers
 func int64Ptr(i int64) *int64 {
 	return &i
