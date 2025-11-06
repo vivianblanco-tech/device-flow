@@ -168,6 +168,7 @@ func (s *Shipment) GetLaptopCount() int {
 
 // GetTrackingURL returns the courier's tracking URL for this shipment's tracking number
 // Returns an empty string if the courier is not recognized or if courier name is empty
+// Supports courier names with service types (e.g., "FedEx Express", "UPS Next Day Air")
 func (s *Shipment) GetTrackingURL() string {
 	if s.CourierName == "" || s.TrackingNumber == "" {
 		if s.CourierName == "" {
@@ -178,15 +179,16 @@ func (s *Shipment) GetTrackingURL() string {
 	// Normalize courier name to lowercase for comparison
 	courierLower := strings.ToLower(strings.TrimSpace(s.CourierName))
 
-	// Map of courier tracking URL patterns
-	trackingURLs := map[string]string{
-		"ups":   "https://www.ups.com/track?tracknum=",
-		"dhl":   "http://www.dhl.com/en/express/tracking.html?AWB=",
-		"fedex": "https://www.fedex.com/fedextrack/?tracknumbers=",
-	}
-
-	baseURL, exists := trackingURLs[courierLower]
-	if !exists {
+	// Check for courier name using substring matching to support service types
+	// e.g., "FedEx Express", "UPS Next Day Air", "DHL Express"
+	var baseURL string
+	if strings.Contains(courierLower, "ups") {
+		baseURL = "https://www.ups.com/track?tracknum="
+	} else if strings.Contains(courierLower, "dhl") {
+		baseURL = "http://www.dhl.com/en/express/tracking.html?AWB="
+	} else if strings.Contains(courierLower, "fedex") {
+		baseURL = "https://www.fedex.com/fedextrack/?tracknumbers="
+	} else {
 		return ""
 	}
 

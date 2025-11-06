@@ -386,6 +386,24 @@ func TestShipment_GetTrackingURL(t *testing.T) {
 			expectedURL:    "http://www.dhl.com/en/express/tracking.html?AWB=1234567890",
 		},
 		{
+			name:           "FedEx with service type - FedEx Express",
+			courierName:    "FedEx Express",
+			trackingNumber: "999999999999",
+			expectedURL:    "https://www.fedex.com/fedextrack/?tracknumbers=999999999999",
+		},
+		{
+			name:           "UPS with service type - UPS Next Day Air",
+			courierName:    "UPS Next Day Air",
+			trackingNumber: "1Z9999999999999999",
+			expectedURL:    "https://www.ups.com/track?tracknum=1Z9999999999999999",
+		},
+		{
+			name:           "DHL with service type - DHL Express",
+			courierName:    "DHL Express",
+			trackingNumber: "1234567890",
+			expectedURL:    "http://www.dhl.com/en/express/tracking.html?AWB=1234567890",
+		},
+		{
 			name:           "Unknown courier returns empty string",
 			courierName:    "Unknown Courier",
 			trackingNumber: "TRACK123",
