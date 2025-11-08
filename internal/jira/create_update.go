@@ -310,6 +310,8 @@ func (c *Client) SyncShipmentStatusToJira(issueKey string, shipment *models.Ship
 	switch shipment.Status {
 	case models.ShipmentStatusPendingPickup:
 		jiraStatus = "Pending Pickup from Client"
+	case models.ShipmentStatusPickupScheduled:
+		jiraStatus = "Pickup Scheduled"
 	case models.ShipmentStatusPickedUpFromClient:
 		jiraStatus = "Picked Up"
 	case models.ShipmentStatusInTransitToWarehouse:

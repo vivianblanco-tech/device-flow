@@ -227,7 +227,7 @@ func main() {
 	pickupFormHandler := handlers.NewPickupFormHandler(db, templates, notifier)
 	receptionReportHandler := handlers.NewReceptionReportHandler(db, templates, notifier)
 	deliveryFormHandler := handlers.NewDeliveryFormHandler(db, templates, notifier)
-	shipmentsHandler := handlers.NewShipmentsHandler(db, templates)
+	shipmentsHandler := handlers.NewShipmentsHandler(db, templates, notifier)
 
 	// Initialize router
 	router := mux.NewRouter()

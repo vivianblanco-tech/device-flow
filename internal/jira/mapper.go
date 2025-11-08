@@ -87,6 +87,8 @@ func MapJiraStatusToShipmentStatus(jiraStatus string) models.ShipmentStatus {
 	switch status {
 	case "to do", "pending pickup":
 		return models.ShipmentStatusPendingPickup
+	case "pickup scheduled":
+		return models.ShipmentStatusPickupScheduled
 	case "picked up":
 		return models.ShipmentStatusPickedUpFromClient
 	case "in transit to warehouse":

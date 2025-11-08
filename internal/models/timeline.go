@@ -26,6 +26,12 @@ func BuildTimeline(s *Shipment) []TimelineItem {
 	}{
 		{
 			Status:  ShipmentStatusPendingPickup,
+			Label:   "Pending Pickup",
+			Icon:    "clock",
+			GetTime: func(s *Shipment) *time.Time { return nil },
+		},
+		{
+			Status:  ShipmentStatusPickupScheduled,
 			Label:   "Pickup Scheduled",
 			Icon:    "calendar",
 			GetTime: func(s *Shipment) *time.Time { return s.PickupScheduledDate },

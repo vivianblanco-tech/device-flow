@@ -154,6 +154,7 @@ func TestShipment_IsValidStatus(t *testing.T) {
 		want   bool
 	}{
 		{"pending_pickup_from_client", ShipmentStatusPendingPickup, true},
+		{"pickup_from_client_scheduled", ShipmentStatusPickupScheduled, true},
 		{"picked_up_from_client", ShipmentStatusPickedUpFromClient, true},
 		{"in_transit_to_warehouse", ShipmentStatusInTransitToWarehouse, true},
 		{"at_warehouse", ShipmentStatusAtWarehouse, true},

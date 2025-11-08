@@ -23,4 +23,3 @@ func main() {
 	fmt.Printf("Password: %s\n", password)
 	fmt.Printf("Bcrypt hash: %s\n", string(hash))
 }
-

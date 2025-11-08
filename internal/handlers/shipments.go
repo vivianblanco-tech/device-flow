@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 
+	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 	"github.com/yourusername/laptop-tracking-system/internal/validator"
@@ -24,13 +25,15 @@ type ShipmentsHandler struct {
 	DB            *sql.DB
 	Templates     *template.Template
 	JiraValidator models.JiraTicketValidator
+	EmailNotifier *email.Notifier
 }
 
 // NewShipmentsHandler creates a new ShipmentsHandler
-func NewShipmentsHandler(db *sql.DB, templates *template.Template) *ShipmentsHandler {
+func NewShipmentsHandler(db *sql.DB, templates *template.Template, emailNotifier *email.Notifier) *ShipmentsHandler {
 	return &ShipmentsHandler{
-		DB:        db,
-		Templates: templates,
+		DB:            db,
+		Templates:     templates,
+		EmailNotifier: emailNotifier,
 	}
 }
 
@@ -418,6 +421,17 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Get current status before updating (to check if we need to send notification)
+	var oldStatus string
+	err = h.DB.QueryRowContext(r.Context(),
+		`SELECT status FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&oldStatus)
+	if err != nil {
+		http.Error(w, "Failed to fetch current shipment status", http.StatusInternalServerError)
+		return
+	}
+
 	// Update shipment status
 	var shipment models.Shipment
 	shipment.Status = newStatus
@@ -429,16 +443,30 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		    picked_up_at = COALESCE($3, picked_up_at),
 		    arrived_warehouse_at = COALESCE($4, arrived_warehouse_at),
 		    released_warehouse_at = COALESCE($5, released_warehouse_at),
-		    delivered_at = COALESCE($6, delivered_at)
-		WHERE id = $7`,
+		    delivered_at = COALESCE($6, delivered_at),
+		    pickup_scheduled_date = COALESCE($7, pickup_scheduled_date)
+		WHERE id = $8`,
 		shipment.Status, shipment.UpdatedAt,
 		shipment.PickedUpAt, shipment.ArrivedWarehouseAt,
 		shipment.ReleasedWarehouseAt, shipment.DeliveredAt,
+		shipment.PickupScheduledDate,
 		shipmentID,
 	)
 	if err != nil {
 		http.Error(w, "Failed to update shipment status", http.StatusInternalServerError)
 		return
+	}
+
+	// Send email notification if status changed to pickup_scheduled
+	if oldStatus == string(models.ShipmentStatusPendingPickup) && newStatus == models.ShipmentStatusPickupScheduled {
+		if h.EmailNotifier != nil {
+			go func() {
+				// Send notification in background
+				if err := h.EmailNotifier.SendPickupScheduledNotification(r.Context(), shipmentID); err != nil {
+					fmt.Printf("Warning: failed to send pickup scheduled notification: %v\n", err)
+				}
+			}()
+		}
 	}
 
 	// Create audit log

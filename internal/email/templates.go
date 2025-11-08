@@ -40,6 +40,17 @@ type PickupConfirmationData struct {
 	ConfirmationCode string
 }
 
+// PickupScheduledData contains data for pickup scheduled notification emails
+type PickupScheduledData struct {
+	ContactName    string
+	ClientCompany  string
+	TrackingNumber string
+	PickupDate     string
+	PickupTimeSlot string
+	PickupAddress  string
+	ShipmentID     int64
+}
+
 // WarehousePreAlertData contains data for warehouse pre-alert emails
 type WarehousePreAlertData struct {
 	TrackingNumber    string
@@ -282,6 +293,54 @@ func (et *EmailTemplates) loadTemplates() {
         </div>
     `))
 
+	// Pickup Scheduled Notification Template
+	et.templates["pickup_scheduled"] = template.Must(template.New("base").Parse(baseTemplate))
+	template.Must(et.templates["pickup_scheduled"].New("content").Parse(`
+        <div class="header">
+            <h1>📅 Pickup Has Been Scheduled</h1>
+        </div>
+        <div class="content">
+            <p>Hello {{.ContactName}},</p>
+            <div class="success">
+                Great news! Your hardware pickup has been officially scheduled.
+            </div>
+            <div class="info-box">
+                <h3>📦 Pickup Details</h3>
+                {{if .TrackingNumber}}
+                <div class="info-row">
+                    <span class="info-label">Tracking Number:</span> {{.TrackingNumber}}
+                </div>
+                {{end}}
+                <div class="info-row">
+                    <span class="info-label">Scheduled Pickup Date:</span> {{.PickupDate}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Time Slot:</span> {{.PickupTimeSlot}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Pickup Address:</span> {{.PickupAddress}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Company:</span> {{.ClientCompany}}
+                </div>
+            </div>
+            <div class="info-box">
+                <h3>📋 Important Reminders:</h3>
+                <ol>
+                    <li>Please have the device(s) packaged and ready for pickup</li>
+                    <li>UPS shipping labels will be sent to you separately</li>
+                    <li>Ensure all labels are securely attached to the package</li>
+                    <li>Our courier will arrive during the specified time slot</li>
+                    <li>You'll receive tracking updates once the package is picked up</li>
+                </ol>
+            </div>
+            <div class="warning">
+                <strong>⚠️ Need to Make Changes?</strong> If you need to reschedule or modify the pickup, please contact our logistics team immediately at <a href="mailto:logistics@bairesdev.com">logistics@bairesdev.com</a>
+            </div>
+            <p>Thank you for your cooperation!</p>
+        </div>
+    `))
+
 	// Warehouse Pre-Alert Template
 	et.templates["warehouse_pre_alert"] = template.Must(template.New("base").Parse(baseTemplate))
 	template.Must(et.templates["warehouse_pre_alert"].New("content").Parse(`
@@ -462,6 +521,15 @@ func (et *EmailTemplates) RenderTemplate(templateName string, data interface{}) 
 		dataMap["NumberOfDevices"] = v.NumberOfDevices
 		dataMap["ConfirmationCode"] = v.ConfirmationCode
 		dataMap["Subject"] = "Pickup Confirmation - " + v.ConfirmationCode
+	case PickupScheduledData:
+		dataMap["ContactName"] = v.ContactName
+		dataMap["ClientCompany"] = v.ClientCompany
+		dataMap["TrackingNumber"] = v.TrackingNumber
+		dataMap["PickupDate"] = v.PickupDate
+		dataMap["PickupTimeSlot"] = v.PickupTimeSlot
+		dataMap["PickupAddress"] = v.PickupAddress
+		dataMap["ShipmentID"] = v.ShipmentID
+		dataMap["Subject"] = "Pickup Scheduled - Hardware Shipment"
 	case WarehousePreAlertData:
 		dataMap["TrackingNumber"] = v.TrackingNumber
 		dataMap["ExpectedDate"] = v.ExpectedDate
@@ -512,6 +580,8 @@ func (et *EmailTemplates) GetSubject(templateName string, data interface{}) stri
 		return "Confirm Your Delivery Address"
 	case PickupConfirmationData:
 		return "Pickup Confirmation - " + v.ConfirmationCode
+	case PickupScheduledData:
+		return "Pickup Scheduled - Hardware Shipment"
 	case WarehousePreAlertData:
 		return "Incoming Shipment Alert - " + v.TrackingNumber
 	case ReleaseNotificationData:

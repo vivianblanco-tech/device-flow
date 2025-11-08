@@ -13,6 +13,7 @@ type ShipmentStatus string
 // Shipment status constants matching the process steps
 const (
 	ShipmentStatusPendingPickup          ShipmentStatus = "pending_pickup_from_client"
+	ShipmentStatusPickupScheduled        ShipmentStatus = "pickup_from_client_scheduled"
 	ShipmentStatusPickedUpFromClient     ShipmentStatus = "picked_up_from_client"
 	ShipmentStatusInTransitToWarehouse   ShipmentStatus = "in_transit_to_warehouse"
 	ShipmentStatusAtWarehouse            ShipmentStatus = "at_warehouse"
@@ -103,6 +104,7 @@ func ValidateJiraTicketExists(ticketKey string, validator JiraTicketValidator) e
 func IsValidShipmentStatus(status ShipmentStatus) bool {
 	switch status {
 	case ShipmentStatusPendingPickup,
+		ShipmentStatusPickupScheduled,
 		ShipmentStatusPickedUpFromClient,
 		ShipmentStatusInTransitToWarehouse,
 		ShipmentStatusAtWarehouse,
@@ -138,6 +140,11 @@ func (s *Shipment) UpdateStatus(status ShipmentStatus) {
 
 	// Update the appropriate timestamp based on status
 	switch status {
+	case ShipmentStatusPickupScheduled:
+		// If pickup scheduled date is not already set, set it to now
+		if s.PickupScheduledDate == nil {
+			s.PickupScheduledDate = &now
+		}
 	case ShipmentStatusPickedUpFromClient:
 		s.PickedUpAt = &now
 	case ShipmentStatusAtWarehouse:

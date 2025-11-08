@@ -3,6 +3,7 @@ package email
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -88,6 +89,121 @@ func (n *Notifier) SendPickupConfirmation(ctx context.Context, shipmentID int64)
 	// Log notification
 	if err := n.logNotification(ctx, shipmentID, "pickup_confirmation", clientEmail, "sent"); err != nil {
 		// Log error but don't fail
+		fmt.Printf("Warning: failed to log notification: %v\n", err)
+	}
+
+	return nil
+}
+
+// SendPickupScheduledNotification sends notification to contact email when pickup is scheduled
+func (n *Notifier) SendPickupScheduledNotification(ctx context.Context, shipmentID int64) error {
+	// Fetch shipment details
+	shipment, err := n.getShipmentDetails(ctx, shipmentID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch shipment details: %w", err)
+	}
+
+	// Fetch client company
+	var clientCompany string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT name FROM client_companies WHERE id = $1`,
+		shipment.ClientCompanyID,
+	).Scan(&clientCompany)
+	if err != nil {
+		return fmt.Errorf("failed to fetch client company: %w", err)
+	}
+
+	// Fetch pickup form data to get contact email
+	var formDataJSON string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT form_data FROM pickup_forms WHERE shipment_id = $1 ORDER BY submitted_at DESC LIMIT 1`,
+		shipmentID,
+	).Scan(&formDataJSON)
+	if err != nil {
+		return fmt.Errorf("failed to fetch pickup form: %w", err)
+	}
+
+	// Parse form data to extract contact information
+	var formData map[string]interface{}
+	if err := json.Unmarshal([]byte(formDataJSON), &formData); err != nil {
+		return fmt.Errorf("failed to parse form data: %w", err)
+	}
+
+	contactEmail, ok := formData["contact_email"].(string)
+	if !ok || contactEmail == "" {
+		return fmt.Errorf("contact email not found in pickup form")
+	}
+
+	contactName, _ := formData["contact_name"].(string)
+	if contactName == "" {
+		contactName = "Client Contact"
+	}
+
+	// Prepare template data
+	pickupDate := "To be determined"
+	if shipment.PickupScheduledDate.Valid {
+		pickupDate = shipment.PickupScheduledDate.Time.Format("Monday, January 2, 2006")
+	}
+
+	pickupTimeSlot, _ := formData["pickup_time_slot"].(string)
+	if pickupTimeSlot == "" {
+		pickupTimeSlot = "To be confirmed"
+	} else {
+		// Format time slot
+		switch pickupTimeSlot {
+		case "morning":
+			pickupTimeSlot = "Morning (8AM - 12PM)"
+		case "afternoon":
+			pickupTimeSlot = "Afternoon (12PM - 5PM)"
+		case "evening":
+			pickupTimeSlot = "Evening (5PM - 8PM)"
+		}
+	}
+
+	pickupAddress := ""
+	if addr, ok := formData["pickup_address"].(string); ok {
+		pickupAddress = addr
+		if city, ok := formData["pickup_city"].(string); ok {
+			pickupAddress += ", " + city
+		}
+		if state, ok := formData["pickup_state"].(string); ok {
+			pickupAddress += ", " + state
+		}
+		if zip, ok := formData["pickup_zip"].(string); ok {
+			pickupAddress += " " + zip
+		}
+	}
+
+	data := PickupScheduledData{
+		ContactName:    contactName,
+		ClientCompany:  clientCompany,
+		TrackingNumber: shipment.TrackingNumber.String,
+		PickupDate:     pickupDate,
+		PickupTimeSlot: pickupTimeSlot,
+		PickupAddress:  pickupAddress,
+		ShipmentID:     shipmentID,
+	}
+
+	// Render template
+	htmlBody, err := n.templates.RenderTemplate("pickup_scheduled", data)
+	if err != nil {
+		return fmt.Errorf("failed to render template: %w", err)
+	}
+
+	// Send email
+	message := Message{
+		To:       []string{contactEmail},
+		Subject:  n.templates.GetSubject("pickup_scheduled", data),
+		Body:     n.generatePlainTextFromHTML(htmlBody),
+		HTMLBody: htmlBody,
+	}
+
+	if err := n.client.Send(message); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	// Log notification
+	if err := n.logNotification(ctx, shipmentID, "pickup_scheduled", contactEmail, "sent"); err != nil {
 		fmt.Printf("Warning: failed to log notification: %v\n", err)
 	}
 
