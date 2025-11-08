@@ -408,6 +408,7 @@
                                 >
                                     <option value="">Select new status...</option>
                                     <option value="pending_pickup_from_client" {{if eq .Shipment.Status "pending_pickup_from_client"}}selected{{end}}>Pending Pickup from Client</option>
+                                    <option value="pickup_from_client_scheduled" {{if eq .Shipment.Status "pickup_from_client_scheduled"}}selected{{end}}>Pickup from Client Scheduled</option>
                                     <option value="picked_up_from_client" {{if eq .Shipment.Status "picked_up_from_client"}}selected{{end}}>Picked Up from Client</option>
                                     <option value="in_transit_to_warehouse" {{if eq .Shipment.Status "in_transit_to_warehouse"}}selected{{end}}>In Transit to Warehouse</option>
                                     <option value="at_warehouse" {{if eq .Shipment.Status "at_warehouse"}}selected{{end}}>At Warehouse</option>
