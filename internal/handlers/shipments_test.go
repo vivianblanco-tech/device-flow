@@ -333,7 +333,7 @@ func TestShipmentDetail(t *testing.T) {
 
 		// Verify the response contains pickup form data
 		responseBody := w.Body.String()
-		
+
 		// Check for contact information
 		if !strings.Contains(responseBody, "John Doe") {
 			t.Errorf("Expected response to contain contact name 'John Doe'")
@@ -350,7 +350,7 @@ func TestShipmentDetail(t *testing.T) {
 				t.Errorf("Expected response to contain contact phone '+1-555-0123'")
 			}
 		}
-		
+
 		// Check for pickup address
 		if !strings.Contains(responseBody, "123 Main Street, Suite 400") {
 			t.Errorf("Expected response to contain pickup address '123 Main Street, Suite 400'")
@@ -364,12 +364,12 @@ func TestShipmentDetail(t *testing.T) {
 		if !strings.Contains(responseBody, "10001") {
 			t.Errorf("Expected response to contain ZIP '10001'")
 		}
-		
+
 		// Check for accessories
 		if !strings.Contains(responseBody, "2x YubiKeys, 3x USB-C cables") {
 			t.Errorf("Expected response to contain accessories description")
 		}
-		
+
 		// Check for special instructions
 		if !strings.Contains(responseBody, "Call before arrival") {
 			t.Errorf("Expected response to contain special instructions")

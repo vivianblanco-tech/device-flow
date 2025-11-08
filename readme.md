@@ -156,7 +156,48 @@ Access Mailhog web UI at http://localhost:8025
    - Authorized redirect URIs: `http://localhost:8080/auth/google/callback`
 5. Copy Client ID and Client Secret to `.env` file
 
-### 8. Run the Application
+### 8. Load Sample Data (Optional)
+
+To populate the database with sample data for testing and development:
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\load-sample-data.ps1
+```
+
+**macOS/Linux:**
+```bash
+make db-seed
+```
+
+**Or reset database and load sample data:**
+```bash
+# macOS/Linux
+make db-reset-with-sample
+
+# Windows (PowerShell)
+# Run: .\scripts\load-sample-data.ps1 (after resetting database)
+```
+
+**Note:** These commands work with the Docker database container (`laptop-tracking-db`). Ensure Docker is running and the container is started.
+
+**Sample users (all passwords: `password123`):**
+- Logistics: `logistics@bairesdev.com`
+- Client: `client1@techcorp.com`
+- Warehouse: `warehouse@bairesdev.com`
+- Project Manager: `pm@bairesdev.com`
+
+**Sample data includes:**
+- 9 users across all roles
+- 5 client companies
+- 10 software engineers
+- 15 laptops (Dell, HP, Lenovo, Apple, Microsoft)
+- 8 shipments in various statuses (pending pickup, in transit, at warehouse, delivered)
+- 5 pickup forms with detailed information
+- 3 reception reports
+- 2 delivery forms
+
+### 9. Run the Application
 
 ```bash
 # Run with make
@@ -183,6 +224,8 @@ make migrate-up        # Run all database migrations
 make migrate-down      # Rollback last migration
 make migrate-create    # Create new migration (usage: make migrate-create name=create_table)
 make db-reset          # Reset database (drop and recreate)
+make db-seed           # Load sample data into database
+make db-reset-with-sample  # Reset database and load sample data
 make dev-setup         # Set up development environment
 make clean             # Clean build artifacts
 make fmt               # Format code

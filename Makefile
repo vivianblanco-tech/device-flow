@@ -85,10 +85,31 @@ migrate-create: ## Create a new migration file (usage: make migrate-create name=
 migrate-force: ## Force migration version (usage: make migrate-force version=1)
 	$(MIGRATE) -path migrations -database "$(DB_URL)" force $(version)
 
-db-reset: ## Reset database (drop and recreate)
-	dropdb $(DB_NAME) || true
-	createdb $(DB_NAME)
-	$(MAKE) migrate-up
+db-reset: ## Reset database (drop and recreate) - Docker
+	@echo "Resetting database $(DB_NAME)..."
+	@docker exec laptop-tracking-db psql -U postgres -c "DROP DATABASE IF EXISTS $(DB_NAME);" || true
+	@docker exec laptop-tracking-db psql -U postgres -c "CREATE DATABASE $(DB_NAME);"
+	@$(MAKE) migrate-up
+	@echo "✓ Database reset complete!"
+
+db-seed: ## Load sample data into database (Docker)
+	@echo "Loading sample data into $(DB_NAME)..."
+	@docker cp scripts/sample_data.sql laptop-tracking-db:/tmp/sample_data.sql
+	@docker exec laptop-tracking-db psql -U $(DB_USER) -d $(DB_NAME) -f /tmp/sample_data.sql
+	@docker exec laptop-tracking-db rm /tmp/sample_data.sql
+	@echo "✓ Sample data loaded successfully!"
+	@echo ""
+	@echo "Sample Users (all passwords: 'password123'):"
+	@echo "  Logistics:        logistics@bairesdev.com"
+	@echo "  Client:           client1@techcorp.com"
+	@echo "  Warehouse:        warehouse@bairesdev.com"
+	@echo "  Project Manager:  pm@bairesdev.com"
+
+db-reset-with-sample: ## Reset database and load sample data
+	@echo "Resetting database and loading sample data..."
+	@$(MAKE) db-reset
+	@$(MAKE) db-seed
+	@echo "✓ Database ready with sample data!"
 
 test-db-setup: ## Set up test database (Docker)
 	@echo "Setting up test database in Docker..."
