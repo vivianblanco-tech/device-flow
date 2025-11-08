@@ -809,6 +809,9 @@ func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *ht
 	contactEmail := r.FormValue("contact_email")
 	contactPhone := r.FormValue("contact_phone")
 	pickupAddress := r.FormValue("pickup_address")
+	pickupCity := r.FormValue("pickup_city")
+	pickupState := r.FormValue("pickup_state")
+	pickupZip := r.FormValue("pickup_zip")
 	pickupDate := r.FormValue("pickup_date")
 	pickupTimeSlot := r.FormValue("pickup_time_slot")
 	numberOfLaptops := r.FormValue("number_of_laptops")
@@ -816,8 +819,8 @@ func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *ht
 
 	// Validate required fields
 	if contactName == "" || contactEmail == "" || contactPhone == "" || 
-	   pickupAddress == "" || pickupDate == "" || pickupTimeSlot == "" || 
-	   numberOfLaptops == "" {
+	   pickupAddress == "" || pickupCity == "" || pickupState == "" || pickupZip == "" ||
+	   pickupDate == "" || pickupTimeSlot == "" || numberOfLaptops == "" {
 		http.Error(w, "All required fields must be filled", http.StatusBadRequest)
 		return
 	}
@@ -850,6 +853,9 @@ func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *ht
 		"contact_email":        contactEmail,
 		"contact_phone":        contactPhone,
 		"pickup_address":       pickupAddress,
+		"pickup_city":          pickupCity,
+		"pickup_state":         pickupState,
+		"pickup_zip":           pickupZip,
 		"pickup_date":          pickupDate,
 		"pickup_time_slot":     pickupTimeSlot,
 		"number_of_laptops":    numberOfLaptops,

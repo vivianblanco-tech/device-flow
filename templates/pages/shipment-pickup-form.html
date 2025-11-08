@@ -121,17 +121,123 @@
                     <!-- Pickup Address -->
                     <div class="mb-6">
                         <label for="pickup_address" class="block text-sm font-medium text-gray-700 mb-2">
-                            Pickup Address <span class="text-red-600">*</span>
+                            Street Address <span class="text-red-600">*</span>
                         </label>
-                        <textarea 
+                        <input 
+                            type="text" 
                             id="pickup_address" 
                             name="pickup_address" 
-                            rows="3"
                             required
-                            placeholder="123 Main Street, Suite 400, City, State, ZIP Code"
+                            value="{{if .PickupFormData}}{{index .PickupFormData "pickup_address"}}{{end}}"
+                            placeholder="123 Main Street, Suite 400"
                             class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        >{{if .PickupFormData}}{{index .PickupFormData "pickup_address"}}{{end}}</textarea>
+                        >
                         <p class="mt-1 text-sm text-gray-500">Include building name, floor, and any access instructions</p>
+                    </div>
+
+                    <!-- City, State, ZIP -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <!-- City -->
+                        <div class="md:col-span-1">
+                            <label for="pickup_city" class="block text-sm font-medium text-gray-700 mb-2">
+                                City <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="pickup_city" 
+                                name="pickup_city" 
+                                required
+                                value="{{if .PickupFormData}}{{index .PickupFormData "pickup_city"}}{{end}}"
+                                placeholder="New York"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- State -->
+                        <div>
+                            <label for="pickup_state" class="block text-sm font-medium text-gray-700 mb-2">
+                                State <span class="text-red-600">*</span>
+                            </label>
+                            <select 
+                                id="pickup_state" 
+                                name="pickup_state" 
+                                required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                                <option value="">Select...</option>
+                                {{$selectedState := ""}}
+                                {{if .PickupFormData}}{{$selectedState = index .PickupFormData "pickup_state"}}{{end}}
+                                <option value="AL" {{if eq $selectedState "AL"}}selected{{end}}>Alabama</option>
+                                <option value="AK" {{if eq $selectedState "AK"}}selected{{end}}>Alaska</option>
+                                <option value="AZ" {{if eq $selectedState "AZ"}}selected{{end}}>Arizona</option>
+                                <option value="AR" {{if eq $selectedState "AR"}}selected{{end}}>Arkansas</option>
+                                <option value="CA" {{if eq $selectedState "CA"}}selected{{end}}>California</option>
+                                <option value="CO" {{if eq $selectedState "CO"}}selected{{end}}>Colorado</option>
+                                <option value="CT" {{if eq $selectedState "CT"}}selected{{end}}>Connecticut</option>
+                                <option value="DE" {{if eq $selectedState "DE"}}selected{{end}}>Delaware</option>
+                                <option value="FL" {{if eq $selectedState "FL"}}selected{{end}}>Florida</option>
+                                <option value="GA" {{if eq $selectedState "GA"}}selected{{end}}>Georgia</option>
+                                <option value="HI" {{if eq $selectedState "HI"}}selected{{end}}>Hawaii</option>
+                                <option value="ID" {{if eq $selectedState "ID"}}selected{{end}}>Idaho</option>
+                                <option value="IL" {{if eq $selectedState "IL"}}selected{{end}}>Illinois</option>
+                                <option value="IN" {{if eq $selectedState "IN"}}selected{{end}}>Indiana</option>
+                                <option value="IA" {{if eq $selectedState "IA"}}selected{{end}}>Iowa</option>
+                                <option value="KS" {{if eq $selectedState "KS"}}selected{{end}}>Kansas</option>
+                                <option value="KY" {{if eq $selectedState "KY"}}selected{{end}}>Kentucky</option>
+                                <option value="LA" {{if eq $selectedState "LA"}}selected{{end}}>Louisiana</option>
+                                <option value="ME" {{if eq $selectedState "ME"}}selected{{end}}>Maine</option>
+                                <option value="MD" {{if eq $selectedState "MD"}}selected{{end}}>Maryland</option>
+                                <option value="MA" {{if eq $selectedState "MA"}}selected{{end}}>Massachusetts</option>
+                                <option value="MI" {{if eq $selectedState "MI"}}selected{{end}}>Michigan</option>
+                                <option value="MN" {{if eq $selectedState "MN"}}selected{{end}}>Minnesota</option>
+                                <option value="MS" {{if eq $selectedState "MS"}}selected{{end}}>Mississippi</option>
+                                <option value="MO" {{if eq $selectedState "MO"}}selected{{end}}>Missouri</option>
+                                <option value="MT" {{if eq $selectedState "MT"}}selected{{end}}>Montana</option>
+                                <option value="NE" {{if eq $selectedState "NE"}}selected{{end}}>Nebraska</option>
+                                <option value="NV" {{if eq $selectedState "NV"}}selected{{end}}>Nevada</option>
+                                <option value="NH" {{if eq $selectedState "NH"}}selected{{end}}>New Hampshire</option>
+                                <option value="NJ" {{if eq $selectedState "NJ"}}selected{{end}}>New Jersey</option>
+                                <option value="NM" {{if eq $selectedState "NM"}}selected{{end}}>New Mexico</option>
+                                <option value="NY" {{if eq $selectedState "NY"}}selected{{end}}>New York</option>
+                                <option value="NC" {{if eq $selectedState "NC"}}selected{{end}}>North Carolina</option>
+                                <option value="ND" {{if eq $selectedState "ND"}}selected{{end}}>North Dakota</option>
+                                <option value="OH" {{if eq $selectedState "OH"}}selected{{end}}>Ohio</option>
+                                <option value="OK" {{if eq $selectedState "OK"}}selected{{end}}>Oklahoma</option>
+                                <option value="OR" {{if eq $selectedState "OR"}}selected{{end}}>Oregon</option>
+                                <option value="PA" {{if eq $selectedState "PA"}}selected{{end}}>Pennsylvania</option>
+                                <option value="RI" {{if eq $selectedState "RI"}}selected{{end}}>Rhode Island</option>
+                                <option value="SC" {{if eq $selectedState "SC"}}selected{{end}}>South Carolina</option>
+                                <option value="SD" {{if eq $selectedState "SD"}}selected{{end}}>South Dakota</option>
+                                <option value="TN" {{if eq $selectedState "TN"}}selected{{end}}>Tennessee</option>
+                                <option value="TX" {{if eq $selectedState "TX"}}selected{{end}}>Texas</option>
+                                <option value="UT" {{if eq $selectedState "UT"}}selected{{end}}>Utah</option>
+                                <option value="VT" {{if eq $selectedState "VT"}}selected{{end}}>Vermont</option>
+                                <option value="VA" {{if eq $selectedState "VA"}}selected{{end}}>Virginia</option>
+                                <option value="WA" {{if eq $selectedState "WA"}}selected{{end}}>Washington</option>
+                                <option value="WV" {{if eq $selectedState "WV"}}selected{{end}}>West Virginia</option>
+                                <option value="WI" {{if eq $selectedState "WI"}}selected{{end}}>Wisconsin</option>
+                                <option value="WY" {{if eq $selectedState "WY"}}selected{{end}}>Wyoming</option>
+                                <option value="DC" {{if eq $selectedState "DC"}}selected{{end}}>District of Columbia</option>
+                            </select>
+                        </div>
+
+                        <!-- ZIP Code -->
+                        <div>
+                            <label for="pickup_zip" class="block text-sm font-medium text-gray-700 mb-2">
+                                ZIP Code <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="pickup_zip" 
+                                name="pickup_zip" 
+                                required
+                                value="{{if .PickupFormData}}{{index .PickupFormData "pickup_zip"}}{{end}}"
+                                placeholder="10001"
+                                maxlength="5"
+                                pattern="[0-9]{5}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">

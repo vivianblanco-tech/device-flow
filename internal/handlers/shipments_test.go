@@ -985,6 +985,9 @@ func TestShipmentPickupFormPage(t *testing.T) {
 			"contact_email":        "jane@company.com",
 			"contact_phone":        "+1-555-9999",
 			"pickup_address":       "456 Business Ave, Suite 200",
+			"pickup_city":          "Boston",
+			"pickup_state":         "MA",
+			"pickup_zip":           "02101",
 			"pickup_date":          "2025-12-15",
 			"pickup_time_slot":     "afternoon",
 			"number_of_laptops":    3,
@@ -1071,6 +1074,9 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 		formData.Set("contact_email", "john@company.com")
 		formData.Set("contact_phone", "+1-555-1234")
 		formData.Set("pickup_address", "123 Main St, Suite 100")
+		formData.Set("pickup_city", "New York")
+		formData.Set("pickup_state", "NY")
+		formData.Set("pickup_zip", "10001")
 		formData.Set("pickup_date", "2025-12-20")
 		formData.Set("pickup_time_slot", "morning")
 		formData.Set("number_of_laptops", "2")
@@ -1124,6 +1130,9 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 			"contact_email":        "old@company.com",
 			"contact_phone":        "+1-555-0000",
 			"pickup_address":       "Old Address",
+			"pickup_city":          "Chicago",
+			"pickup_state":         "IL",
+			"pickup_zip":           "60601",
 			"pickup_date":          "2025-12-10",
 			"pickup_time_slot":     "evening",
 			"number_of_laptops":    1,
@@ -1146,6 +1155,9 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 		updatedFormData.Set("contact_email", "updated@company.com")
 		updatedFormData.Set("contact_phone", "+1-555-9999")
 		updatedFormData.Set("pickup_address", "Updated Address")
+		updatedFormData.Set("pickup_city", "Los Angeles")
+		updatedFormData.Set("pickup_state", "CA")
+		updatedFormData.Set("pickup_zip", "90001")
 		updatedFormData.Set("pickup_date", "2025-12-25")
 		updatedFormData.Set("pickup_time_slot", "afternoon")
 		updatedFormData.Set("number_of_laptops", "5")
