@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -461,8 +462,10 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 	if oldStatus == string(models.ShipmentStatusPendingPickup) && newStatus == models.ShipmentStatusPickupScheduled {
 		if h.EmailNotifier != nil {
 			go func() {
-				// Send notification in background
-				if err := h.EmailNotifier.SendPickupScheduledNotification(r.Context(), shipmentID); err != nil {
+				// Use a fresh context for the background goroutine
+				// r.Context() gets canceled when the HTTP response is sent
+				ctx := context.Background()
+				if err := h.EmailNotifier.SendPickupScheduledNotification(ctx, shipmentID); err != nil {
 					fmt.Printf("Warning: failed to send pickup scheduled notification: %v\n", err)
 				}
 			}()
