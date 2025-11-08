@@ -266,16 +266,22 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 
 	// Get pickup form if exists
 	var pickupForm *models.PickupForm
-	var pickupFormData json.RawMessage
+	var pickupFormData map[string]interface{}
+	var formDataJSON json.RawMessage
 	pickupFormTemp := models.PickupForm{}
 	err = h.DB.QueryRowContext(r.Context(),
 		`SELECT id, shipment_id, submitted_by_user_id, submitted_at, form_data
 		FROM pickup_forms WHERE shipment_id = $1`,
 		shipmentID,
 	).Scan(&pickupFormTemp.ID, &pickupFormTemp.ShipmentID, &pickupFormTemp.SubmittedByUserID,
-		&pickupFormTemp.SubmittedAt, &pickupFormData)
+		&pickupFormTemp.SubmittedAt, &formDataJSON)
 	if err == nil {
 		pickupForm = &pickupFormTemp
+		// Parse the JSONB form_data into a map for template use
+		if err := json.Unmarshal(formDataJSON, &pickupFormData); err != nil {
+			fmt.Printf("Error parsing pickup form data: %v\n", err)
+			pickupFormData = nil
+		}
 	} else if err != sql.ErrNoRows {
 		// Non-critical error, log it but continue
 		fmt.Printf("Error fetching pickup form: %v\n", err)
@@ -351,6 +357,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		"EngineerEmail":   engineerEmail.String,
 		"Laptops":         laptops,
 		"PickupForm":      pickupForm,
+		"PickupFormData":  pickupFormData,
 		"ReceptionReport": receptionReport,
 		"DeliveryForm":    deliveryForm,
 		"Engineers":       engineers,

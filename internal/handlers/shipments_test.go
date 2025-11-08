@@ -271,6 +271,111 @@ func TestShipmentDetail(t *testing.T) {
 		}
 	})
 
+	t.Run("shipment detail displays pickup form data when available", func(t *testing.T) {
+		// Create a shipment
+		var testShipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "SCOP-99999", time.Now(), time.Now(),
+		).Scan(&testShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		// Create pickup form data
+		pickupFormData := map[string]interface{}{
+			"contact_name":            "John Doe",
+			"contact_email":           "john.doe@example.com",
+			"contact_phone":           "+1-555-0123",
+			"pickup_address":          "123 Main Street, Suite 400",
+			"pickup_city":             "New York",
+			"pickup_state":            "NY",
+			"pickup_zip":              "10001",
+			"pickup_date":             "2024-12-25",
+			"pickup_time_slot":        "morning",
+			"number_of_laptops":       5,
+			"number_of_boxes":         2,
+			"assignment_type":         "bulk",
+			"bulk_length":             20.5,
+			"bulk_width":              15.0,
+			"bulk_height":             10.0,
+			"bulk_weight":             25.5,
+			"include_accessories":     true,
+			"accessories_description": "2x YubiKeys, 3x USB-C cables",
+			"special_instructions":    "Call before arrival",
+		}
+		formDataJSON, _ := json.Marshal(pickupFormData)
+
+		// Insert pickup form
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+			VALUES ($1, $2, $3, $4)`,
+			testShipmentID, userID, time.Now(), formDataJSON,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create pickup form: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(testShipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(testShipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		// Verify the response contains pickup form data
+		responseBody := w.Body.String()
+		
+		// Check for contact information
+		if !strings.Contains(responseBody, "John Doe") {
+			t.Errorf("Expected response to contain contact name 'John Doe'")
+		}
+		if !strings.Contains(responseBody, "john.doe@example.com") {
+			t.Errorf("Expected response to contain contact email 'john.doe@example.com'")
+		}
+		if !strings.Contains(responseBody, "+1-555-0123") && !strings.Contains(responseBody, "555-0123") {
+			// Print a snippet to help debug
+			idx := strings.Index(responseBody, "Contact Phone")
+			if idx >= 0 && idx+200 < len(responseBody) {
+				t.Errorf("Expected response to contain contact phone. Contact section: %s", responseBody[idx:idx+200])
+			} else {
+				t.Errorf("Expected response to contain contact phone '+1-555-0123'")
+			}
+		}
+		
+		// Check for pickup address
+		if !strings.Contains(responseBody, "123 Main Street, Suite 400") {
+			t.Errorf("Expected response to contain pickup address '123 Main Street, Suite 400'")
+		}
+		if !strings.Contains(responseBody, "New York") {
+			t.Errorf("Expected response to contain city 'New York'")
+		}
+		if !strings.Contains(responseBody, "NY") {
+			t.Errorf("Expected response to contain state 'NY'")
+		}
+		if !strings.Contains(responseBody, "10001") {
+			t.Errorf("Expected response to contain ZIP '10001'")
+		}
+		
+		// Check for accessories
+		if !strings.Contains(responseBody, "2x YubiKeys, 3x USB-C cables") {
+			t.Errorf("Expected response to contain accessories description")
+		}
+		
+		// Check for special instructions
+		if !strings.Contains(responseBody, "Call before arrival") {
+			t.Errorf("Expected response to contain special instructions")
+		}
+	})
+
 	t.Run("tracking number displays as clickable link for known couriers", func(t *testing.T) {
 		// Test UPS tracking URL
 		var upsShipmentID int64
