@@ -15,6 +15,7 @@ import (
 
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
+	"github.com/yourusername/laptop-tracking-system/internal/validator"
 	"github.com/yourusername/laptop-tracking-system/internal/views"
 )
 
@@ -804,43 +805,59 @@ func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Get form fields
-	contactName := r.FormValue("contact_name")
-	contactEmail := r.FormValue("contact_email")
-	contactPhone := r.FormValue("contact_phone")
-	pickupAddress := r.FormValue("pickup_address")
-	pickupCity := r.FormValue("pickup_city")
-	pickupState := r.FormValue("pickup_state")
-	pickupZip := r.FormValue("pickup_zip")
-	pickupDate := r.FormValue("pickup_date")
-	pickupTimeSlot := r.FormValue("pickup_time_slot")
-	numberOfLaptops := r.FormValue("number_of_laptops")
-	specialInstructions := r.FormValue("special_instructions")
+	// Parse form fields
+	numberOfLaptops, _ := strconv.Atoi(r.FormValue("number_of_laptops"))
+	numberOfBoxes, _ := strconv.Atoi(r.FormValue("number_of_boxes"))
+	bulkLength, _ := strconv.ParseFloat(r.FormValue("bulk_length"), 64)
+	bulkWidth, _ := strconv.ParseFloat(r.FormValue("bulk_width"), 64)
+	bulkHeight, _ := strconv.ParseFloat(r.FormValue("bulk_height"), 64)
+	bulkWeight, _ := strconv.ParseFloat(r.FormValue("bulk_weight"), 64)
+	includeAccessories := r.FormValue("include_accessories") == "on" || r.FormValue("include_accessories") == "true"
 
-	// Validate required fields
-	if contactName == "" || contactEmail == "" || contactPhone == "" || 
-	   pickupAddress == "" || pickupCity == "" || pickupState == "" || pickupZip == "" ||
-	   pickupDate == "" || pickupTimeSlot == "" || numberOfLaptops == "" {
-		http.Error(w, "All required fields must be filled", http.StatusBadRequest)
-		return
-	}
-
-	// Verify shipment exists
-	var existingShipmentID int64
+	// Get shipment's client company ID for validation
+	var clientCompanyID int64
 	err = h.DB.QueryRowContext(r.Context(),
-		`SELECT id FROM shipments WHERE id = $1`,
+		`SELECT client_company_id FROM shipments WHERE id = $1`,
 		shipmentID,
-	).Scan(&existingShipmentID)
-	if err == sql.ErrNoRows {
-		http.Error(w, "Shipment not found", http.StatusNotFound)
+	).Scan(&clientCompanyID)
+	if err != nil {
+		http.Error(w, "Failed to get shipment info", http.StatusInternalServerError)
 		return
 	}
-	if err != nil {
-		http.Error(w, "Failed to verify shipment", http.StatusInternalServerError)
+
+	// Build validation input
+	formInput := validator.PickupFormInput{
+		ClientCompanyID:        clientCompanyID,
+		ContactName:            r.FormValue("contact_name"),
+		ContactEmail:           r.FormValue("contact_email"),
+		ContactPhone:           r.FormValue("contact_phone"),
+		PickupAddress:          r.FormValue("pickup_address"),
+		PickupCity:             r.FormValue("pickup_city"),
+		PickupState:            r.FormValue("pickup_state"),
+		PickupZip:              r.FormValue("pickup_zip"),
+		PickupDate:             r.FormValue("pickup_date"),
+		PickupTimeSlot:         r.FormValue("pickup_time_slot"),
+		NumberOfLaptops:        numberOfLaptops,
+		JiraTicketNumber:       "",  // Not needed for update, skip validation
+		SpecialInstructions:    r.FormValue("special_instructions"),
+		NumberOfBoxes:          numberOfBoxes,
+		AssignmentType:         r.FormValue("assignment_type"),
+		BulkLength:             bulkLength,
+		BulkWidth:              bulkWidth,
+		BulkHeight:             bulkHeight,
+		BulkWeight:             bulkWeight,
+		IncludeAccessories:     includeAccessories,
+		AccessoriesDescription: r.FormValue("accessories_description"),
+	}
+
+	// Validate form (skip JIRA validation for updates)
+	if err := validatePickupFormUpdate(formInput); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Parse pickup date
+	pickupDate := r.FormValue("pickup_date")
 	pickupDateTime, err := time.Parse("2006-01-02", pickupDate)
 	if err != nil {
 		http.Error(w, "Invalid date format", http.StatusBadRequest)
@@ -849,17 +866,25 @@ func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *ht
 
 	// Create form data JSON
 	formData := map[string]interface{}{
-		"contact_name":         contactName,
-		"contact_email":        contactEmail,
-		"contact_phone":        contactPhone,
-		"pickup_address":       pickupAddress,
-		"pickup_city":          pickupCity,
-		"pickup_state":         pickupState,
-		"pickup_zip":           pickupZip,
-		"pickup_date":          pickupDate,
-		"pickup_time_slot":     pickupTimeSlot,
-		"number_of_laptops":    numberOfLaptops,
-		"special_instructions": specialInstructions,
+		"contact_name":            formInput.ContactName,
+		"contact_email":           formInput.ContactEmail,
+		"contact_phone":           formInput.ContactPhone,
+		"pickup_address":          formInput.PickupAddress,
+		"pickup_city":             formInput.PickupCity,
+		"pickup_state":            formInput.PickupState,
+		"pickup_zip":              formInput.PickupZip,
+		"pickup_date":             pickupDate,
+		"pickup_time_slot":        formInput.PickupTimeSlot,
+		"number_of_laptops":       formInput.NumberOfLaptops,
+		"special_instructions":    formInput.SpecialInstructions,
+		"number_of_boxes":         formInput.NumberOfBoxes,
+		"assignment_type":         formInput.AssignmentType,
+		"bulk_length":             formInput.BulkLength,
+		"bulk_width":              formInput.BulkWidth,
+		"bulk_height":             formInput.BulkHeight,
+		"bulk_weight":             formInput.BulkWeight,
+		"include_accessories":     formInput.IncludeAccessories,
+		"accessories_description": formInput.AccessoriesDescription,
 	}
 	formDataJSON, err := json.Marshal(formData)
 	if err != nil {
@@ -924,4 +949,11 @@ func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *ht
 	// Redirect to shipment detail page with success message
 	redirectURL := fmt.Sprintf("/shipments/%d?success=Pickup+form+submitted+successfully", shipmentID)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// validatePickupFormUpdate validates pickup form for updates (skips JIRA validation)
+func validatePickupFormUpdate(input validator.PickupFormInput) error {
+	// Temporarily set a dummy JIRA ticket to pass validation
+	input.JiraTicketNumber = "TEMP-0"
+	return validator.ValidatePickupForm(input)
 }

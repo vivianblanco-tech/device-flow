@@ -292,6 +292,169 @@
                                 class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                             >
                         </div>
+
+                        <!-- Number of Boxes -->
+                        <div>
+                            <label for="number_of_boxes" class="block text-sm font-medium text-gray-700 mb-2">
+                                Number of Boxes <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="number" 
+                                id="number_of_boxes" 
+                                name="number_of_boxes" 
+                                min="1"
+                                required
+                                value="{{if .PickupFormData}}{{index .PickupFormData "number_of_boxes"}}{{end}}"
+                                placeholder="1"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Assignment Type -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-3">
+                            Assignment Type <span class="text-red-600">*</span>
+                        </label>
+                        <div class="flex items-center space-x-6">
+                            <label class="inline-flex items-center">
+                                <input 
+                                    type="radio" 
+                                    name="assignment_type" 
+                                    value="single" 
+                                    id="assignment_type_single"
+                                    {{if .PickupFormData}}{{if eq (index .PickupFormData "assignment_type") "single"}}checked{{end}}{{else}}checked{{end}}
+                                    required
+                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                    onchange="toggleBulkFields()"
+                                >
+                                <span class="ml-2 text-gray-700">Single Assignment</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input 
+                                    type="radio" 
+                                    name="assignment_type" 
+                                    value="bulk" 
+                                    id="assignment_type_bulk"
+                                    {{if .PickupFormData}}{{if eq (index .PickupFormData "assignment_type") "bulk"}}checked{{end}}{{end}}
+                                    required
+                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                    onchange="toggleBulkFields()"
+                                >
+                                <span class="ml-2 text-gray-700">Bulk Assignment</span>
+                            </label>
+                        </div>
+                        <p class="mt-1 text-sm text-gray-500">Single for one device, Bulk for multiple devices</p>
+                    </div>
+
+                    <!-- Bulk Dimensions Section (shown only when bulk is selected) -->
+                    <div id="bulk_fields" class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-md" style="display: none;">
+                        <h4 class="text-sm font-medium text-gray-900 mb-4">📦 Bulk Shipment Details (Total for All Boxes)</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Length -->
+                            <div>
+                                <label for="bulk_length" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Length (inches) <span class="text-red-600" id="bulk_length_required">*</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="bulk_length" 
+                                    name="bulk_length" 
+                                    step="0.1"
+                                    min="0"
+                                    value="{{if .PickupFormData}}{{index .PickupFormData "bulk_length"}}{{end}}"
+                                    placeholder="20.5"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                >
+                            </div>
+
+                            <!-- Width -->
+                            <div>
+                                <label for="bulk_width" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Width (inches) <span class="text-red-600" id="bulk_width_required">*</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="bulk_width" 
+                                    name="bulk_width" 
+                                    step="0.1"
+                                    min="0"
+                                    value="{{if .PickupFormData}}{{index .PickupFormData "bulk_width"}}{{end}}"
+                                    placeholder="15.0"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                >
+                            </div>
+
+                            <!-- Height -->
+                            <div>
+                                <label for="bulk_height" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Height (inches) <span class="text-red-600" id="bulk_height_required">*</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="bulk_height" 
+                                    name="bulk_height" 
+                                    step="0.1"
+                                    min="0"
+                                    value="{{if .PickupFormData}}{{index .PickupFormData "bulk_height"}}{{end}}"
+                                    placeholder="10.0"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                >
+                            </div>
+
+                            <!-- Weight -->
+                            <div>
+                                <label for="bulk_weight" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Weight (lbs) <span class="text-red-600" id="bulk_weight_required">*</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="bulk_weight" 
+                                    name="bulk_weight" 
+                                    step="0.1"
+                                    min="0"
+                                    value="{{if .PickupFormData}}{{index .PickupFormData "bulk_weight"}}{{end}}"
+                                    placeholder="25.5"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accessories Section -->
+                    <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-md">
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input 
+                                    type="checkbox" 
+                                    id="include_accessories" 
+                                    name="include_accessories"
+                                    {{if .PickupFormData}}{{if index .PickupFormData "include_accessories"}}checked{{end}}{{end}}
+                                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                    onchange="toggleAccessoriesField()"
+                                >
+                            </div>
+                            <div class="ml-3">
+                                <label for="include_accessories" class="text-sm font-medium text-gray-700">
+                                    Include Accessories
+                                </label>
+                                <p class="text-sm text-gray-500">Check if the shipment includes accessories like YubiKeys, cables, docks, etc.</p>
+                            </div>
+                        </div>
+
+                        <!-- Accessories Description -->
+                        <div id="accessories_description_field" class="mt-4" style="display: none;">
+                            <label for="accessories_description" class="block text-sm font-medium text-gray-700 mb-2">
+                                Accessories Description <span class="text-red-600" id="accessories_required">*</span>
+                            </label>
+                            <textarea 
+                                id="accessories_description" 
+                                name="accessories_description" 
+                                rows="3"
+                                placeholder="e.g., 2x YubiKeys, 3x USB-C cables, 1x docking station"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >{{if .PickupFormData}}{{index .PickupFormData "accessories_description"}}{{end}}</textarea>
+                        </div>
                     </div>
 
                     <!-- Special Instructions -->
@@ -347,6 +510,62 @@
             </p>
         </div>
     </footer>
+
+    <!-- JavaScript for conditional field display -->
+    <script>
+        // Toggle bulk fields visibility based on assignment type
+        function toggleBulkFields() {
+            const bulkRadio = document.getElementById('assignment_type_bulk');
+            const bulkFields = document.getElementById('bulk_fields');
+            const bulkLength = document.getElementById('bulk_length');
+            const bulkWidth = document.getElementById('bulk_width');
+            const bulkHeight = document.getElementById('bulk_height');
+            const bulkWeight = document.getElementById('bulk_weight');
+            
+            if (bulkRadio && bulkRadio.checked) {
+                bulkFields.style.display = 'block';
+                // Make fields required when bulk is selected
+                bulkLength.required = true;
+                bulkWidth.required = true;
+                bulkHeight.required = true;
+                bulkWeight.required = true;
+            } else {
+                bulkFields.style.display = 'none';
+                // Remove required when single is selected
+                bulkLength.required = false;
+                bulkWidth.required = false;
+                bulkHeight.required = false;
+                bulkWeight.required = false;
+                // Clear values
+                bulkLength.value = '';
+                bulkWidth.value = '';
+                bulkHeight.value = '';
+                bulkWeight.value = '';
+            }
+        }
+
+        // Toggle accessories description field based on checkbox
+        function toggleAccessoriesField() {
+            const checkbox = document.getElementById('include_accessories');
+            const field = document.getElementById('accessories_description_field');
+            const textarea = document.getElementById('accessories_description');
+            
+            if (checkbox && checkbox.checked) {
+                field.style.display = 'block';
+                textarea.required = true;
+            } else {
+                field.style.display = 'none';
+                textarea.required = false;
+                textarea.value = '';
+            }
+        }
+
+        // Initialize field visibility on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleBulkFields();
+            toggleAccessoriesField();
+        });
+    </script>
 </body>
 </html>
 

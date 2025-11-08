@@ -135,21 +135,44 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 		numberOfLaptops = 0
 	}
 
+	numberOfBoxesStr := r.FormValue("number_of_boxes")
+	numberOfBoxes, err := strconv.Atoi(numberOfBoxesStr)
+	if err != nil {
+		numberOfBoxes = 0
+	}
+
+	// Parse bulk dimensions and weight
+	bulkLength, _ := strconv.ParseFloat(r.FormValue("bulk_length"), 64)
+	bulkWidth, _ := strconv.ParseFloat(r.FormValue("bulk_width"), 64)
+	bulkHeight, _ := strconv.ParseFloat(r.FormValue("bulk_height"), 64)
+	bulkWeight, _ := strconv.ParseFloat(r.FormValue("bulk_weight"), 64)
+
+	// Parse include accessories checkbox
+	includeAccessories := r.FormValue("include_accessories") == "on" || r.FormValue("include_accessories") == "true"
+
 	// Build validation input
 	formInput := validator.PickupFormInput{
-		ClientCompanyID:     companyID,
-		ContactName:         r.FormValue("contact_name"),
-		ContactEmail:        r.FormValue("contact_email"),
-		ContactPhone:        r.FormValue("contact_phone"),
-		PickupAddress:       r.FormValue("pickup_address"),
-		PickupCity:          r.FormValue("pickup_city"),
-		PickupState:         r.FormValue("pickup_state"),
-		PickupZip:           r.FormValue("pickup_zip"),
-		PickupDate:          r.FormValue("pickup_date"),
-		PickupTimeSlot:      r.FormValue("pickup_time_slot"),
-		NumberOfLaptops:     numberOfLaptops,
-		JiraTicketNumber:    r.FormValue("jira_ticket_number"),
-		SpecialInstructions: r.FormValue("special_instructions"),
+		ClientCompanyID:        companyID,
+		ContactName:            r.FormValue("contact_name"),
+		ContactEmail:           r.FormValue("contact_email"),
+		ContactPhone:           r.FormValue("contact_phone"),
+		PickupAddress:          r.FormValue("pickup_address"),
+		PickupCity:             r.FormValue("pickup_city"),
+		PickupState:            r.FormValue("pickup_state"),
+		PickupZip:              r.FormValue("pickup_zip"),
+		PickupDate:             r.FormValue("pickup_date"),
+		PickupTimeSlot:         r.FormValue("pickup_time_slot"),
+		NumberOfLaptops:        numberOfLaptops,
+		JiraTicketNumber:       r.FormValue("jira_ticket_number"),
+		SpecialInstructions:    r.FormValue("special_instructions"),
+		NumberOfBoxes:          numberOfBoxes,
+		AssignmentType:         r.FormValue("assignment_type"),
+		BulkLength:             bulkLength,
+		BulkWidth:              bulkWidth,
+		BulkHeight:             bulkHeight,
+		BulkWeight:             bulkWeight,
+		IncludeAccessories:     includeAccessories,
+		AccessoriesDescription: r.FormValue("accessories_description"),
 	}
 
 	// Validate form
@@ -200,18 +223,26 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 
 	// Create pickup form with form data as JSONB
 	formDataJSON, err := json.Marshal(map[string]interface{}{
-		"contact_name":         formInput.ContactName,
-		"contact_email":        formInput.ContactEmail,
-		"contact_phone":        formInput.ContactPhone,
-		"pickup_address":       formInput.PickupAddress,
-		"pickup_city":          formInput.PickupCity,
-		"pickup_state":         formInput.PickupState,
-		"pickup_zip":           formInput.PickupZip,
-		"pickup_date":          formInput.PickupDate,
-		"pickup_time_slot":     formInput.PickupTimeSlot,
-		"number_of_laptops":    formInput.NumberOfLaptops,
-		"jira_ticket_number":   formInput.JiraTicketNumber,
-		"special_instructions": formInput.SpecialInstructions,
+		"contact_name":            formInput.ContactName,
+		"contact_email":           formInput.ContactEmail,
+		"contact_phone":           formInput.ContactPhone,
+		"pickup_address":          formInput.PickupAddress,
+		"pickup_city":             formInput.PickupCity,
+		"pickup_state":            formInput.PickupState,
+		"pickup_zip":              formInput.PickupZip,
+		"pickup_date":             formInput.PickupDate,
+		"pickup_time_slot":        formInput.PickupTimeSlot,
+		"number_of_laptops":       formInput.NumberOfLaptops,
+		"jira_ticket_number":      formInput.JiraTicketNumber,
+		"special_instructions":    formInput.SpecialInstructions,
+		"number_of_boxes":         formInput.NumberOfBoxes,
+		"assignment_type":         formInput.AssignmentType,
+		"bulk_length":             formInput.BulkLength,
+		"bulk_width":              formInput.BulkWidth,
+		"bulk_height":             formInput.BulkHeight,
+		"bulk_weight":             formInput.BulkWeight,
+		"include_accessories":     formInput.IncludeAccessories,
+		"accessories_description": formInput.AccessoriesDescription,
 	})
 	if err != nil {
 		http.Error(w, "Failed to encode form data", http.StatusInternalServerError)

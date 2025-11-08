@@ -1081,6 +1081,8 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 		formData.Set("pickup_time_slot", "morning")
 		formData.Set("number_of_laptops", "2")
 		formData.Set("special_instructions", "Please call before arrival")
+		formData.Set("number_of_boxes", "1")
+		formData.Set("assignment_type", "single")
 
 		req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/shipments/%d/form", shipmentID),
 			strings.NewReader(formData.Encode()))
@@ -1137,6 +1139,8 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 			"pickup_time_slot":     "evening",
 			"number_of_laptops":    1,
 			"special_instructions": "Old instructions",
+			"number_of_boxes":      1,
+			"assignment_type":      "single",
 		}
 		initialFormJSON, _ := json.Marshal(initialFormData)
 
@@ -1162,6 +1166,8 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 		updatedFormData.Set("pickup_time_slot", "afternoon")
 		updatedFormData.Set("number_of_laptops", "5")
 		updatedFormData.Set("special_instructions", "Updated instructions")
+		updatedFormData.Set("number_of_boxes", "2")
+		updatedFormData.Set("assignment_type", "single")
 
 		req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/shipments/%d/form", shipmentID2),
 			strings.NewReader(updatedFormData.Encode()))

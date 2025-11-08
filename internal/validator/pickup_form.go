@@ -9,19 +9,27 @@ import (
 
 // PickupFormInput represents the input data for a pickup form
 type PickupFormInput struct {
-	ClientCompanyID     int64  `json:"client_company_id"`
-	ContactName         string `json:"contact_name"`
-	ContactEmail        string `json:"contact_email"`
-	ContactPhone        string `json:"contact_phone"`
-	PickupAddress       string `json:"pickup_address"`
-	PickupCity          string `json:"pickup_city"`
-	PickupState         string `json:"pickup_state"`
-	PickupZip           string `json:"pickup_zip"`
-	PickupDate          string `json:"pickup_date"`
-	PickupTimeSlot      string `json:"pickup_time_slot"`
-	NumberOfLaptops     int    `json:"number_of_laptops"`
-	JiraTicketNumber    string `json:"jira_ticket_number"`
-	SpecialInstructions string `json:"special_instructions"`
+	ClientCompanyID        int64   `json:"client_company_id"`
+	ContactName            string  `json:"contact_name"`
+	ContactEmail           string  `json:"contact_email"`
+	ContactPhone           string  `json:"contact_phone"`
+	PickupAddress          string  `json:"pickup_address"`
+	PickupCity             string  `json:"pickup_city"`
+	PickupState            string  `json:"pickup_state"`
+	PickupZip              string  `json:"pickup_zip"`
+	PickupDate             string  `json:"pickup_date"`
+	PickupTimeSlot         string  `json:"pickup_time_slot"`
+	NumberOfLaptops        int     `json:"number_of_laptops"`
+	JiraTicketNumber       string  `json:"jira_ticket_number"`
+	SpecialInstructions    string  `json:"special_instructions"`
+	NumberOfBoxes          int     `json:"number_of_boxes"`
+	AssignmentType         string  `json:"assignment_type"`
+	BulkLength             float64 `json:"bulk_length"`
+	BulkWidth              float64 `json:"bulk_width"`
+	BulkHeight             float64 `json:"bulk_height"`
+	BulkWeight             float64 `json:"bulk_weight"`
+	IncludeAccessories     bool    `json:"include_accessories"`
+	AccessoriesDescription string  `json:"accessories_description"`
 }
 
 // ValidatePickupForm validates the pickup form input
@@ -112,6 +120,42 @@ func ValidatePickupForm(input PickupFormInput) error {
 		return errors.New("JIRA ticket number must be in format PROJECT-NUMBER (e.g., SCOP-67702)")
 	}
 
+	// Validate number of boxes
+	if input.NumberOfBoxes < 1 {
+		return errors.New("number of boxes must be at least 1")
+	}
+
+	// Validate assignment type
+	if strings.TrimSpace(input.AssignmentType) == "" {
+		return errors.New("assignment type is required")
+	}
+	if !isValidAssignmentType(input.AssignmentType) {
+		return errors.New("assignment type must be 'single' or 'bulk'")
+	}
+
+	// Validate bulk dimensions and weight (only required when AssignmentType is "bulk")
+	if input.AssignmentType == "bulk" {
+		if input.BulkLength <= 0 {
+			return errors.New("bulk length is required for bulk shipments")
+		}
+		if input.BulkWidth <= 0 {
+			return errors.New("bulk width is required for bulk shipments")
+		}
+		if input.BulkHeight <= 0 {
+			return errors.New("bulk height is required for bulk shipments")
+		}
+		if input.BulkWeight <= 0 {
+			return errors.New("bulk weight is required for bulk shipments")
+		}
+	}
+
+	// Validate accessories description (only required when IncludeAccessories is true)
+	if input.IncludeAccessories {
+		if strings.TrimSpace(input.AccessoriesDescription) == "" {
+			return errors.New("accessories description is required when including accessories")
+		}
+	}
+
 	return nil
 }
 
@@ -172,6 +216,17 @@ func isValidUSState(state string) bool {
 	state = strings.TrimSpace(state)
 	for _, valid := range validStates {
 		if state == valid {
+			return true
+		}
+	}
+	return false
+}
+
+// isValidAssignmentType validates the assignment type (single or bulk)
+func isValidAssignmentType(assignmentType string) bool {
+	validTypes := []string{"single", "bulk"}
+	for _, valid := range validTypes {
+		if assignmentType == valid {
 			return true
 		}
 	}

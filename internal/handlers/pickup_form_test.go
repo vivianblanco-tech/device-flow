@@ -117,6 +117,9 @@ func TestPickupFormSubmit(t *testing.T) {
 		formData.Set("number_of_laptops", "3")
 		formData.Set("jira_ticket_number", "TEST-500")
 		formData.Set("special_instructions", "Please call before arrival")
+		formData.Set("number_of_boxes", "2")
+		formData.Set("assignment_type", "single")
+		formData.Set("include_accessories", "false")
 
 		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
