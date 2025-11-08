@@ -376,6 +376,111 @@ func TestShipmentDetail(t *testing.T) {
 		}
 	})
 
+	t.Run("pickup form details appear in shipment information section", func(t *testing.T) {
+		// Create a shipment
+		var testShipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "SCOP-88888", time.Now(), time.Now(),
+		).Scan(&testShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		// Create comprehensive pickup form data
+		pickupFormData := map[string]interface{}{
+			"contact_name":            "Jane Smith",
+			"contact_email":           "jane.smith@techcorp.com",
+			"contact_phone":           "+1-555-9876",
+			"pickup_address":          "456 Tech Avenue",
+			"pickup_city":             "San Francisco",
+			"pickup_state":            "CA",
+			"pickup_zip":              "94102",
+			"pickup_date":             "2024-12-30",
+			"pickup_time_slot":        "afternoon",
+			"number_of_laptops":       3,
+			"number_of_boxes":         1,
+			"assignment_type":         "individual",
+			"include_accessories":     true,
+			"accessories_description": "3x Laptop chargers, 1x Docking station",
+			"special_instructions":    "Building requires badge access",
+		}
+		formDataJSON, _ := json.Marshal(pickupFormData)
+
+		// Insert pickup form
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+			VALUES ($1, $2, $3, $4)`,
+			testShipmentID, userID, time.Now(), formDataJSON,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create pickup form: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(testShipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(testShipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+
+		// Find the Shipment Information section
+		shipmentInfoStart := strings.Index(responseBody, "Shipment Information")
+		if shipmentInfoStart == -1 {
+			t.Fatal("Could not find 'Shipment Information' section in response")
+		}
+
+		// Find the end of Shipment Information section (next major section starts)
+		// Look for the next section heading (Timeline, Laptops, etc.)
+		timelineStart := strings.Index(responseBody[shipmentInfoStart:], "Tracking Timeline")
+		if timelineStart == -1 {
+			// If no timeline, look for other sections
+			timelineStart = strings.Index(responseBody[shipmentInfoStart:], "Laptops")
+			if timelineStart == -1 {
+				timelineStart = len(responseBody) - shipmentInfoStart
+			}
+		}
+		shipmentInfoEnd := shipmentInfoStart + timelineStart
+
+		// Extract the Shipment Information section content
+		shipmentInfoSection := responseBody[shipmentInfoStart:shipmentInfoEnd]
+
+		// Verify all pickup form details appear within Shipment Information section
+		// Note: Some characters are HTML-encoded (e.g., + becomes &#43;)
+		pickupFormFields := map[string]string{
+			"Contact Name":          "Jane Smith",
+			"Contact Email":         "jane.smith@techcorp.com",
+			"Contact Phone":         "&#43;1-555-9876", // + is HTML-encoded
+			"Street Address":        "456 Tech Avenue",
+			"City":                  "San Francisco",
+			"State":                 "CA",
+			"ZIP Code":              "94102",
+			"Pickup Date":           "2024-12-30",
+			"Time Slot Afternoon":   "Afternoon", // title filter capitalizes
+			"Number of Laptops":     "3",
+			"Number of Boxes":       "1",
+			"Assignment Individual": "Individual", // title filter capitalizes
+			"Accessories":           "3x Laptop chargers, 1x Docking station",
+			"Special Instructions":  "Building requires badge access",
+		}
+
+		for fieldLabel, expectedValue := range pickupFormFields {
+			if !strings.Contains(shipmentInfoSection, expectedValue) {
+				t.Errorf("Expected Shipment Information section to contain '%s: %s', but it was not found", fieldLabel, expectedValue)
+			}
+		}
+	})
+
 	t.Run("tracking number displays as clickable link for known couriers", func(t *testing.T) {
 		// Test UPS tracking URL
 		var upsShipmentID int64

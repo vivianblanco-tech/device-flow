@@ -114,6 +114,174 @@
                         </div>
                     </dl>
 
+                    {{if .PickupFormData}}
+                    <!-- Pickup Form Details -->
+                    <div class="mt-6 pt-6 border-t">
+                        <h4 class="text-base font-semibold text-gray-900 mb-4">Pickup Form Details</h4>
+                        
+                        <!-- Contact Information -->
+                        {{if or (index .PickupFormData "contact_name") (index .PickupFormData "contact_email") (index .PickupFormData "contact_phone")}}
+                        <div class="mb-4">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">Contact Information</h5>
+                            <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {{if index .PickupFormData "contact_name"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Contact Name</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "contact_name"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "contact_email"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Contact Email</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "contact_email"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "contact_phone"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Contact Phone</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "contact_phone"}}</dd>
+                                </div>
+                                {{end}}
+                            </dl>
+                        </div>
+                        {{end}}
+
+                        <!-- Pickup Address -->
+                        {{if or (index .PickupFormData "pickup_address") (index .PickupFormData "pickup_city") (index .PickupFormData "pickup_state") (index .PickupFormData "pickup_zip")}}
+                        <div class="mb-4">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">Pickup Address</h5>
+                            <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {{if index .PickupFormData "pickup_address"}}
+                                <div class="md:col-span-2">
+                                    <dt class="text-sm font-medium text-gray-500">Street Address</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_address"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "pickup_city"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">City</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_city"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "pickup_state"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">State</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_state"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "pickup_zip"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">ZIP Code</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_zip"}}</dd>
+                                </div>
+                                {{end}}
+                            </dl>
+                        </div>
+                        {{end}}
+
+                        <!-- Pickup Schedule -->
+                        {{if or (index .PickupFormData "pickup_date") (index .PickupFormData "pickup_time_slot")}}
+                        <div class="mb-4">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">Pickup Schedule</h5>
+                            <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {{if index .PickupFormData "pickup_date"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Pickup Date</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_date"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "pickup_time_slot"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Time Slot</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_time_slot" | title}}</dd>
+                                </div>
+                                {{end}}
+                            </dl>
+                        </div>
+                        {{end}}
+
+                        <!-- Shipment Details -->
+                        {{if or (index .PickupFormData "number_of_laptops") (index .PickupFormData "number_of_boxes") (index .PickupFormData "assignment_type")}}
+                        <div class="mb-4">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">Shipment Details</h5>
+                            <dl class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {{if index .PickupFormData "number_of_laptops"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Number of Laptops</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "number_of_laptops"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "number_of_boxes"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Number of Boxes</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "number_of_boxes"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "assignment_type"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Assignment Type</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "assignment_type" | title}}</dd>
+                                </div>
+                                {{end}}
+                            </dl>
+                        </div>
+                        {{end}}
+
+                        <!-- Bulk Dimensions (if bulk assignment) -->
+                        {{if eq (index .PickupFormData "assignment_type") "bulk"}}
+                        <div class="mb-4">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">Bulk Shipment Dimensions</h5>
+                            <dl class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {{if index .PickupFormData "bulk_length"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Length</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "bulk_length"}} in</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "bulk_width"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Width</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "bulk_width"}} in</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "bulk_height"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Height</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "bulk_height"}} in</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "bulk_weight"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Weight</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "bulk_weight"}} lbs</dd>
+                                </div>
+                                {{end}}
+                            </dl>
+                        </div>
+                        {{end}}
+
+                        <!-- Accessories -->
+                        {{if index .PickupFormData "include_accessories"}}
+                        <div class="mb-4">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">Accessories</h5>
+                            {{if index .PickupFormData "accessories_description"}}
+                            <p class="text-sm text-gray-900">{{index .PickupFormData "accessories_description"}}</p>
+                            {{else}}
+                            <p class="text-sm text-gray-500 italic">Accessories included (no description provided)</p>
+                            {{end}}
+                        </div>
+                        {{end}}
+
+                        <!-- Special Instructions -->
+                        {{if index .PickupFormData "special_instructions"}}
+                        <div class="mb-4">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">Special Instructions</h5>
+                            <p class="text-sm text-gray-900">{{index .PickupFormData "special_instructions"}}</p>
+                        </div>
+                        {{end}}
+                    </div>
+                    {{end}}
+
                     {{if .Shipment.Notes}}
                     <div class="mt-4 pt-4 border-t">
                         <dt class="text-sm font-medium text-gray-500 mb-2">Notes</dt>
@@ -192,166 +360,6 @@
                         </ul>
                     </div>
                 </div>
-
-                <!-- Pickup Form Information -->
-                {{if .PickupFormData}}
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">📋 Pickup Form Details</h3>
-                    
-                    <!-- Contact Information -->
-                    <div class="mb-6">
-                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Contact Information</h4>
-                        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {{if index .PickupFormData "contact_name"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Contact Name</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "contact_name"}}</dd>
-                            </div>
-                            {{end}}
-                            {{if index .PickupFormData "contact_email"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Contact Email</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "contact_email"}}</dd>
-                            </div>
-                            {{end}}
-                            {{if index .PickupFormData "contact_phone"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Contact Phone</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "contact_phone"}}</dd>
-                            </div>
-                            {{end}}
-                        </dl>
-                    </div>
-
-                    <!-- Pickup Address -->
-                    <div class="mb-6 pb-6 border-b">
-                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Pickup Address</h4>
-                        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {{if index .PickupFormData "pickup_address"}}
-                            <div class="md:col-span-2">
-                                <dt class="text-sm font-medium text-gray-500">Street Address</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_address"}}</dd>
-                            </div>
-                            {{end}}
-                            {{if index .PickupFormData "pickup_city"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">City</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_city"}}</dd>
-                            </div>
-                            {{end}}
-                            {{if index .PickupFormData "pickup_state"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">State</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_state"}}</dd>
-                            </div>
-                            {{end}}
-                            {{if index .PickupFormData "pickup_zip"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">ZIP Code</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_zip"}}</dd>
-                            </div>
-                            {{end}}
-                        </dl>
-                    </div>
-
-                    <!-- Pickup Schedule -->
-                    <div class="mb-6 pb-6 border-b">
-                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Pickup Schedule</h4>
-                        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {{if index .PickupFormData "pickup_date"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Pickup Date</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_date"}}</dd>
-                            </div>
-                            {{end}}
-                            {{if index .PickupFormData "pickup_time_slot"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Time Slot</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "pickup_time_slot" | title}}</dd>
-                            </div>
-                            {{end}}
-                        </dl>
-                    </div>
-
-                    <!-- Shipment Details -->
-                    <div class="mb-6 pb-6 border-b">
-                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Shipment Details</h4>
-                        <dl class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {{if index .PickupFormData "number_of_laptops"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Number of Laptops</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "number_of_laptops"}}</dd>
-                            </div>
-                            {{end}}
-                            {{if index .PickupFormData "number_of_boxes"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Number of Boxes</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "number_of_boxes"}}</dd>
-                            </div>
-                            {{end}}
-                            {{if index .PickupFormData "assignment_type"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Assignment Type</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "assignment_type" | title}}</dd>
-                            </div>
-                            {{end}}
-                        </dl>
-                    </div>
-
-                    <!-- Bulk Dimensions (if bulk assignment) -->
-                    {{if eq (index .PickupFormData "assignment_type") "bulk"}}
-                    <div class="mb-6 pb-6 border-b">
-                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Bulk Shipment Dimensions</h4>
-                        <dl class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {{if index .PickupFormData "bulk_length"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Length</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "bulk_length"}} in</dd>
-                            </div>
-                            {{end}}
-                            {{if index .PickupFormData "bulk_width"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Width</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "bulk_width"}} in</dd>
-                            </div>
-                            {{end}}
-                            {{if index .PickupFormData "bulk_height"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Height</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "bulk_height"}} in</dd>
-                            </div>
-                            {{end}}
-                            {{if index .PickupFormData "bulk_weight"}}
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Weight</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "bulk_weight"}} lbs</dd>
-                            </div>
-                            {{end}}
-                        </dl>
-                    </div>
-                    {{end}}
-
-                    <!-- Accessories -->
-                    {{if index .PickupFormData "include_accessories"}}
-                    <div class="mb-6 pb-6 border-b">
-                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Accessories</h4>
-                        {{if index .PickupFormData "accessories_description"}}
-                        <p class="text-sm text-gray-900">{{index .PickupFormData "accessories_description"}}</p>
-                        {{else}}
-                        <p class="text-sm text-gray-500 italic">Accessories included (no description provided)</p>
-                        {{end}}
-                    </div>
-                    {{end}}
-
-                    <!-- Special Instructions -->
-                    {{if index .PickupFormData "special_instructions"}}
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-700 mb-3">Special Instructions</h4>
-                        <p class="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">{{index .PickupFormData "special_instructions"}}</p>
-                    </div>
-                    {{end}}
-                </div>
-                {{end}}
 
                 <!-- Laptops -->
                 {{if .Laptops}}
