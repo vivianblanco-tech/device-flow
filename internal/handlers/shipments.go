@@ -334,6 +334,9 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	// Generate tracking URL if courier and tracking number are present
 	trackingURL := s.GetTrackingURL()
 
+	// Build complete timeline for the shipment
+	timeline := models.BuildTimeline(&s)
+
 	data := map[string]interface{}{
 		"Error":           errorMsg,
 		"Success":         successMsg,
@@ -350,6 +353,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		"ReceptionReport": receptionReport,
 		"DeliveryForm":    deliveryForm,
 		"Engineers":       engineers,
+		"Timeline":        timeline,
 	}
 
 	if h.Templates != nil {

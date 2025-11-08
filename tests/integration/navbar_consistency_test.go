@@ -246,6 +246,19 @@ func loadTemplatesWithNavigation(t *testing.T) *template.Template {
 			}
 			return strings.ReplaceAll(s, old, new)
 		},
+		"add": func(a, b int) int {
+			return a + b
+		},
+		"len": func(v interface{}) int {
+			switch val := v.(type) {
+			case []models.TimelineItem:
+				return len(val)
+			case []interface{}:
+				return len(val)
+			default:
+				return 0
+			}
+		},
 		"getNav": func(role models.UserRole) views.NavigationLinks {
 			return views.GetNavigationLinks(role)
 		},

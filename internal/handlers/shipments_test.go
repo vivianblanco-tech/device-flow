@@ -463,6 +463,134 @@ func TestShipmentDetail(t *testing.T) {
 	})
 }
 
+func TestShipmentDetailTimelineData(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test user
+	var userID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	t.Run("timeline data includes all statuses with completed/current/pending indicators", func(t *testing.T) {
+		// Create shipment in middle of process
+		now := time.Now()
+		pickupDate := now.AddDate(0, 0, 1)
+		pickedUpAt := now.AddDate(0, 0, 2)
+		
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, 
+			pickup_scheduled_date, picked_up_at, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			companyID, models.ShipmentStatusInTransitToWarehouse, "TEST-TIMELINE", 
+			pickupDate, pickedUpAt, now, now,
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		templates := loadTestTemplates(t)
+		handler := NewShipmentsHandler(db, templates)
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		// Check that timeline renders all statuses
+		body := w.Body.String()
+		
+		// Should include all status labels
+		expectedStatuses := []string{
+			"Pickup Scheduled",
+			"Picked Up",
+			"In Transit to Warehouse",
+			"Arrived at Warehouse", 
+			"Released from Warehouse",
+			"In Transit to Engineer",
+			"Delivered",
+		}
+		
+		for _, status := range expectedStatuses {
+			if !strings.Contains(body, status) {
+				t.Errorf("Timeline should include status '%s' but it was not found", status)
+			}
+		}
+	})
+
+	t.Run("timeline uses different colors for transit statuses", func(t *testing.T) {
+		// Create shipment in transit to warehouse
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusInTransitToWarehouse, "TEST-TRANSIT-WH", time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		templates := loadTestTemplates(t)
+		handler := NewShipmentsHandler(db, templates)
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		
+		// Check for distinct styling for in-transit status
+		// Orange/yellow colors (bg-orange or bg-yellow) should be used for transit
+		hasTransitColor := strings.Contains(body, "bg-orange") || strings.Contains(body, "bg-yellow")
+		if !hasTransitColor {
+			t.Error("Timeline should use distinct color (orange/yellow) for 'In Transit' statuses")
+		}
+	})
+}
+
 func TestUpdateShipmentStatus(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")

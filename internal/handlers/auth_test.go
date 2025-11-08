@@ -52,6 +52,19 @@ func loadTestTemplates(t *testing.T) *template.Template {
 			}
 			return strings.Title(s)
 		},
+		"add": func(a, b int) int {
+			return a + b
+		},
+		"len": func(v interface{}) int {
+			switch val := v.(type) {
+			case []models.TimelineItem:
+				return len(val)
+			case []interface{}:
+				return len(val)
+			default:
+				return 0
+			}
+		},
 		// Calendar template functions
 		"formatDate": func(t time.Time) string {
 			return t.Format("Jan 2, 2006")
@@ -131,13 +144,13 @@ func loadTestTemplates(t *testing.T) *template.Template {
 	if err != nil {
 		t.Fatalf("Failed to parse page templates: %v", err)
 	}
-	
+
 	// Also load component templates
 	templates, err = templates.ParseGlob("../../templates/components/*.html")
 	if err != nil {
 		t.Fatalf("Failed to parse component templates: %v", err)
 	}
-	
+
 	return templates
 }
 
@@ -767,8 +780,16 @@ func TestSendMagicLink(t *testing.T) {
 		w := httptest.NewRecorder()
 		handler.SendMagicLink(w, req)
 
-		if w.Code != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", w.Code)
+		// SendMagicLink redirects to the shipment detail page with success message
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303 (SeeOther), got %d", w.Code)
+		}
+
+		// Verify redirect location contains the shipment ID
+		location := w.Header().Get("Location")
+		expectedPath := fmt.Sprintf("/shipments/%d", shipmentID)
+		if !strings.Contains(location, expectedPath) {
+			t.Errorf("Expected redirect to contain %s, got %s", expectedPath, location)
 		}
 	})
 
