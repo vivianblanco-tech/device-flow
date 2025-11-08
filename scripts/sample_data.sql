@@ -29,24 +29,24 @@ ALTER SEQUENCE delivery_forms_id_seq RESTART WITH 1;
 -- ============================================
 -- USERS (Password: "password123")
 -- ============================================
--- Bcrypt hash for "password123": $2a$10$rKJ0VqZ0yX4YN3xhVZGUXO7yqK5zB8qGwJZ5FqB0X0XqZ5yX4YN3h
+-- Bcrypt hash for "password123": $2a$10$lmjhwGnRTf7LvgahdoEmteieCMFpTtXzJXmgWrM.hWvhVmm1J9hE6
 INSERT INTO users (email, password_hash, role, created_at, updated_at) VALUES
 -- Logistics users
-('logistics@bairesdev.com', '$2a$10$rKJ0VqZ0yX4YN3xhVZGUXO7yqK5zB8qGwJZ5FqB0X0XqZ5yX4YN3h', 'logistics', NOW(), NOW()),
-('logistics2@bairesdev.com', '$2a$10$rKJ0VqZ0yX4YN3xhVZGUXO7yqK5zB8qGwJZ5FqB0X0XqZ5yX4YN3h', 'logistics', NOW(), NOW()),
+('logistics@bairesdev.com', '$2a$10$lmjhwGnRTf7LvgahdoEmteieCMFpTtXzJXmgWrM.hWvhVmm1J9hE6', 'logistics', NOW(), NOW()),
+('logistics2@bairesdev.com', '$2a$10$lmjhwGnRTf7LvgahdoEmteieCMFpTtXzJXmgWrM.hWvhVmm1J9hE6', 'logistics', NOW(), NOW()),
 
 -- Client users
-('client1@techcorp.com', '$2a$10$rKJ0VqZ0yX4YN3xhVZGUXO7yqK5zB8qGwJZ5FqB0X0XqZ5yX4YN3h', 'client', NOW(), NOW()),
-('client2@innovate.io', '$2a$10$rKJ0VqZ0yX4YN3xhVZGUXO7yqK5zB8qGwJZ5FqB0X0XqZ5yX4YN3h', 'client', NOW(), NOW()),
-('client3@globaltech.com', '$2a$10$rKJ0VqZ0yX4YN3xhVZGUXO7yqK5zB8qGwJZ5FqB0X0XqZ5yX4YN3h', 'client', NOW(), NOW()),
+('client1@techcorp.com', '$2a$10$lmjhwGnRTf7LvgahdoEmteieCMFpTtXzJXmgWrM.hWvhVmm1J9hE6', 'client', NOW(), NOW()),
+('client2@innovate.io', '$2a$10$lmjhwGnRTf7LvgahdoEmteieCMFpTtXzJXmgWrM.hWvhVmm1J9hE6', 'client', NOW(), NOW()),
+('client3@globaltech.com', '$2a$10$lmjhwGnRTf7LvgahdoEmteieCMFpTtXzJXmgWrM.hWvhVmm1J9hE6', 'client', NOW(), NOW()),
 
 -- Warehouse users
-('warehouse@bairesdev.com', '$2a$10$rKJ0VqZ0yX4YN3xhVZGUXO7yqK5zB8qGwJZ5FqB0X0XqZ5yX4YN3h', 'warehouse', NOW(), NOW()),
-('warehouse2@bairesdev.com', '$2a$10$rKJ0VqZ0yX4YN3xhVZGUXO7yqK5zB8qGwJZ5FqB0X0XqZ5yX4YN3h', 'warehouse', NOW(), NOW()),
+('warehouse@bairesdev.com', '$2a$10$lmjhwGnRTf7LvgahdoEmteieCMFpTtXzJXmgWrM.hWvhVmm1J9hE6', 'warehouse', NOW(), NOW()),
+('warehouse2@bairesdev.com', '$2a$10$lmjhwGnRTf7LvgahdoEmteieCMFpTtXzJXmgWrM.hWvhVmm1J9hE6', 'warehouse', NOW(), NOW()),
 
 -- Project Manager users
-('pm@bairesdev.com', '$2a$10$rKJ0VqZ0yX4YN3xhVZGUXO7yqK5zB8qGwJZ5FqB0X0XqZ5yX4YN3h', 'project_manager', NOW(), NOW()),
-('pm2@bairesdev.com', '$2a$10$rKJ0VqZ0yX4YN3xhVZGUXO7yqK5zB8qGwJZ5FqB0X0XqZ5yX4YN3h', 'project_manager', NOW(), NOW());
+('pm@bairesdev.com', '$2a$10$lmjhwGnRTf7LvgahdoEmteieCMFpTtXzJXmgWrM.hWvhVmm1J9hE6', 'project_manager', NOW(), NOW()),
+('pm2@bairesdev.com', '$2a$10$lmjhwGnRTf7LvgahdoEmteieCMFpTtXzJXmgWrM.hWvhVmm1J9hE6', 'project_manager', NOW(), NOW());
 
 -- ============================================
 -- CLIENT COMPANIES
