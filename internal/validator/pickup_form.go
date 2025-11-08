@@ -14,6 +14,9 @@ type PickupFormInput struct {
 	ContactEmail        string `json:"contact_email"`
 	ContactPhone        string `json:"contact_phone"`
 	PickupAddress       string `json:"pickup_address"`
+	PickupCity          string `json:"pickup_city"`
+	PickupState         string `json:"pickup_state"`
+	PickupZip           string `json:"pickup_zip"`
 	PickupDate          string `json:"pickup_date"`
 	PickupTimeSlot      string `json:"pickup_time_slot"`
 	NumberOfLaptops     int    `json:"number_of_laptops"`
@@ -49,6 +52,27 @@ func ValidatePickupForm(input PickupFormInput) error {
 	// Validate pickup address
 	if strings.TrimSpace(input.PickupAddress) == "" {
 		return errors.New("pickup address is required")
+	}
+
+	// Validate pickup city
+	if strings.TrimSpace(input.PickupCity) == "" {
+		return errors.New("pickup city is required")
+	}
+
+	// Validate pickup state
+	if strings.TrimSpace(input.PickupState) == "" {
+		return errors.New("pickup state is required")
+	}
+	if !isValidUSState(input.PickupState) {
+		return errors.New("invalid US state code")
+	}
+
+	// Validate pickup ZIP code
+	if strings.TrimSpace(input.PickupZip) == "" {
+		return errors.New("pickup ZIP code is required")
+	}
+	if !isValidZipCode(input.PickupZip) {
+		return errors.New("ZIP code must be 5 digits")
 	}
 
 	// Validate pickup date
@@ -117,6 +141,37 @@ func isValidTimeSlot(slot string) bool {
 	validSlots := []string{"morning", "afternoon", "evening"}
 	for _, valid := range validSlots {
 		if slot == valid {
+			return true
+		}
+	}
+	return false
+}
+
+// isValidZipCode validates US ZIP code format (5 digits)
+func isValidZipCode(zip string) bool {
+	zip = strings.TrimSpace(zip)
+	if len(zip) != 5 {
+		return false
+	}
+	// Check if all characters are digits
+	pattern := `^[0-9]{5}$`
+	matched, _ := regexp.MatchString(pattern, zip)
+	return matched
+}
+
+// isValidUSState validates US state code (2-letter abbreviation)
+func isValidUSState(state string) bool {
+	validStates := []string{
+		"AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+		"HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+		"MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+		"NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+		"SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+		"DC", // District of Columbia
+	}
+	state = strings.TrimSpace(state)
+	for _, valid := range validStates {
+		if state == valid {
 			return true
 		}
 	}

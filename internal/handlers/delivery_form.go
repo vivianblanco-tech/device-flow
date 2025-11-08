@@ -204,10 +204,10 @@ func (h *DeliveryFormHandler) DeliveryFormSubmit(w http.ResponseWriter, r *http.
 		// Generate unique filename
 		ext := filepath.Ext(fileHeader.Filename)
 		filename := fmt.Sprintf("%d_%d%s", shipmentID, time.Now().UnixNano(), ext)
-		filepath := filepath.Join(DeliveryUploadDir, filename)
+		destPath := filepath.Join(DeliveryUploadDir, filename)
 
 		// Create destination file
-		dst, err := os.Create(filepath)
+		dst, err := os.Create(destPath)
 		if err != nil {
 			redirectURL := fmt.Sprintf("/delivery-form?shipment_id=%d&error=Failed+to+save+file", shipmentID)
 			http.Redirect(w, r, redirectURL, http.StatusSeeOther)

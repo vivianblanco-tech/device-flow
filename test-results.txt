@@ -1,0 +1,15 @@
+﻿?   	github.com/yourusername/laptop-tracking-system/cmd/dbtest	[no test files]
+?   	github.com/yourusername/laptop-tracking-system/cmd/emailtest	[no test files]
+?   	github.com/yourusername/laptop-tracking-system/cmd/jiratest	[no test files]
+?   	github.com/yourusername/laptop-tracking-system/cmd/web	[no test files]
+ok  	github.com/yourusername/laptop-tracking-system/internal/auth	(cached)
+ok  	github.com/yourusername/laptop-tracking-system/internal/config	(cached)
+ok  	github.com/yourusername/laptop-tracking-system/internal/database	(cached)
+ok  	github.com/yourusername/laptop-tracking-system/internal/email	(cached)
+ok  	github.com/yourusername/laptop-tracking-system/internal/handlers	6.541s
+ok  	github.com/yourusername/laptop-tracking-system/internal/jira	(cached)
+?   	github.com/yourusername/laptop-tracking-system/internal/middleware	[no test files]
+ok  	github.com/yourusername/laptop-tracking-system/internal/models	(cached)
+ok  	github.com/yourusername/laptop-tracking-system/internal/validator	0.574s
+ok  	github.com/yourusername/laptop-tracking-system/internal/views	(cached)
+ok  	github.com/yourusername/laptop-tracking-system/tests/integration	1.225s

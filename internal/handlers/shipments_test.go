@@ -316,7 +316,7 @@ func TestShipmentDetail(t *testing.T) {
 
 		req = httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(dhlShipmentID, 10), nil)
 		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(dhlShipmentID, 10)})
-		
+
 		// Create fresh context for DHL request
 		reqCtx = context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
@@ -332,12 +332,12 @@ func TestShipmentDetail(t *testing.T) {
 		expectedURL = "http://www.dhl.com/en/express/tracking.html?AWB=1234567890"
 		hasDHL := strings.Contains(responseBody, "dhl.com")
 		hasTracking := strings.Contains(responseBody, "1234567890")
-		
+
 		if !strings.Contains(responseBody, expectedURL) && (!hasDHL || !hasTracking) {
 			// Find where "Tracking Number" appears in the response
 			idx := strings.Index(responseBody, "Tracking Number")
 			if idx >= 0 && idx+200 < len(responseBody) {
-				t.Errorf("Expected DHL URL. Has dhl.com=%v, Has tracking=%v. Tracking section: %s", 
+				t.Errorf("Expected DHL URL. Has dhl.com=%v, Has tracking=%v. Tracking section: %s",
 					hasDHL, hasTracking, responseBody[idx:idx+200])
 			} else {
 				t.Errorf("Expected DHL URL. Has dhl.com=%v, Has tracking=%v", hasDHL, hasTracking)
@@ -357,7 +357,7 @@ func TestShipmentDetail(t *testing.T) {
 
 		req = httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(fedexShipmentID, 10), nil)
 		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(fedexShipmentID, 10)})
-		
+
 		// Create fresh context for FedEx request
 		reqCtx = context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
@@ -500,13 +500,13 @@ func TestShipmentDetailTimelineData(t *testing.T) {
 		now := time.Now()
 		pickupDate := now.AddDate(0, 0, 1)
 		pickedUpAt := now.AddDate(0, 0, 2)
-		
+
 		var shipmentID int64
 		err := db.QueryRowContext(ctx,
 			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, 
 			pickup_scheduled_date, picked_up_at, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-			companyID, models.ShipmentStatusInTransitToWarehouse, "TEST-TIMELINE", 
+			companyID, models.ShipmentStatusInTransitToWarehouse, "TEST-TIMELINE",
 			pickupDate, pickedUpAt, now, now,
 		).Scan(&shipmentID)
 		if err != nil {
@@ -532,18 +532,18 @@ func TestShipmentDetailTimelineData(t *testing.T) {
 
 		// Check that timeline renders all statuses
 		body := w.Body.String()
-		
+
 		// Should include all status labels
 		expectedStatuses := []string{
 			"Pickup Scheduled",
 			"Picked Up",
 			"In Transit to Warehouse",
-			"Arrived at Warehouse", 
+			"Arrived at Warehouse",
 			"Released from Warehouse",
 			"In Transit to Engineer",
 			"Delivered",
 		}
-		
+
 		for _, status := range expectedStatuses {
 			if !strings.Contains(body, status) {
 				t.Errorf("Timeline should include status '%s' but it was not found", status)
@@ -581,7 +581,7 @@ func TestShipmentDetailTimelineData(t *testing.T) {
 		}
 
 		body := w.Body.String()
-		
+
 		// Check for distinct styling for in-transit status
 		// Orange/yellow colors (bg-orange or bg-yellow) should be used for transit
 		hasTransitColor := strings.Contains(body, "bg-orange") || strings.Contains(body, "bg-yellow")

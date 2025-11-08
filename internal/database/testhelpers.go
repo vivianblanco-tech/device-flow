@@ -5,16 +5,24 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 
 	_ "github.com/lib/pq"
 )
+
+// testDBMutex ensures that only one test accesses the database at a time
+// This prevents race conditions when tests run in parallel
+var testDBMutex sync.Mutex
 
 // SetupTestDB creates a test database connection
 // It uses the TEST_DATABASE_URL environment variable if set,
 // otherwise falls back to a default test database configuration
 func SetupTestDB(t *testing.T) (*sql.DB, func()) {
 	t.Helper()
+
+	// Lock the mutex to ensure only one test accesses the database at a time
+	testDBMutex.Lock()
 
 	// Get test database URL from environment or use default
 	dbURL := os.Getenv("TEST_DATABASE_URL")
@@ -32,33 +40,45 @@ func SetupTestDB(t *testing.T) (*sql.DB, func()) {
 		t.Fatalf("Failed to ping test database: %v", err)
 	}
 
-	// Cleanup function to close the connection and clean up test data
-	cleanup := func() {
-		// Clean up test tables in reverse order of dependencies
-		cleanupQueries := []string{
-			"DELETE FROM sessions",
-			"DELETE FROM magic_links",
-			"DELETE FROM notification_logs",
-			"DELETE FROM audit_logs",
-			"DELETE FROM delivery_forms",
-			"DELETE FROM reception_reports",
-			"DELETE FROM pickup_forms",
-			"DELETE FROM shipment_laptops",
-			"DELETE FROM shipments",
-			"DELETE FROM laptops",
-			"DELETE FROM software_engineers",
-			"DELETE FROM users",
-			"DELETE FROM client_companies",
-		}
+	// Clean up test tables in reverse order of dependencies BEFORE the test runs
+	// This ensures each test starts with a clean slate, preventing race conditions
+	cleanupQueries := []string{
+		"DELETE FROM sessions",
+		"DELETE FROM magic_links",
+		"DELETE FROM notification_logs",
+		"DELETE FROM audit_logs",
+		"DELETE FROM delivery_forms",
+		"DELETE FROM reception_reports",
+		"DELETE FROM pickup_forms",
+		"DELETE FROM shipment_laptops",
+		"DELETE FROM shipments",
+		"DELETE FROM laptops",
+		"DELETE FROM software_engineers",
+		"DELETE FROM users",
+		"DELETE FROM client_companies",
+	}
 
+	for _, query := range cleanupQueries {
+		_, err := db.Exec(query)
+		if err != nil {
+			t.Logf("Pre-cleanup warning: %v", err)
+		}
+	}
+
+	// Cleanup function to close the connection and clean up test data after the test
+	cleanup := func() {
+		// Clean up test tables again after test completion
 		for _, query := range cleanupQueries {
 			_, err := db.Exec(query)
 			if err != nil {
-				t.Logf("Cleanup warning: %v", err)
+				t.Logf("Post-cleanup warning: %v", err)
 			}
 		}
 
 		db.Close()
+		
+		// Unlock the mutex to allow other tests to run
+		testDBMutex.Unlock()
 	}
 
 	return db, cleanup

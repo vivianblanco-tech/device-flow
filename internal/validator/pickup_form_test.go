@@ -19,7 +19,10 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactName:          "John Doe",
 				ContactEmail:         "john@company.com",
 				ContactPhone:         "+1-555-0123",
-				PickupAddress:        "123 Main St, City, State 12345",
+				PickupAddress:        "123 Main St",
+				PickupCity:           "New York",
+				PickupState:          "NY",
+				PickupZip:            "10001",
 				PickupDate:           time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:       "morning",
 				NumberOfLaptops:      3,
@@ -29,6 +32,117 @@ func TestValidatePickupForm(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "missing pickup city",
+			input: PickupFormInput{
+				ClientCompanyID:     1,
+				ContactName:         "John Doe",
+				ContactEmail:        "john@company.com",
+				ContactPhone:        "+1-555-0123",
+				PickupAddress:       "123 Main St",
+				PickupState:         "NY",
+				PickupZip:           "10001",
+				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
+				PickupTimeSlot:      "morning",
+				NumberOfLaptops:     1,
+				JiraTicketNumber:    "TEST-600",
+			},
+			wantErr: true,
+			errMsg:  "pickup city is required",
+		},
+		{
+			name: "missing pickup state",
+			input: PickupFormInput{
+				ClientCompanyID:     1,
+				ContactName:         "John Doe",
+				ContactEmail:        "john@company.com",
+				ContactPhone:        "+1-555-0123",
+				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupZip:           "10001",
+				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
+				PickupTimeSlot:      "morning",
+				NumberOfLaptops:     1,
+				JiraTicketNumber:    "TEST-601",
+			},
+			wantErr: true,
+			errMsg:  "pickup state is required",
+		},
+		{
+			name: "invalid state code",
+			input: PickupFormInput{
+				ClientCompanyID:     1,
+				ContactName:         "John Doe",
+				ContactEmail:        "john@company.com",
+				ContactPhone:        "+1-555-0123",
+				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "XX",
+				PickupZip:           "10001",
+				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
+				PickupTimeSlot:      "morning",
+				NumberOfLaptops:     1,
+				JiraTicketNumber:    "TEST-602",
+			},
+			wantErr: true,
+			errMsg:  "invalid US state code",
+		},
+		{
+			name: "missing pickup zip",
+			input: PickupFormInput{
+				ClientCompanyID:     1,
+				ContactName:         "John Doe",
+				ContactEmail:        "john@company.com",
+				ContactPhone:        "+1-555-0123",
+				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
+				PickupTimeSlot:      "morning",
+				NumberOfLaptops:     1,
+				JiraTicketNumber:    "TEST-603",
+			},
+			wantErr: true,
+			errMsg:  "pickup ZIP code is required",
+		},
+		{
+			name: "invalid zip code format - too short",
+			input: PickupFormInput{
+				ClientCompanyID:     1,
+				ContactName:         "John Doe",
+				ContactEmail:        "john@company.com",
+				ContactPhone:        "+1-555-0123",
+				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "1234",
+				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
+				PickupTimeSlot:      "morning",
+				NumberOfLaptops:     1,
+				JiraTicketNumber:    "TEST-604",
+			},
+			wantErr: true,
+			errMsg:  "ZIP code must be 5 digits",
+		},
+		{
+			name: "invalid zip code format - not digits",
+			input: PickupFormInput{
+				ClientCompanyID:     1,
+				ContactName:         "John Doe",
+				ContactEmail:        "john@company.com",
+				ContactPhone:        "+1-555-0123",
+				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "ABCDE",
+				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
+				PickupTimeSlot:      "morning",
+				NumberOfLaptops:     1,
+				JiraTicketNumber:    "TEST-605",
+			},
+			wantErr: true,
+			errMsg:  "ZIP code must be 5 digits",
+		},
+		{
 			name: "missing JIRA ticket number",
 			input: PickupFormInput{
 				ClientCompanyID:     1,
@@ -36,6 +150,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     1,
@@ -52,6 +169,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     1,
@@ -68,6 +188,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     1,
@@ -84,6 +207,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     1,
@@ -99,6 +225,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     1,
@@ -114,6 +243,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     1,
@@ -130,6 +262,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "invalid-email",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     1,
@@ -145,6 +280,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactName:         "John Doe",
 				ContactEmail:        "john@company.com",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     1,
@@ -176,6 +314,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     1,
 				JiraTicketNumber:    "TEST-505",
@@ -191,6 +332,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          "invalid-date",
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     1,
@@ -207,6 +351,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          "2020-01-01",
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     1,
@@ -223,6 +370,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				NumberOfLaptops:     1,
 				JiraTicketNumber:    "TEST-508",
@@ -238,6 +388,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:      "invalid-slot",
 				NumberOfLaptops:     1,
@@ -254,6 +407,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     0,
@@ -270,6 +426,9 @@ func TestValidatePickupForm(t *testing.T) {
 				ContactEmail:        "john@company.com",
 				ContactPhone:        "+1-555-0123",
 				PickupAddress:       "123 Main St",
+				PickupCity:          "New York",
+				PickupState:         "NY",
+				PickupZip:           "10001",
 				PickupDate:          time.Now().Add(24 * time.Hour).Format("2006-01-02"),
 				PickupTimeSlot:      "morning",
 				NumberOfLaptops:     -1,
@@ -345,6 +504,57 @@ func TestValidateTimeSlot(t *testing.T) {
 			valid := isValidTimeSlot(tt.timeSlot)
 			if valid != tt.valid {
 				t.Errorf("isValidTimeSlot(%q) = %v, want %v", tt.timeSlot, valid, tt.valid)
+			}
+		})
+	}
+}
+
+func TestValidateUSState(t *testing.T) {
+	tests := []struct {
+		name  string
+		state string
+		valid bool
+	}{
+		{"valid state - NY", "NY", true},
+		{"valid state - CA", "CA", true},
+		{"valid state - TX", "TX", true},
+		{"valid state - FL", "FL", true},
+		{"invalid state - XX", "XX", false},
+		{"invalid state - lowercase", "ny", false},
+		{"invalid state - full name", "New York", false},
+		{"empty state", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			valid := isValidUSState(tt.state)
+			if valid != tt.valid {
+				t.Errorf("isValidUSState(%q) = %v, want %v", tt.state, valid, tt.valid)
+			}
+		})
+	}
+}
+
+func TestValidateZipCode(t *testing.T) {
+	tests := []struct {
+		name  string
+		zip   string
+		valid bool
+	}{
+		{"valid 5-digit zip", "12345", true},
+		{"valid 5-digit zip - zeros", "00000", true},
+		{"invalid - 4 digits", "1234", false},
+		{"invalid - 6 digits", "123456", false},
+		{"invalid - letters", "ABCDE", false},
+		{"invalid - mixed", "12A45", false},
+		{"empty zip", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			valid := isValidZipCode(tt.zip)
+			if valid != tt.valid {
+				t.Errorf("isValidZipCode(%q) = %v, want %v", tt.zip, valid, tt.valid)
 			}
 		})
 	}
