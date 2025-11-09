@@ -975,11 +975,11 @@ func TestUpdateShipmentStatus(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to query shipment: %v", err)
 		}
-		
+
 		if status != models.ShipmentStatusInTransitToEngineer {
 			t.Errorf("Expected status 'in_transit_to_engineer', got '%s'", status)
 		}
-		
+
 		if etaToEngineer == nil {
 			t.Error("Expected ETA to be set, got nil")
 		} else {
@@ -1033,11 +1033,11 @@ func TestUpdateShipmentStatus(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to query shipment: %v", err)
 		}
-		
+
 		if status != models.ShipmentStatusInTransitToEngineer {
 			t.Errorf("Expected status 'in_transit_to_engineer', got '%s'", status)
 		}
-		
+
 		if etaToEngineer != nil {
 			t.Errorf("Expected ETA to be nil, got %v", etaToEngineer)
 		}
@@ -1086,11 +1086,11 @@ func TestUpdateShipmentStatus(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to query shipment: %v", err)
 		}
-		
+
 		if status != models.ShipmentStatusPickupScheduled {
 			t.Errorf("Expected status 'pickup_from_client_scheduled', got '%s'", status)
 		}
-		
+
 		if !storedTrackingNumber.Valid || storedTrackingNumber.String != trackingNumber {
 			t.Errorf("Expected tracking number '%s', got '%s'", trackingNumber, storedTrackingNumber.String)
 		}

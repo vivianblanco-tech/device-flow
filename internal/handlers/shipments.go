@@ -338,9 +338,10 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	// Get error and success messages
+	// Get error, success, and warning messages
 	errorMsg := r.URL.Query().Get("error")
 	successMsg := r.URL.Query().Get("success")
+	warningMsg := r.URL.Query().Get("warning")
 
 	// Generate tracking URL if courier and tracking number are present
 	trackingURL := s.GetTrackingURL()
@@ -351,6 +352,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	data := map[string]interface{}{
 		"Error":           errorMsg,
 		"Success":         successMsg,
+		"Warning":         warningMsg,
 		"User":            user,
 		"Nav":             views.GetNavigationLinks(user.Role),
 		"CurrentPage":     "shipments",
@@ -486,16 +488,31 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 	}
 
 	// Send email notification if status changed to pickup_scheduled
+	notificationSent := false
 	if oldStatus == string(models.ShipmentStatusPendingPickup) && newStatus == models.ShipmentStatusPickupScheduled {
 		if h.EmailNotifier != nil {
-			go func() {
-				// Use a fresh context for the background goroutine
-				// r.Context() gets canceled when the HTTP response is sent
-				ctx := context.Background()
-				if err := h.EmailNotifier.SendPickupScheduledNotification(ctx, shipmentID); err != nil {
-					fmt.Printf("Warning: failed to send pickup scheduled notification: %v\n", err)
-				}
-			}()
+			// Check if pickup form exists before sending notification
+			var pickupFormExists bool
+			err := h.DB.QueryRowContext(r.Context(),
+				`SELECT EXISTS(SELECT 1 FROM pickup_forms WHERE shipment_id = $1)`,
+				shipmentID,
+			).Scan(&pickupFormExists)
+			
+			if err == nil && pickupFormExists {
+				go func() {
+					// Use a fresh context for the background goroutine
+					// r.Context() gets canceled when the HTTP response is sent
+					ctx := context.Background()
+					if err := h.EmailNotifier.SendPickupScheduledNotification(ctx, shipmentID); err != nil {
+						fmt.Printf("Warning: failed to send pickup scheduled notification: %v\n", err)
+					} else {
+						fmt.Printf("Pickup scheduled notification sent successfully for shipment %d\n", shipmentID)
+					}
+				}()
+				notificationSent = true
+			} else if err != nil {
+				fmt.Printf("Warning: failed to check for pickup form: %v\n", err)
+			}
 		}
 	}
 
@@ -515,8 +532,13 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		fmt.Printf("Failed to create audit log: %v\n", err)
 	}
 
-	// Redirect back to shipment detail
-	redirectURL := fmt.Sprintf("/shipments/%d?success=Status+updated+successfully", shipmentID)
+	// Redirect back to shipment detail with appropriate message
+	var redirectURL string
+	if newStatus == models.ShipmentStatusPickupScheduled && !notificationSent {
+		redirectURL = fmt.Sprintf("/shipments/%d?success=Status+updated+successfully&warning=Email+notification+not+sent+(no+pickup+form+found)", shipmentID)
+	} else {
+		redirectURL = fmt.Sprintf("/shipments/%d?success=Status+updated+successfully", shipmentID)
+	}
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 

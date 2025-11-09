@@ -120,7 +120,9 @@ func (n *Notifier) SendPickupScheduledNotification(ctx context.Context, shipment
 		shipmentID,
 	).Scan(&formDataJSON)
 	if err != nil {
-		return fmt.Errorf("failed to fetch pickup form: %w", err)
+		// If no pickup form exists, we can't send the notification (no contact email)
+		// This is not an error - it just means the form hasn't been submitted yet
+		return fmt.Errorf("no pickup form found for shipment %d: cannot send notification without contact email", shipmentID)
 	}
 
 	// Parse form data to extract contact information
