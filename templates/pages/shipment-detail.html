@@ -345,7 +345,17 @@
                                                 {{end}}
                                                 {{if $item.TrackingNumber}}
                                                 <p class="text-xs text-gray-600 mt-1">
-                                                    <span class="font-medium">Tracking:</span> <span class="font-mono">{{$item.TrackingNumber}}</span>
+                                                    <span class="font-medium">Tracking:</span> 
+                                                    {{if ne $.TrackingURL ""}}
+                                                    <a href="{{$.TrackingURL}}" 
+                                                       target="_blank" 
+                                                       rel="noopener noreferrer"
+                                                       class="font-mono text-blue-600 hover:text-blue-800 hover:underline">
+                                                        {{$item.TrackingNumber}} ↗
+                                                    </a>
+                                                    {{else}}
+                                                    <span class="font-mono">{{$item.TrackingNumber}}</span>
+                                                    {{end}}
                                                 </p>
                                                 {{end}}
                                             </div>
