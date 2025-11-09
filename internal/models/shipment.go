@@ -37,6 +37,7 @@ type Shipment struct {
 	PickedUpAt          *time.Time      `json:"picked_up_at,omitempty" db:"picked_up_at"`
 	ArrivedWarehouseAt  *time.Time      `json:"arrived_warehouse_at,omitempty" db:"arrived_warehouse_at"`
 	ReleasedWarehouseAt *time.Time      `json:"released_warehouse_at,omitempty" db:"released_warehouse_at"`
+	ETAToEngineer       *time.Time      `json:"eta_to_engineer,omitempty" db:"eta_to_engineer"`
 	DeliveredAt         *time.Time      `json:"delivered_at,omitempty" db:"delivered_at"`
 	
 	Notes               string          `json:"notes,omitempty" db:"notes"`
@@ -151,6 +152,36 @@ func (s *Shipment) UpdateStatus(status ShipmentStatus) {
 		s.ArrivedWarehouseAt = &now
 	case ShipmentStatusReleasedFromWarehouse:
 		s.ReleasedWarehouseAt = &now
+	case ShipmentStatusDelivered:
+		s.DeliveredAt = &now
+	}
+
+	s.BeforeUpdate()
+}
+
+// UpdateStatusWithETA updates the shipment status and optionally sets an ETA for in_transit_to_engineer status
+func (s *Shipment) UpdateStatusWithETA(status ShipmentStatus, eta *time.Time) {
+	s.Status = status
+	now := time.Now()
+
+	// Update the appropriate timestamp based on status
+	switch status {
+	case ShipmentStatusPickupScheduled:
+		// If pickup scheduled date is not already set, set it to now
+		if s.PickupScheduledDate == nil {
+			s.PickupScheduledDate = &now
+		}
+	case ShipmentStatusPickedUpFromClient:
+		s.PickedUpAt = &now
+	case ShipmentStatusAtWarehouse:
+		s.ArrivedWarehouseAt = &now
+	case ShipmentStatusReleasedFromWarehouse:
+		s.ReleasedWarehouseAt = &now
+	case ShipmentStatusInTransitToEngineer:
+		// Set ETA if provided
+		if eta != nil {
+			s.ETAToEngineer = eta
+		}
 	case ShipmentStatusDelivered:
 		s.DeliveredAt = &now
 	}

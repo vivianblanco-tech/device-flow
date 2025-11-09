@@ -438,6 +438,52 @@ func TestShipment_GetTrackingURL(t *testing.T) {
 	}
 }
 
+// TestShipment_UpdateStatus_WithETA tests that UpdateStatus properly handles ETA for in_transit_to_engineer status
+func TestShipment_UpdateStatus_WithETA(t *testing.T) {
+	shipment := &Shipment{
+		ClientCompanyID: 1,
+		Status:          ShipmentStatusAtWarehouse,
+	}
+
+	// Update status to in_transit_to_engineer with ETA
+	eta := time.Now().Add(48 * time.Hour) // ETA in 48 hours
+	shipment.UpdateStatusWithETA(ShipmentStatusInTransitToEngineer, &eta)
+
+	// Verify status is updated
+	if shipment.Status != ShipmentStatusInTransitToEngineer {
+		t.Errorf("UpdateStatusWithETA() did not update status, got %v, want %v", shipment.Status, ShipmentStatusInTransitToEngineer)
+	}
+
+	// Verify ETA is set
+	if shipment.ETAToEngineer == nil {
+		t.Error("UpdateStatusWithETA() did not set ETAToEngineer")
+	}
+	if shipment.ETAToEngineer != nil && !shipment.ETAToEngineer.Equal(eta) {
+		t.Errorf("UpdateStatusWithETA() ETAToEngineer = %v, want %v", shipment.ETAToEngineer, eta)
+	}
+}
+
+// TestShipment_UpdateStatus_WithoutETA tests backward compatibility when no ETA is provided
+func TestShipment_UpdateStatus_WithoutETA(t *testing.T) {
+	shipment := &Shipment{
+		ClientCompanyID: 1,
+		Status:          ShipmentStatusAtWarehouse,
+	}
+
+	// Update status without providing ETA
+	shipment.UpdateStatusWithETA(ShipmentStatusInTransitToEngineer, nil)
+
+	// Verify status is updated
+	if shipment.Status != ShipmentStatusInTransitToEngineer {
+		t.Errorf("UpdateStatusWithETA() did not update status, got %v, want %v", shipment.Status, ShipmentStatusInTransitToEngineer)
+	}
+
+	// Verify ETA remains nil (optional field)
+	if shipment.ETAToEngineer != nil {
+		t.Error("UpdateStatusWithETA() should allow nil ETA")
+	}
+}
+
 // Helper function for creating int64 pointers
 func int64Ptr(i int64) *int64 {
 	return &i

@@ -71,7 +71,7 @@ func TestShipmentsList(t *testing.T) {
 	}
 
 	templates := loadTestTemplates(t)
-	handler := NewShipmentsHandler(db, templates)
+	handler := NewShipmentsHandler(db, templates, nil) // nil email notifier for tests
 
 	t.Run("authenticated user can view shipments list", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments", nil)
@@ -220,7 +220,7 @@ func TestShipmentDetail(t *testing.T) {
 	}
 
 	templates := loadTestTemplates(t)
-	handler := NewShipmentsHandler(db, templates)
+	handler := NewShipmentsHandler(db, templates, nil) // nil email notifier for tests
 
 	t.Run("authenticated user can view shipment detail", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
@@ -724,7 +724,7 @@ func TestShipmentDetailTimelineData(t *testing.T) {
 		}
 
 		templates := loadTestTemplates(t)
-		handler := NewShipmentsHandler(db, templates)
+		handler := NewShipmentsHandler(db, templates, nil) // nil email notifier for tests
 
 		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
 		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
@@ -774,7 +774,7 @@ func TestShipmentDetailTimelineData(t *testing.T) {
 		}
 
 		templates := loadTestTemplates(t)
-		handler := NewShipmentsHandler(db, templates)
+		handler := NewShipmentsHandler(db, templates, nil) // nil email notifier for tests
 
 		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
 		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
@@ -845,7 +845,7 @@ func TestUpdateShipmentStatus(t *testing.T) {
 	}
 
 	templates := loadTestTemplates(t)
-	handler := NewShipmentsHandler(db, templates)
+	handler := NewShipmentsHandler(db, templates, nil) // nil email notifier for tests
 
 	t.Run("logistics user can update shipment status", func(t *testing.T) {
 		formData := url.Values{}
@@ -928,6 +928,117 @@ func TestUpdateShipmentStatus(t *testing.T) {
 
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("Expected status 400, got %d", w.Code)
+		}
+	})
+
+	t.Run("updating to in_transit_to_engineer with ETA stores the ETA", func(t *testing.T) {
+		// Update shipment to warehouse first
+		_, err := db.ExecContext(ctx,
+			`UPDATE shipments SET status = $1 WHERE id = $2`,
+			models.ShipmentStatusAtWarehouse, shipmentID,
+		)
+		if err != nil {
+			t.Fatalf("Failed to update shipment to warehouse: %v", err)
+		}
+
+		// Set ETA to 2 days from now
+		etaTime := time.Now().Add(48 * time.Hour)
+		etaString := etaTime.Format("2006-01-02T15:04")
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusInTransitToEngineer))
+		formData.Set("eta_to_engineer", etaString)
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify status and ETA were updated
+		var status models.ShipmentStatus
+		var etaToEngineer *time.Time
+		err = db.QueryRowContext(ctx,
+			`SELECT status, eta_to_engineer FROM shipments WHERE id = $1`,
+			shipmentID,
+		).Scan(&status, &etaToEngineer)
+		if err != nil {
+			t.Fatalf("Failed to query shipment: %v", err)
+		}
+		
+		if status != models.ShipmentStatusInTransitToEngineer {
+			t.Errorf("Expected status 'in_transit_to_engineer', got '%s'", status)
+		}
+		
+		if etaToEngineer == nil {
+			t.Error("Expected ETA to be set, got nil")
+		} else {
+			// Check ETA is within a reasonable range (allowing for parsing and timezone differences)
+			// We allow up to 5 hours difference to account for timezone conversions and precision loss
+			timeDiff := etaToEngineer.Sub(etaTime).Abs()
+			if timeDiff > 5*time.Hour {
+				t.Errorf("Expected ETA around %v, got %v (diff: %v)", etaTime, etaToEngineer, timeDiff)
+			}
+		}
+	})
+
+	t.Run("updating to in_transit_to_engineer without ETA is allowed", func(t *testing.T) {
+		// Create another test shipment
+		var shipmentID2 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusAtWarehouse, "TEST-998", time.Now(), time.Now(),
+		).Scan(&shipmentID2)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID2, 10))
+		formData.Set("status", string(models.ShipmentStatusInTransitToEngineer))
+		// No eta_to_engineer field
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify status was updated and ETA remains nil
+		var status models.ShipmentStatus
+		var etaToEngineer *time.Time
+		err = db.QueryRowContext(ctx,
+			`SELECT status, eta_to_engineer FROM shipments WHERE id = $1`,
+			shipmentID2,
+		).Scan(&status, &etaToEngineer)
+		if err != nil {
+			t.Fatalf("Failed to query shipment: %v", err)
+		}
+		
+		if status != models.ShipmentStatusInTransitToEngineer {
+			t.Errorf("Expected status 'in_transit_to_engineer', got '%s'", status)
+		}
+		
+		if etaToEngineer != nil {
+			t.Errorf("Expected ETA to be nil, got %v", etaToEngineer)
 		}
 	})
 }
@@ -1156,7 +1267,7 @@ func TestShipmentPickupFormPage(t *testing.T) {
 		t.Fatalf("Failed to create test shipment: %v", err)
 	}
 
-	handler := NewShipmentsHandler(db, nil)
+	handler := NewShipmentsHandler(db, nil, nil)
 
 	t.Run("GET request for shipment without pickup form shows empty form", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/shipments/%d/form", shipmentID), nil)
@@ -1276,7 +1387,7 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 		t.Fatalf("Failed to create test shipment: %v", err)
 	}
 
-	handler := NewShipmentsHandler(db, nil)
+	handler := NewShipmentsHandler(db, nil, nil)
 
 	t.Run("POST request creates new pickup form for shipment", func(t *testing.T) {
 		formData := url.Values{}

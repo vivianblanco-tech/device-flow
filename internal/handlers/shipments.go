@@ -216,7 +216,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		        COALESCE(s.tracking_number, '') as tracking_number, 
 		        s.pickup_scheduled_date,
 		        s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, 
-		        s.delivered_at, COALESCE(s.notes, '') as notes, 
+		        s.eta_to_engineer, s.delivered_at, COALESCE(s.notes, '') as notes, 
 		        s.created_at, s.updated_at,
 		        c.name, se.name, se.email
 		FROM shipments s
@@ -228,7 +228,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		&s.ID, &s.ClientCompanyID, &s.SoftwareEngineerID, &s.Status,
 		&s.JiraTicketNumber, &s.CourierName, &s.TrackingNumber, &s.PickupScheduledDate,
 		&s.PickedUpAt, &s.ArrivedWarehouseAt, &s.ReleasedWarehouseAt,
-		&s.DeliveredAt, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
+		&s.ETAToEngineer, &s.DeliveredAt, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
 		&companyName, &engineerName, &engineerEmail,
 	)
 
@@ -422,6 +422,18 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Parse ETA if provided (for in_transit_to_engineer status)
+	var eta *time.Time
+	etaString := r.FormValue("eta_to_engineer")
+	if etaString != "" {
+		parsedETA, err := time.Parse("2006-01-02T15:04", etaString)
+		if err != nil {
+			http.Error(w, "Invalid ETA format", http.StatusBadRequest)
+			return
+		}
+		eta = &parsedETA
+	}
+
 	// Get current status before updating (to check if we need to send notification)
 	var oldStatus string
 	err = h.DB.QueryRowContext(r.Context(),
@@ -436,7 +448,7 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 	// Update shipment status
 	var shipment models.Shipment
 	shipment.Status = newStatus
-	shipment.UpdateStatus(newStatus)
+	shipment.UpdateStatusWithETA(newStatus, eta)
 
 	_, err = h.DB.ExecContext(r.Context(),
 		`UPDATE shipments 
@@ -445,12 +457,13 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		    arrived_warehouse_at = COALESCE($4, arrived_warehouse_at),
 		    released_warehouse_at = COALESCE($5, released_warehouse_at),
 		    delivered_at = COALESCE($6, delivered_at),
-		    pickup_scheduled_date = COALESCE($7, pickup_scheduled_date)
-		WHERE id = $8`,
+		    pickup_scheduled_date = COALESCE($7, pickup_scheduled_date),
+		    eta_to_engineer = COALESCE($8, eta_to_engineer)
+		WHERE id = $9`,
 		shipment.Status, shipment.UpdatedAt,
 		shipment.PickedUpAt, shipment.ArrivedWarehouseAt,
 		shipment.ReleasedWarehouseAt, shipment.DeliveredAt,
-		shipment.PickupScheduledDate,
+		shipment.PickupScheduledDate, shipment.ETAToEngineer,
 		shipmentID,
 	)
 	if err != nil {

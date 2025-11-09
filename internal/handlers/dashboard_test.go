@@ -140,7 +140,7 @@ func TestDashboardMenuVisibility(t *testing.T) {
 
 	// Create handlers
 	dashboardHandler := NewDashboardHandler(db, templates)
-	shipmentsHandler := NewShipmentsHandler(db, templates)
+	shipmentsHandler := NewShipmentsHandler(db, templates, nil) // nil email notifier for tests
 
 	tests := []struct {
 		name                string

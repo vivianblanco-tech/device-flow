@@ -15,8 +15,8 @@ func TestBuildTimeline(t *testing.T) {
 
 		timeline := BuildTimeline(&shipment)
 
-		if len(timeline) != 7 {
-			t.Errorf("Expected 7 timeline items, got %d", len(timeline))
+		if len(timeline) != 8 {
+			t.Errorf("Expected 8 timeline items, got %d", len(timeline))
 		}
 
 		// First item should be current (pending pickup)
@@ -24,9 +24,9 @@ func TestBuildTimeline(t *testing.T) {
 			t.Error("First item should be current")
 		}
 
-		// First item should have timestamp
-		if timeline[0].Timestamp == nil {
-			t.Error("Pickup scheduled should have timestamp")
+		// First item (pending pickup) should not have timestamp
+		if timeline[0].Timestamp != nil {
+			t.Error("Pending pickup should not have timestamp")
 		}
 
 		// All other items should be pending
@@ -50,24 +50,27 @@ func TestBuildTimeline(t *testing.T) {
 
 		timeline := BuildTimeline(&shipment)
 
-		// First two items should be completed
+		// First three items should be completed (pending pickup, pickup scheduled, picked up)
 		if !timeline[0].IsCompleted {
-			t.Error("Pickup scheduled should be completed")
+			t.Error("Pending pickup should be completed")
 		}
 		if !timeline[1].IsCompleted {
+			t.Error("Pickup scheduled should be completed")
+		}
+		if !timeline[2].IsCompleted {
 			t.Error("Picked up should be completed")
 		}
 
-		// Third item (in transit to warehouse) should be current and marked as transit
-		if !timeline[2].IsCurrent {
+		// Fourth item (in transit to warehouse) should be current and marked as transit
+		if !timeline[3].IsCurrent {
 			t.Error("In transit to warehouse should be current")
 		}
-		if !timeline[2].IsTransit {
+		if !timeline[3].IsTransit {
 			t.Error("In transit to warehouse should be marked as transit")
 		}
 
 		// Remaining items should be pending
-		for i := 3; i < len(timeline); i++ {
+		for i := 4; i < len(timeline); i++ {
 			if !timeline[i].IsPending {
 				t.Errorf("Item %d should be pending", i)
 			}
@@ -153,6 +156,7 @@ func TestBuildTimeline(t *testing.T) {
 		timeline := BuildTimeline(&shipment)
 
 		expectedLabels := []string{
+			"Pending Pickup",
 			"Pickup Scheduled",
 			"Picked Up from Client",
 			"In Transit to Warehouse",
