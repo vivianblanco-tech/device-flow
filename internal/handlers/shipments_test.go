@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1039,6 +1040,91 @@ func TestUpdateShipmentStatus(t *testing.T) {
 		
 		if etaToEngineer != nil {
 			t.Errorf("Expected ETA to be nil, got %v", etaToEngineer)
+		}
+	})
+
+	t.Run("updating to pickup_from_client_scheduled with tracking number stores it in database", func(t *testing.T) {
+		// Create a new test shipment
+		var shipmentID3 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "TEST-997", time.Now(), time.Now(),
+		).Scan(&shipmentID3)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		trackingNumber := "1Z999AA10123456784"
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID3, 10))
+		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
+		formData.Set("tracking_number", trackingNumber)
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify status and tracking number were updated
+		var status models.ShipmentStatus
+		var storedTrackingNumber sql.NullString
+		err = db.QueryRowContext(ctx,
+			`SELECT status, tracking_number FROM shipments WHERE id = $1`,
+			shipmentID3,
+		).Scan(&status, &storedTrackingNumber)
+		if err != nil {
+			t.Fatalf("Failed to query shipment: %v", err)
+		}
+		
+		if status != models.ShipmentStatusPickupScheduled {
+			t.Errorf("Expected status 'pickup_from_client_scheduled', got '%s'", status)
+		}
+		
+		if !storedTrackingNumber.Valid || storedTrackingNumber.String != trackingNumber {
+			t.Errorf("Expected tracking number '%s', got '%s'", trackingNumber, storedTrackingNumber.String)
+		}
+	})
+
+	t.Run("updating to pickup_from_client_scheduled without tracking number returns error", func(t *testing.T) {
+		// Create a new test shipment
+		var shipmentID4 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "TEST-996", time.Now(), time.Now(),
+		).Scan(&shipmentID4)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID4, 10))
+		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
+		// No tracking number provided
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400 (bad request), got %d", w.Code)
 		}
 	})
 }

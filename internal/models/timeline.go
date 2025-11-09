@@ -4,14 +4,15 @@ import "time"
 
 // TimelineItem represents a single item in a shipment's tracking timeline
 type TimelineItem struct {
-	Label       string     // Display label (e.g., "Pickup Scheduled")
-	Status      ShipmentStatus // The actual status value
-	Timestamp   *time.Time // When this status was reached (nil if not reached yet)
-	IsCompleted bool       // Whether this status has been completed
-	IsCurrent   bool       // Whether this is the current status
-	IsPending   bool       // Whether this status is yet to be reached
-	IsTransit   bool       // Whether this is a transit status (for special coloring)
-	Icon        string     // Icon/emoji for the status
+	Label          string     // Display label (e.g., "Pickup Scheduled")
+	Status         ShipmentStatus // The actual status value
+	Timestamp      *time.Time // When this status was reached (nil if not reached yet)
+	IsCompleted    bool       // Whether this status has been completed
+	IsCurrent      bool       // Whether this is the current status
+	IsPending      bool       // Whether this status is yet to be reached
+	IsTransit      bool       // Whether this is a transit status (for special coloring)
+	Icon           string     // Icon/emoji for the status
+	TrackingNumber string     // Tracking number associated with this status (if applicable)
 }
 
 // BuildTimeline creates a complete timeline from the shipment's current state
@@ -99,6 +100,11 @@ func BuildTimeline(s *Shipment) []TimelineItem {
 			IsCompleted: i < currentStatusIndex || (i == currentStatusIndex && timestamp != nil),
 			IsCurrent:   i == currentStatusIndex,
 			IsPending:   i > currentStatusIndex,
+		}
+
+		// Add tracking number for pickup scheduled status
+		if statusInfo.Status == ShipmentStatusPickupScheduled && s.TrackingNumber != "" {
+			item.TrackingNumber = s.TrackingNumber
 		}
 
 		// For in-transit statuses that are current but have no timestamp,

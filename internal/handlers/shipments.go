@@ -434,6 +434,13 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		eta = &parsedETA
 	}
 
+	// Parse tracking number if provided (required for pickup_from_client_scheduled status)
+	trackingNumber := strings.TrimSpace(r.FormValue("tracking_number"))
+	if newStatus == models.ShipmentStatusPickupScheduled && trackingNumber == "" {
+		http.Error(w, "Tracking number is required when scheduling pickup from client", http.StatusBadRequest)
+		return
+	}
+
 	// Get current status before updating (to check if we need to send notification)
 	var oldStatus string
 	err = h.DB.QueryRowContext(r.Context(),
@@ -450,6 +457,11 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 	shipment.Status = newStatus
 	shipment.UpdateStatusWithETA(newStatus, eta)
 
+	// Set tracking number if provided
+	if trackingNumber != "" {
+		shipment.TrackingNumber = trackingNumber
+	}
+
 	_, err = h.DB.ExecContext(r.Context(),
 		`UPDATE shipments 
 		SET status = $1, updated_at = $2,
@@ -458,12 +470,14 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		    released_warehouse_at = COALESCE($5, released_warehouse_at),
 		    delivered_at = COALESCE($6, delivered_at),
 		    pickup_scheduled_date = COALESCE($7, pickup_scheduled_date),
-		    eta_to_engineer = COALESCE($8, eta_to_engineer)
-		WHERE id = $9`,
+		    eta_to_engineer = COALESCE($8, eta_to_engineer),
+		    tracking_number = CASE WHEN $9 != '' THEN $9 ELSE tracking_number END
+		WHERE id = $10`,
 		shipment.Status, shipment.UpdatedAt,
 		shipment.PickedUpAt, shipment.ArrivedWarehouseAt,
 		shipment.ReleasedWarehouseAt, shipment.DeliveredAt,
 		shipment.PickupScheduledDate, shipment.ETAToEngineer,
+		trackingNumber,
 		shipmentID,
 	)
 	if err != nil {
