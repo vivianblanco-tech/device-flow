@@ -909,9 +909,12 @@ func TestUpdateShipmentStatus(t *testing.T) {
 	handler := NewShipmentsHandler(db, templates, nil) // nil email notifier for tests
 
 	t.Run("logistics user can update shipment status", func(t *testing.T) {
+		// First update to pickup_scheduled (sequential transition)
 		formData := url.Values{}
 		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
-		formData.Set("status", string(models.ShipmentStatusPickedUpFromClient))
+		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
+		formData.Set("tracking_number", "1Z999AA10123456784")
+		formData.Set("courier_name", "UPS")
 
 		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -927,9 +930,37 @@ func TestUpdateShipmentStatus(t *testing.T) {
 			t.Errorf("Expected status 303, got %d", w.Code)
 		}
 
-		// Verify status was updated
+		// Verify status was updated to pickup_scheduled
 		var status models.ShipmentStatus
 		err := db.QueryRowContext(ctx,
+			`SELECT status FROM shipments WHERE id = $1`,
+			shipmentID,
+		).Scan(&status)
+		if err != nil {
+			t.Fatalf("Failed to query shipment status: %v", err)
+		}
+		if status != models.ShipmentStatusPickupScheduled {
+			t.Errorf("Expected status 'pickup_from_client_scheduled', got '%s'", status)
+		}
+
+		// Then update to picked_up_from_client (sequential transition)
+		formData = url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusPickedUpFromClient))
+
+		req = httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(reqCtx)
+
+		w = httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify status was updated to picked_up_from_client
+		err = db.QueryRowContext(ctx,
 			`SELECT status FROM shipments WHERE id = $1`,
 			shipmentID,
 		).Scan(&status)
@@ -1002,23 +1033,39 @@ func TestUpdateShipmentStatus(t *testing.T) {
 			t.Fatalf("Failed to update shipment to warehouse: %v", err)
 		}
 
-		// Set ETA to 2 days from now
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(context.Background(), middleware.UserContextKey, user)
+
+		// First update to released_from_warehouse (sequential transition)
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusReleasedFromWarehouse))
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303 for released_from_warehouse, got %d", w.Code)
+		}
+
+		// Then update to in_transit_to_engineer with ETA (sequential transition)
 		etaTime := time.Now().Add(48 * time.Hour)
 		etaString := etaTime.Format("2006-01-02T15:04")
 
-		formData := url.Values{}
+		formData = url.Values{}
 		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 		formData.Set("status", string(models.ShipmentStatusInTransitToEngineer))
 		formData.Set("eta_to_engineer", etaString)
 
-		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req = httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
-		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
 
-		w := httptest.NewRecorder()
+		w = httptest.NewRecorder()
 		handler.UpdateShipmentStatus(w, req)
 
 		if w.Code != http.StatusSeeOther {
@@ -1053,7 +1100,7 @@ func TestUpdateShipmentStatus(t *testing.T) {
 	})
 
 	t.Run("updating to in_transit_to_engineer without ETA is allowed", func(t *testing.T) {
-		// Create another test shipment
+		// Create another test shipment at warehouse
 		var shipmentID2 int64
 		err := db.QueryRowContext(ctx,
 			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
@@ -1064,19 +1111,36 @@ func TestUpdateShipmentStatus(t *testing.T) {
 			t.Fatalf("Failed to create test shipment: %v", err)
 		}
 
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(context.Background(), middleware.UserContextKey, user)
+
+		// First update to released_from_warehouse (sequential transition)
 		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID2, 10))
+		formData.Set("status", string(models.ShipmentStatusReleasedFromWarehouse))
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303 for released_from_warehouse, got %d", w.Code)
+		}
+
+		// Then update to in_transit_to_engineer without ETA (sequential transition)
+		formData = url.Values{}
 		formData.Set("shipment_id", strconv.FormatInt(shipmentID2, 10))
 		formData.Set("status", string(models.ShipmentStatusInTransitToEngineer))
 		// No eta_to_engineer field
 
-		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req = httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
-		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 		req = req.WithContext(reqCtx)
 
-		w := httptest.NewRecorder()
+		w = httptest.NewRecorder()
 		handler.UpdateShipmentStatus(w, req)
 
 		if w.Code != http.StatusSeeOther {
@@ -1313,6 +1377,247 @@ func TestUpdateShipmentStatus(t *testing.T) {
 
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("Expected status 400 (bad request), got %d", w.Code)
+		}
+	})
+
+	// Tests for sequential status validation - preventing skipping and backwards transitions
+	t.Run("cannot skip statuses - pending_pickup to at_warehouse", func(t *testing.T) {
+		// Create a new test shipment at pending_pickup_from_client
+		var shipmentID8 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "TEST-992", time.Now(), time.Now(),
+		).Scan(&shipmentID8)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID8, 10))
+		formData.Set("status", string(models.ShipmentStatusAtWarehouse)) // Skipping multiple statuses
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400 (cannot skip statuses), got %d", w.Code)
+		}
+
+		// Verify status was NOT updated
+		var status models.ShipmentStatus
+		err = db.QueryRowContext(ctx,
+			`SELECT status FROM shipments WHERE id = $1`,
+			shipmentID8,
+		).Scan(&status)
+		if err != nil {
+			t.Fatalf("Failed to query shipment: %v", err)
+		}
+		if status != models.ShipmentStatusPendingPickup {
+			t.Errorf("Status should remain 'pending_pickup_from_client', got '%s'", status)
+		}
+	})
+
+	t.Run("cannot skip one status - pending_pickup to picked_up", func(t *testing.T) {
+		// Create a new test shipment
+		var shipmentID9 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "TEST-991", time.Now(), time.Now(),
+		).Scan(&shipmentID9)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID9, 10))
+		formData.Set("status", string(models.ShipmentStatusPickedUpFromClient)) // Skipping pickup_scheduled
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400 (cannot skip statuses), got %d", w.Code)
+		}
+	})
+
+	t.Run("cannot go backwards - at_warehouse to pending_pickup", func(t *testing.T) {
+		// Create a new test shipment at warehouse
+		var shipmentID10 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusAtWarehouse, "TEST-990", time.Now(), time.Now(),
+		).Scan(&shipmentID10)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID10, 10))
+		formData.Set("status", string(models.ShipmentStatusPendingPickup)) // Going backwards
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400 (cannot go backwards), got %d", w.Code)
+		}
+
+		// Verify status was NOT updated
+		var status models.ShipmentStatus
+		err = db.QueryRowContext(ctx,
+			`SELECT status FROM shipments WHERE id = $1`,
+			shipmentID10,
+		).Scan(&status)
+		if err != nil {
+			t.Fatalf("Failed to query shipment: %v", err)
+		}
+		if status != models.ShipmentStatusAtWarehouse {
+			t.Errorf("Status should remain 'at_warehouse', got '%s'", status)
+		}
+	})
+
+	t.Run("cannot update to same status", func(t *testing.T) {
+		// Create a new test shipment
+		var shipmentID11 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusAtWarehouse, "TEST-989", time.Now(), time.Now(),
+		).Scan(&shipmentID11)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID11, 10))
+		formData.Set("status", string(models.ShipmentStatusAtWarehouse)) // Same status
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400 (cannot update to same status), got %d", w.Code)
+		}
+	})
+
+	t.Run("cannot update from delivered (final status)", func(t *testing.T) {
+		// Create a new test shipment that is delivered
+		var shipmentID12 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusDelivered, "TEST-988", time.Now(), time.Now(),
+		).Scan(&shipmentID12)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID12, 10))
+		formData.Set("status", string(models.ShipmentStatusInTransitToEngineer)) // Try to go backwards
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400 (delivered is final status), got %d", w.Code)
+		}
+
+		// Verify status was NOT updated
+		var status models.ShipmentStatus
+		err = db.QueryRowContext(ctx,
+			`SELECT status FROM shipments WHERE id = $1`,
+			shipmentID12,
+		).Scan(&status)
+		if err != nil {
+			t.Fatalf("Failed to query shipment: %v", err)
+		}
+		if status != models.ShipmentStatusDelivered {
+			t.Errorf("Status should remain 'delivered', got '%s'", status)
+		}
+	})
+
+	t.Run("can update sequentially - pending_pickup to pickup_scheduled", func(t *testing.T) {
+		// Create a new test shipment
+		var shipmentID13 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "TEST-987", time.Now(), time.Now(),
+		).Scan(&shipmentID13)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID13, 10))
+		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
+		formData.Set("tracking_number", "1Z999AA10123456784")
+		formData.Set("courier_name", "UPS")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303 (sequential update allowed), got %d", w.Code)
+		}
+
+		// Verify status WAS updated
+		var status models.ShipmentStatus
+		err = db.QueryRowContext(ctx,
+			`SELECT status FROM shipments WHERE id = $1`,
+			shipmentID13,
+		).Scan(&status)
+		if err != nil {
+			t.Fatalf("Failed to query shipment: %v", err)
+		}
+		if status != models.ShipmentStatusPickupScheduled {
+			t.Errorf("Status should be updated to 'pickup_from_client_scheduled', got '%s'", status)
 		}
 	})
 }

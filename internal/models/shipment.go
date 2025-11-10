@@ -133,6 +133,47 @@ func IsValidCourier(courier string) bool {
 	return false
 }
 
+// GetNextAllowedStatuses returns the list of valid next statuses for the current shipment status
+// This enforces sequential status transitions and prevents skipping or going backwards
+func (s *Shipment) GetNextAllowedStatuses() []ShipmentStatus {
+	switch s.Status {
+	case ShipmentStatusPendingPickup:
+		return []ShipmentStatus{ShipmentStatusPickupScheduled}
+	case ShipmentStatusPickupScheduled:
+		return []ShipmentStatus{ShipmentStatusPickedUpFromClient}
+	case ShipmentStatusPickedUpFromClient:
+		return []ShipmentStatus{ShipmentStatusInTransitToWarehouse}
+	case ShipmentStatusInTransitToWarehouse:
+		return []ShipmentStatus{ShipmentStatusAtWarehouse}
+	case ShipmentStatusAtWarehouse:
+		return []ShipmentStatus{ShipmentStatusReleasedFromWarehouse}
+	case ShipmentStatusReleasedFromWarehouse:
+		return []ShipmentStatus{ShipmentStatusInTransitToEngineer}
+	case ShipmentStatusInTransitToEngineer:
+		return []ShipmentStatus{ShipmentStatusDelivered}
+	case ShipmentStatusDelivered:
+		return []ShipmentStatus{} // Final status, no next statuses
+	default:
+		return []ShipmentStatus{}
+	}
+}
+
+// IsValidStatusTransition checks if transitioning from the current status to the new status is valid
+// Returns true only if the transition is sequential (to the immediate next status)
+// Returns false for: skipping statuses, going backwards, staying at same status
+func (s *Shipment) IsValidStatusTransition(newStatus ShipmentStatus) bool {
+	allowedStatuses := s.GetNextAllowedStatuses()
+	
+	// Check if the new status is in the list of allowed next statuses
+	for _, allowed := range allowedStatuses {
+		if allowed == newStatus {
+			return true
+		}
+	}
+	
+	return false
+}
+
 // TableName returns the table name for the Shipment model
 func (s *Shipment) TableName() string {
 	return "shipments"

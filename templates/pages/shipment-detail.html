@@ -438,14 +438,29 @@
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                 >
                                     <option value="">Select new status...</option>
-                                    <option value="pending_pickup_from_client" {{if eq .Shipment.Status "pending_pickup_from_client"}}selected{{end}}>Pending Pickup from Client</option>
-                                    <option value="pickup_from_client_scheduled" {{if eq .Shipment.Status "pickup_from_client_scheduled"}}selected{{end}}>Pickup from Client Scheduled</option>
-                                    <option value="picked_up_from_client" {{if eq .Shipment.Status "picked_up_from_client"}}selected{{end}}>Picked Up from Client</option>
-                                    <option value="in_transit_to_warehouse" {{if eq .Shipment.Status "in_transit_to_warehouse"}}selected{{end}}>In Transit to Warehouse</option>
-                                    <option value="at_warehouse" {{if eq .Shipment.Status "at_warehouse"}}selected{{end}}>At Warehouse</option>
-                                    <option value="released_from_warehouse" {{if eq .Shipment.Status "released_from_warehouse"}}selected{{end}}>Released from Warehouse</option>
-                                    <option value="in_transit_to_engineer" {{if eq .Shipment.Status "in_transit_to_engineer"}}selected{{end}}>In Transit to Engineer</option>
-                                    <option value="delivered" {{if eq .Shipment.Status "delivered"}}selected{{end}}>Delivered</option>
+                                    {{if .NextAllowedStatuses}}
+                                        {{range .NextAllowedStatuses}}
+                                            {{if eq . "pending_pickup_from_client"}}
+                                            <option value="pending_pickup_from_client">Pending Pickup from Client</option>
+                                            {{else if eq . "pickup_from_client_scheduled"}}
+                                            <option value="pickup_from_client_scheduled">Pickup from Client Scheduled</option>
+                                            {{else if eq . "picked_up_from_client"}}
+                                            <option value="picked_up_from_client">Picked Up from Client</option>
+                                            {{else if eq . "in_transit_to_warehouse"}}
+                                            <option value="in_transit_to_warehouse">In Transit to Warehouse</option>
+                                            {{else if eq . "at_warehouse"}}
+                                            <option value="at_warehouse">At Warehouse</option>
+                                            {{else if eq . "released_from_warehouse"}}
+                                            <option value="released_from_warehouse">Released from Warehouse</option>
+                                            {{else if eq . "in_transit_to_engineer"}}
+                                            <option value="in_transit_to_engineer">In Transit to Engineer</option>
+                                            {{else if eq . "delivered"}}
+                                            <option value="delivered">Delivered</option>
+                                            {{end}}
+                                        {{end}}
+                                    {{else}}
+                                        <option value="" disabled>No status updates available</option>
+                                    {{end}}
                                 </select>
                             </div>
                             <!-- ETA Field (shown only when status is in_transit_to_engineer) -->

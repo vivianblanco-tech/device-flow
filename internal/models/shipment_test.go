@@ -484,6 +484,213 @@ func TestShipment_UpdateStatus_WithoutETA(t *testing.T) {
 	}
 }
 
+// TestShipment_GetNextAllowedStatuses tests getting the next valid statuses for sequential transitions
+func TestShipment_GetNextAllowedStatuses(t *testing.T) {
+	tests := []struct {
+		name           string
+		currentStatus  ShipmentStatus
+		expectedNext   []ShipmentStatus
+	}{
+		{
+			name:          "from pending_pickup_from_client",
+			currentStatus: ShipmentStatusPendingPickup,
+			expectedNext:  []ShipmentStatus{ShipmentStatusPickupScheduled},
+		},
+		{
+			name:          "from pickup_from_client_scheduled",
+			currentStatus: ShipmentStatusPickupScheduled,
+			expectedNext:  []ShipmentStatus{ShipmentStatusPickedUpFromClient},
+		},
+		{
+			name:          "from picked_up_from_client",
+			currentStatus: ShipmentStatusPickedUpFromClient,
+			expectedNext:  []ShipmentStatus{ShipmentStatusInTransitToWarehouse},
+		},
+		{
+			name:          "from in_transit_to_warehouse",
+			currentStatus: ShipmentStatusInTransitToWarehouse,
+			expectedNext:  []ShipmentStatus{ShipmentStatusAtWarehouse},
+		},
+		{
+			name:          "from at_warehouse",
+			currentStatus: ShipmentStatusAtWarehouse,
+			expectedNext:  []ShipmentStatus{ShipmentStatusReleasedFromWarehouse},
+		},
+		{
+			name:          "from released_from_warehouse",
+			currentStatus: ShipmentStatusReleasedFromWarehouse,
+			expectedNext:  []ShipmentStatus{ShipmentStatusInTransitToEngineer},
+		},
+		{
+			name:          "from in_transit_to_engineer",
+			currentStatus: ShipmentStatusInTransitToEngineer,
+			expectedNext:  []ShipmentStatus{ShipmentStatusDelivered},
+		},
+		{
+			name:          "from delivered (final status)",
+			currentStatus: ShipmentStatusDelivered,
+			expectedNext:  []ShipmentStatus{}, // No next statuses
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shipment := &Shipment{
+				Status: tt.currentStatus,
+			}
+			got := shipment.GetNextAllowedStatuses()
+			
+			// Check length matches
+			if len(got) != len(tt.expectedNext) {
+				t.Errorf("GetNextAllowedStatuses() returned %d statuses, expected %d", len(got), len(tt.expectedNext))
+				return
+			}
+			
+			// Check each expected status is present
+			for _, expected := range tt.expectedNext {
+				found := false
+				for _, actual := range got {
+					if actual == expected {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("GetNextAllowedStatuses() missing expected status %v", expected)
+				}
+			}
+		})
+	}
+}
+
+// TestShipment_IsValidStatusTransition tests sequential status transition validation
+func TestShipment_IsValidStatusTransition(t *testing.T) {
+	tests := []struct {
+		name          string
+		currentStatus ShipmentStatus
+		newStatus     ShipmentStatus
+		expected      bool
+	}{
+		// Valid transitions (sequential, forward only)
+		{
+			name:          "valid: pending_pickup_from_client -> pickup_from_client_scheduled",
+			currentStatus: ShipmentStatusPendingPickup,
+			newStatus:     ShipmentStatusPickupScheduled,
+			expected:      true,
+		},
+		{
+			name:          "valid: pickup_from_client_scheduled -> picked_up_from_client",
+			currentStatus: ShipmentStatusPickupScheduled,
+			newStatus:     ShipmentStatusPickedUpFromClient,
+			expected:      true,
+		},
+		{
+			name:          "valid: picked_up_from_client -> in_transit_to_warehouse",
+			currentStatus: ShipmentStatusPickedUpFromClient,
+			newStatus:     ShipmentStatusInTransitToWarehouse,
+			expected:      true,
+		},
+		{
+			name:          "valid: in_transit_to_warehouse -> at_warehouse",
+			currentStatus: ShipmentStatusInTransitToWarehouse,
+			newStatus:     ShipmentStatusAtWarehouse,
+			expected:      true,
+		},
+		{
+			name:          "valid: at_warehouse -> released_from_warehouse",
+			currentStatus: ShipmentStatusAtWarehouse,
+			newStatus:     ShipmentStatusReleasedFromWarehouse,
+			expected:      true,
+		},
+		{
+			name:          "valid: released_from_warehouse -> in_transit_to_engineer",
+			currentStatus: ShipmentStatusReleasedFromWarehouse,
+			newStatus:     ShipmentStatusInTransitToEngineer,
+			expected:      true,
+		},
+		{
+			name:          "valid: in_transit_to_engineer -> delivered",
+			currentStatus: ShipmentStatusInTransitToEngineer,
+			newStatus:     ShipmentStatusDelivered,
+			expected:      true,
+		},
+		
+		// Invalid transitions - skipping statuses
+		{
+			name:          "invalid: pending_pickup_from_client -> picked_up_from_client (skipping pickup_from_client_scheduled)",
+			currentStatus: ShipmentStatusPendingPickup,
+			newStatus:     ShipmentStatusPickedUpFromClient,
+			expected:      false,
+		},
+		{
+			name:          "invalid: pending_pickup_from_client -> at_warehouse (skipping multiple)",
+			currentStatus: ShipmentStatusPendingPickup,
+			newStatus:     ShipmentStatusAtWarehouse,
+			expected:      false,
+		},
+		{
+			name:          "invalid: pickup_from_client_scheduled -> at_warehouse (skipping multiple)",
+			currentStatus: ShipmentStatusPickupScheduled,
+			newStatus:     ShipmentStatusAtWarehouse,
+			expected:      false,
+		},
+		
+		// Invalid transitions - going backwards
+		{
+			name:          "invalid: at_warehouse -> pending_pickup_from_client (backwards)",
+			currentStatus: ShipmentStatusAtWarehouse,
+			newStatus:     ShipmentStatusPendingPickup,
+			expected:      false,
+		},
+		{
+			name:          "invalid: delivered -> in_transit_to_engineer (backwards)",
+			currentStatus: ShipmentStatusDelivered,
+			newStatus:     ShipmentStatusInTransitToEngineer,
+			expected:      false,
+		},
+		{
+			name:          "invalid: in_transit_to_warehouse -> picked_up_from_client (backwards)",
+			currentStatus: ShipmentStatusInTransitToWarehouse,
+			newStatus:     ShipmentStatusPickedUpFromClient,
+			expected:      false,
+		},
+		
+		// Invalid transitions - same status
+		{
+			name:          "invalid: pending_pickup_from_client -> pending_pickup_from_client (same status)",
+			currentStatus: ShipmentStatusPendingPickup,
+			newStatus:     ShipmentStatusPendingPickup,
+			expected:      false,
+		},
+		{
+			name:          "invalid: at_warehouse -> at_warehouse (same status)",
+			currentStatus: ShipmentStatusAtWarehouse,
+			newStatus:     ShipmentStatusAtWarehouse,
+			expected:      false,
+		},
+		
+		// Invalid transitions - from delivered (final status)
+		{
+			name:          "invalid: delivered -> any status (final status)",
+			currentStatus: ShipmentStatusDelivered,
+			newStatus:     ShipmentStatusDelivered,
+			expected:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shipment := &Shipment{
+				Status: tt.currentStatus,
+			}
+			got := shipment.IsValidStatusTransition(tt.newStatus)
+			if got != tt.expected {
+				t.Errorf("IsValidStatusTransition() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
 // Helper function for creating int64 pointers
 func int64Ptr(i int64) *int64 {
 	return &i

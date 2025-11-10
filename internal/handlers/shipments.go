@@ -349,25 +349,29 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	// Build complete timeline for the shipment
 	timeline := models.BuildTimeline(&s)
 
+	// Get next allowed statuses for sequential validation
+	nextAllowedStatuses := s.GetNextAllowedStatuses()
+
 	data := map[string]interface{}{
-		"Error":           errorMsg,
-		"Success":         successMsg,
-		"Warning":         warningMsg,
-		"User":            user,
-		"Nav":             views.GetNavigationLinks(user.Role),
-		"CurrentPage":     "shipments",
-		"Shipment":        s,
-		"TrackingURL":     trackingURL,
-		"CompanyName":     companyName,
-		"EngineerName":    engineerName.String,
-		"EngineerEmail":   engineerEmail.String,
-		"Laptops":         laptops,
-		"PickupForm":      pickupForm,
-		"PickupFormData":  pickupFormData,
-		"ReceptionReport": receptionReport,
-		"DeliveryForm":    deliveryForm,
-		"Engineers":       engineers,
-		"Timeline":        timeline,
+		"Error":               errorMsg,
+		"Success":             successMsg,
+		"Warning":             warningMsg,
+		"User":                user,
+		"Nav":                 views.GetNavigationLinks(user.Role),
+		"CurrentPage":         "shipments",
+		"Shipment":            s,
+		"TrackingURL":         trackingURL,
+		"CompanyName":         companyName,
+		"EngineerName":        engineerName.String,
+		"EngineerEmail":       engineerEmail.String,
+		"Laptops":             laptops,
+		"PickupForm":          pickupForm,
+		"PickupFormData":      pickupFormData,
+		"ReceptionReport":     receptionReport,
+		"DeliveryForm":        deliveryForm,
+		"Engineers":           engineers,
+		"Timeline":            timeline,
+		"NextAllowedStatuses": nextAllowedStatuses,
 	}
 
 	if h.Templates != nil {
@@ -424,6 +428,23 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Get current shipment to validate sequential transition
+	var currentShipment models.Shipment
+	err = h.DB.QueryRowContext(r.Context(),
+		`SELECT id, status FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&currentShipment.ID, &currentShipment.Status)
+	if err != nil {
+		http.Error(w, "Failed to fetch current shipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Validate that the status transition is sequential (no skipping or going backwards)
+	if !currentShipment.IsValidStatusTransition(newStatus) {
+		http.Error(w, "Invalid status transition. Status updates must be sequential and cannot skip stages or go backwards.", http.StatusBadRequest)
+		return
+	}
+
 	// Parse ETA if provided (for in_transit_to_engineer status)
 	var eta *time.Time
 	etaString := r.FormValue("eta_to_engineer")
@@ -456,16 +477,8 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		}
 	}
 
-	// Get current status before updating (to check if we need to send notification)
-	var oldStatus string
-	err = h.DB.QueryRowContext(r.Context(),
-		`SELECT status FROM shipments WHERE id = $1`,
-		shipmentID,
-	).Scan(&oldStatus)
-	if err != nil {
-		http.Error(w, "Failed to fetch current shipment status", http.StatusInternalServerError)
-		return
-	}
+	// Store old status for notification check
+	oldStatus := string(currentShipment.Status)
 
 	// Update shipment status
 	var shipment models.Shipment

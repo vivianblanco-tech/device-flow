@@ -344,14 +344,18 @@ docker-compose up -d
 
 ## Process Flow
 
-1. **Client submits pickup form** → Logistics receives notification
-2. **Logistics schedules pickup** → Client receives confirmation
-3. **Courier picks up devices** → Status updated to "picked up"
-4. **Warehouse receives shipment** → Reception report created
-5. **Warehouse stores devices** → Inventory updated
-6. **Logistics releases devices** → Courier notified
-7. **Engineer receives device** → Delivery form submitted
-8. **Process complete** → All parties notified
+The system enforces a sequential status flow to maintain data integrity:
+
+1. **Pending Pickup from Client** → Client submits pickup form
+2. **Pickup from Client Scheduled** → Logistics schedules pickup with courier and tracking number
+3. **Picked Up from Client** → Courier confirms pickup
+4. **In Transit to Warehouse** → Shipment en route
+5. **At Warehouse** → Warehouse receives and creates reception report
+6. **Released from Warehouse** → Logistics releases devices for delivery
+7. **In Transit to Engineer** → Shipment en route to engineer (with ETA)
+8. **Delivered** → Engineer confirms receipt via delivery form
+
+**Note:** Status updates must follow this sequence. Users cannot skip stages or move backwards.
 
 ## Environment Variables
 
@@ -378,6 +382,7 @@ Key variables:
 - Google OAuth restricted to @bairesdev.com domain
 - SQL injection prevention via parameterized queries
 - File upload validation and sanitization
+- **Sequential status validation**: Shipments can only move forward through predefined stages, preventing status skipping or backwards transitions
 
 ## Contributing
 
