@@ -94,7 +94,7 @@
                     >
                         {{range .Statuses}}
                         <option value="{{.}}" {{if and $.Laptop (eq . $.Laptop.Status)}}selected{{end}}>
-                            {{. | replace "_" " " | title}}
+                            {{laptopStatusDisplayName .}}
                         </option>
                         {{end}}
                     </select>

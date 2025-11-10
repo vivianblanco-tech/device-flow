@@ -119,3 +119,43 @@ func (l *Laptop) GetFullDescription() string {
 	return desc
 }
 
+// GetLaptopStatusDisplayName returns the user-friendly display name for a laptop status
+func GetLaptopStatusDisplayName(status LaptopStatus) string {
+	switch status {
+	case LaptopStatusAvailable:
+		return "Available at Warehouse"
+	case LaptopStatusAtWarehouse:
+		return "Received at Warehouse"
+	case LaptopStatusInTransitToWarehouse:
+		return "In Transit To Warehouse"
+	case LaptopStatusInTransitToEngineer:
+		return "In Transit To Engineer"
+	case LaptopStatusDelivered:
+		return "Delivered"
+	case LaptopStatusRetired:
+		return "Retired"
+	default:
+		return string(status)
+	}
+}
+
+// GetLaptopStatusesInOrder returns all laptop statuses in logical order
+func GetLaptopStatusesInOrder() []LaptopStatus {
+	return []LaptopStatus{
+		LaptopStatusInTransitToWarehouse,
+		LaptopStatusAtWarehouse,         // "Received at Warehouse"
+		LaptopStatusAvailable,           // "Available at Warehouse"
+		LaptopStatusInTransitToEngineer,
+		LaptopStatusDelivered,
+		LaptopStatusRetired,
+	}
+}
+
+// GetLaptopStatusesForNewLaptop returns statuses appropriate for newly added laptops
+func GetLaptopStatusesForNewLaptop() []LaptopStatus {
+	return []LaptopStatus{
+		LaptopStatusAtWarehouse, // "Received at Warehouse"
+		LaptopStatusAvailable,   // "Available at Warehouse"
+	}
+}
+

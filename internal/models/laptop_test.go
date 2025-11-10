@@ -316,4 +316,3 @@ func TestLaptop_WithNewFields(t *testing.T) {
 		t.Errorf("Expected SoftwareEngineerID to be 10, got %v", laptop.SoftwareEngineerID)
 	}
 }
-

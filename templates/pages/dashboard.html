@@ -126,7 +126,7 @@
                     <!-- Available Laptops Highlight -->
                     <div class="bg-green-50 border border-green-200 rounded-lg p-4">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-green-800">Available for Deployment</span>
+                            <span class="text-sm font-medium text-green-800">{{laptopStatusDisplayName "available"}}</span>
                             <span class="text-2xl font-bold text-green-900">{{.Stats.AvailableLaptops}}</span>
                         </div>
                     </div>
@@ -138,7 +138,7 @@
                         <div class="flex items-center space-x-3">
                             <div class="w-3 h-3 rounded-full {{laptopStatusColor $status}}"></div>
                             <span class="text-sm font-medium text-gray-700">
-                                {{$status | replace "_" " " | title}}
+                                {{laptopStatusDisplayName $status}}
                             </span>
                         </div>
                         <div class="flex items-center space-x-2">

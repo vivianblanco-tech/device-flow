@@ -65,14 +65,7 @@ func (h *InventoryHandler) InventoryList(w http.ResponseWriter, r *http.Request)
 		"Laptops":      laptops,
 		"SearchQuery":  searchQuery,
 		"StatusFilter": statusFilter,
-		"Statuses": []models.LaptopStatus{
-			models.LaptopStatusAvailable,
-			models.LaptopStatusInTransitToWarehouse,
-			models.LaptopStatusAtWarehouse,
-			models.LaptopStatusInTransitToEngineer,
-			models.LaptopStatusDelivered,
-			models.LaptopStatusRetired,
-		},
+		"Statuses":     models.GetLaptopStatusesInOrder(),
 	}
 
 	// Execute template using pre-parsed global templates
@@ -140,11 +133,8 @@ func (h *InventoryHandler) AddLaptopPage(w http.ResponseWriter, r *http.Request)
 
 	// Prepare template data
 	data := map[string]interface{}{
-		"User": user,
-		"Statuses": []models.LaptopStatus{
-			models.LaptopStatusAvailable,
-			models.LaptopStatusAtWarehouse,
-		},
+		"User":     user,
+		"Statuses": models.GetLaptopStatusesForNewLaptop(),
 	}
 
 	// Execute template using pre-parsed global templates
@@ -230,17 +220,10 @@ func (h *InventoryHandler) EditLaptopPage(w http.ResponseWriter, r *http.Request
 
 	// Prepare template data
 	data := map[string]interface{}{
-		"User":   user,
-		"Laptop": laptop,
-		"Statuses": []models.LaptopStatus{
-			models.LaptopStatusAvailable,
-			models.LaptopStatusInTransitToWarehouse,
-			models.LaptopStatusAtWarehouse,
-			models.LaptopStatusInTransitToEngineer,
-			models.LaptopStatusDelivered,
-			models.LaptopStatusRetired,
-		},
-		"IsEdit": true,
+		"User":     user,
+		"Laptop":   laptop,
+		"Statuses": models.GetLaptopStatusesInOrder(),
+		"IsEdit":   true,
 	}
 
 	// Execute template using pre-parsed global templates
