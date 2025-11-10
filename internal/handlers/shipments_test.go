@@ -1056,11 +1056,13 @@ func TestUpdateShipmentStatus(t *testing.T) {
 		}
 
 		trackingNumber := "1Z999AA10123456784"
+		courierName := "FedEx"
 
 		formData := url.Values{}
 		formData.Set("shipment_id", strconv.FormatInt(shipmentID3, 10))
 		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
 		formData.Set("tracking_number", trackingNumber)
+		formData.Set("courier_name", courierName)
 
 		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -1112,6 +1114,132 @@ func TestUpdateShipmentStatus(t *testing.T) {
 		formData.Set("shipment_id", strconv.FormatInt(shipmentID4, 10))
 		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
 		// No tracking number provided
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400 (bad request), got %d", w.Code)
+		}
+	})
+
+	t.Run("updating to pickup_from_client_scheduled without courier returns error", func(t *testing.T) {
+		// Create a new test shipment
+		var shipmentID5 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "TEST-995", time.Now(), time.Now(),
+		).Scan(&shipmentID5)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID5, 10))
+		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
+		formData.Set("tracking_number", "1Z999AA10123456784")
+		// No courier_name provided
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400 (bad request), got %d", w.Code)
+		}
+	})
+
+	t.Run("updating to pickup_from_client_scheduled with courier stores it in database", func(t *testing.T) {
+		// Create a new test shipment
+		var shipmentID6 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "TEST-994", time.Now(), time.Now(),
+		).Scan(&shipmentID6)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		trackingNumber := "1Z999AA10123456784"
+		courierName := "UPS"
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID6, 10))
+		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
+		formData.Set("tracking_number", trackingNumber)
+		formData.Set("courier_name", courierName)
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify status, tracking number, and courier name were updated
+		var status models.ShipmentStatus
+		var storedTrackingNumber sql.NullString
+		var storedCourierName sql.NullString
+		err = db.QueryRowContext(ctx,
+			`SELECT status, tracking_number, courier_name FROM shipments WHERE id = $1`,
+			shipmentID6,
+		).Scan(&status, &storedTrackingNumber, &storedCourierName)
+		if err != nil {
+			t.Fatalf("Failed to query shipment: %v", err)
+		}
+
+		if status != models.ShipmentStatusPickupScheduled {
+			t.Errorf("Expected status 'pickup_from_client_scheduled', got '%s'", status)
+		}
+
+		if !storedTrackingNumber.Valid || storedTrackingNumber.String != trackingNumber {
+			t.Errorf("Expected tracking number '%s', got '%s'", trackingNumber, storedTrackingNumber.String)
+		}
+
+		if !storedCourierName.Valid || storedCourierName.String != courierName {
+			t.Errorf("Expected courier name '%s', got '%s'", courierName, storedCourierName.String)
+		}
+	})
+
+	t.Run("updating to pickup_from_client_scheduled with invalid courier returns error", func(t *testing.T) {
+		// Create a new test shipment
+		var shipmentID7 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "TEST-993", time.Now(), time.Now(),
+		).Scan(&shipmentID7)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID7, 10))
+		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
+		formData.Set("tracking_number", "1Z999AA10123456784")
+		formData.Set("courier_name", "InvalidCourier")
 
 		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")

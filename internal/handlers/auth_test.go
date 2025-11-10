@@ -138,6 +138,9 @@ func loadTestTemplates(t *testing.T) *template.Template {
 				return "bg-gray-100 text-gray-800"
 			}
 		},
+		"laptopStatusDisplayName": func(status models.LaptopStatus) string {
+			return models.GetLaptopStatusDisplayName(status)
+		},
 	}
 
 	templates, err := template.New("").Funcs(funcMap).ParseGlob("../../templates/pages/*.html")

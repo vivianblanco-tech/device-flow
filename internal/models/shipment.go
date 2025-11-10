@@ -22,6 +22,13 @@ const (
 	ShipmentStatusDelivered              ShipmentStatus = "delivered"
 )
 
+// Courier name constants
+const (
+	CourierUPS   = "UPS"
+	CourierFedEx = "FedEx"
+	CourierDHL   = "DHL"
+)
+
 // Shipment represents a shipment of laptops through the delivery pipeline
 type Shipment struct {
 	ID                  int64           `json:"id" db:"id"`
@@ -112,6 +119,15 @@ func IsValidShipmentStatus(status ShipmentStatus) bool {
 		ShipmentStatusReleasedFromWarehouse,
 		ShipmentStatusInTransitToEngineer,
 		ShipmentStatusDelivered:
+		return true
+	}
+	return false
+}
+
+// IsValidCourier checks if a given courier name is valid
+func IsValidCourier(courier string) bool {
+	switch courier {
+	case CourierUPS, CourierFedEx, CourierDHL:
 		return true
 	}
 	return false

@@ -10,12 +10,12 @@ type LaptopStatus string
 
 // Laptop status constants
 const (
-	LaptopStatusAvailable              LaptopStatus = "available"
-	LaptopStatusInTransitToWarehouse   LaptopStatus = "in_transit_to_warehouse"
-	LaptopStatusAtWarehouse            LaptopStatus = "at_warehouse"
-	LaptopStatusInTransitToEngineer    LaptopStatus = "in_transit_to_engineer"
-	LaptopStatusDelivered              LaptopStatus = "delivered"
-	LaptopStatusRetired                LaptopStatus = "retired"
+	LaptopStatusAvailable            LaptopStatus = "available"
+	LaptopStatusInTransitToWarehouse LaptopStatus = "in_transit_to_warehouse"
+	LaptopStatusAtWarehouse          LaptopStatus = "at_warehouse"
+	LaptopStatusInTransitToEngineer  LaptopStatus = "in_transit_to_engineer"
+	LaptopStatusDelivered            LaptopStatus = "delivered"
+	LaptopStatusRetired              LaptopStatus = "retired"
 )
 
 // Laptop represents a laptop device in the inventory
@@ -143,8 +143,8 @@ func GetLaptopStatusDisplayName(status LaptopStatus) string {
 func GetLaptopStatusesInOrder() []LaptopStatus {
 	return []LaptopStatus{
 		LaptopStatusInTransitToWarehouse,
-		LaptopStatusAtWarehouse,         // "Received at Warehouse"
-		LaptopStatusAvailable,           // "Available at Warehouse"
+		LaptopStatusAtWarehouse, // "Received at Warehouse"
+		LaptopStatusAvailable,   // "Available at Warehouse"
 		LaptopStatusInTransitToEngineer,
 		LaptopStatusDelivered,
 		LaptopStatusRetired,
@@ -158,4 +158,3 @@ func GetLaptopStatusesForNewLaptop() []LaptopStatus {
 		LaptopStatusAvailable,   // "Available at Warehouse"
 	}
 }
-

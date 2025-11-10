@@ -443,6 +443,19 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Parse courier name if provided (required for pickup_from_client_scheduled status)
+	courierName := strings.TrimSpace(r.FormValue("courier_name"))
+	if newStatus == models.ShipmentStatusPickupScheduled {
+		if courierName == "" {
+			http.Error(w, "Courier name is required when scheduling pickup from client", http.StatusBadRequest)
+			return
+		}
+		if !models.IsValidCourier(courierName) {
+			http.Error(w, "Invalid courier name. Must be one of: UPS, FedEx, DHL", http.StatusBadRequest)
+			return
+		}
+	}
+
 	// Get current status before updating (to check if we need to send notification)
 	var oldStatus string
 	err = h.DB.QueryRowContext(r.Context(),
@@ -464,6 +477,11 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		shipment.TrackingNumber = trackingNumber
 	}
 
+	// Set courier name if provided
+	if courierName != "" {
+		shipment.CourierName = courierName
+	}
+
 	_, err = h.DB.ExecContext(r.Context(),
 		`UPDATE shipments 
 		SET status = $1, updated_at = $2,
@@ -473,13 +491,15 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		    delivered_at = COALESCE($6, delivered_at),
 		    pickup_scheduled_date = COALESCE($7, pickup_scheduled_date),
 		    eta_to_engineer = COALESCE($8, eta_to_engineer),
-		    tracking_number = CASE WHEN $9 != '' THEN $9 ELSE tracking_number END
-		WHERE id = $10`,
+		    tracking_number = CASE WHEN $9 != '' THEN $9 ELSE tracking_number END,
+		    courier_name = CASE WHEN $10 != '' THEN $10 ELSE courier_name END
+		WHERE id = $11`,
 		shipment.Status, shipment.UpdatedAt,
 		shipment.PickedUpAt, shipment.ArrivedWarehouseAt,
 		shipment.ReleasedWarehouseAt, shipment.DeliveredAt,
 		shipment.PickupScheduledDate, shipment.ETAToEngineer,
 		trackingNumber,
+		courierName,
 		shipmentID,
 	)
 	if err != nil {
