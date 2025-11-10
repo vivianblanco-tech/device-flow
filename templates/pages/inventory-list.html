@@ -82,13 +82,19 @@
                                 Serial Number
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                SKU
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Brand
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Model
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Specs
+                                Client
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Assigned to SE
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Status
@@ -105,13 +111,24 @@
                                 <div class="text-sm font-medium text-gray-900">{{.SerialNumber}}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-600">{{if .SKU}}{{.SKU}}{{else}}-{{end}}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900">{{if .Brand}}{{.Brand}}{{else}}-{{end}}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900">{{if .Model}}{{.Model}}{{else}}-{{end}}</div>
                             </td>
-                            <td class="px-6 py-4">
-                                <div class="text-sm text-gray-900">{{if .Specs}}{{.Specs}}{{else}}-{{end}}</div>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{if .ClientCompanyName}}{{.ClientCompanyName}}{{else}}-{{end}}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">
+                                    {{if .SoftwareEngineerName}}
+                                        <div>{{.SoftwareEngineerName}}</div>
+                                        {{if .SoftwareEngineerID}}<div class="text-xs text-gray-500">ID: {{.SoftwareEngineerID}}</div>{{end}}
+                                    {{else}}-{{end}}
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{inventoryStatusColor .Status}}">

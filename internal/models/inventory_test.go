@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/yourusername/laptop-tracking-system/internal/database"
@@ -330,5 +331,192 @@ func TestGetLaptopsByStatus(t *testing.T) {
 	if len(delivered) != 1 {
 		t.Errorf("Expected 1 delivered laptop, got %d", len(delivered))
 	}
+}
+
+// TestGetAllLaptopsWithJoins tests retrieving laptops with client and engineer data
+func TestGetAllLaptopsWithJoins(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Create test client company
+	clientCompany := &ClientCompany{
+		Name:        "TechCorp Inc",
+		ContactInfo: "contact@techcorp.com",
+	}
+	err := CreateClientCompany(db, clientCompany)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
+	// Create test software engineer
+	engineer := &SoftwareEngineer{
+		Name:  "John Doe",
+		Email: "john.doe@bairesdev.com",
+	}
+	err = CreateSoftwareEngineer(db, engineer)
+	if err != nil {
+		t.Fatalf("Failed to create software engineer: %v", err)
+	}
+
+	// Create laptop with SKU, client, and engineer
+	laptop := &Laptop{
+		SerialNumber:       "SN001",
+		SKU:                "SKU-DELL-LAT-001",
+		Brand:              "Dell",
+		Model:              "Latitude 5520",
+		Status:             LaptopStatusDelivered,
+		ClientCompanyID:    &clientCompany.ID,
+		SoftwareEngineerID: &engineer.ID,
+	}
+	err = CreateLaptop(db, laptop)
+	if err != nil {
+		t.Fatalf("Failed to create laptop: %v", err)
+	}
+
+	// Test: Get all laptops with joins
+	result, err := GetAllLaptops(db, nil)
+	if err != nil {
+		t.Fatalf("GetAllLaptops failed: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("Expected 1 laptop, got %d", len(result))
+	}
+
+	// Verify new fields are populated
+	retrieved := result[0]
+	if retrieved.SKU != "SKU-DELL-LAT-001" {
+		t.Errorf("Expected SKU 'SKU-DELL-LAT-001', got %s", retrieved.SKU)
+	}
+
+	if retrieved.ClientCompanyID == nil || *retrieved.ClientCompanyID != clientCompany.ID {
+		t.Errorf("Expected ClientCompanyID %d, got %v", clientCompany.ID, retrieved.ClientCompanyID)
+	}
+
+	if retrieved.SoftwareEngineerID == nil || *retrieved.SoftwareEngineerID != engineer.ID {
+		t.Errorf("Expected SoftwareEngineerID %d, got %v", engineer.ID, retrieved.SoftwareEngineerID)
+	}
+
+	// Verify joined data is populated
+	if retrieved.ClientCompanyName != "TechCorp Inc" {
+		t.Errorf("Expected ClientCompanyName 'TechCorp Inc', got %s", retrieved.ClientCompanyName)
+	}
+
+	if retrieved.SoftwareEngineerName != "John Doe" {
+		t.Errorf("Expected SoftwareEngineerName 'John Doe', got %s", retrieved.SoftwareEngineerName)
+	}
+}
+
+// TestGetLaptopByIDWithJoins tests retrieving a single laptop with client and engineer data
+func TestGetLaptopByIDWithJoins(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Create test client company
+	clientCompany := &ClientCompany{
+		Name:        "Innovation Labs",
+		ContactInfo: "info@innovationlabs.com",
+	}
+	err := CreateClientCompany(db, clientCompany)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
+	// Create test software engineer
+	engineer := &SoftwareEngineer{
+		Name:  "Jane Smith",
+		Email: "jane.smith@bairesdev.com",
+	}
+	err = CreateSoftwareEngineer(db, engineer)
+	if err != nil {
+		t.Fatalf("Failed to create software engineer: %v", err)
+	}
+
+	// Create laptop with assignments
+	laptop := &Laptop{
+		SerialNumber:       "SN002",
+		SKU:                "SKU-HP-ELITE-002",
+		Brand:              "HP",
+		Model:              "EliteBook 840",
+		Status:             LaptopStatusDelivered,
+		ClientCompanyID:    &clientCompany.ID,
+		SoftwareEngineerID: &engineer.ID,
+	}
+	err = CreateLaptop(db, laptop)
+	if err != nil {
+		t.Fatalf("Failed to create laptop: %v", err)
+	}
+
+	// Test: Get laptop by ID with joins
+	retrieved, err := GetLaptopByID(db, laptop.ID)
+	if err != nil {
+		t.Fatalf("GetLaptopByID failed: %v", err)
+	}
+
+	// Verify new fields
+	if retrieved.SKU != "SKU-HP-ELITE-002" {
+		t.Errorf("Expected SKU 'SKU-HP-ELITE-002', got %s", retrieved.SKU)
+	}
+
+	// Verify joined data is populated
+	if retrieved.ClientCompanyName != "Innovation Labs" {
+		t.Errorf("Expected ClientCompanyName 'Innovation Labs', got %s", retrieved.ClientCompanyName)
+	}
+
+	if retrieved.SoftwareEngineerName != "Jane Smith" {
+		t.Errorf("Expected SoftwareEngineerName 'Jane Smith', got %s", retrieved.SoftwareEngineerName)
+	}
+}
+
+// Helper functions for creating test data with new fields
+
+// CreateClientCompany creates a client company using the public API
+func CreateClientCompany(db *sql.DB, c *ClientCompany) error {
+	if err := c.Validate(); err != nil {
+		return err
+	}
+	c.BeforeCreate()
+
+	query := `
+		INSERT INTO client_companies (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
+	`
+
+	return db.QueryRow(query, c.Name, c.ContactInfo, c.CreatedAt, c.UpdatedAt).Scan(&c.ID)
+}
+
+// CreateSoftwareEngineer creates a software engineer using validation
+func CreateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
+	if err := engineer.Validate(); err != nil {
+		return err
+	}
+
+	engineer.BeforeCreate()
+
+	query := `
+		INSERT INTO software_engineers (name, email, address, phone, address_confirmed, address_confirmation_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id
+	`
+	return db.QueryRow(
+		query,
+		engineer.Name,
+		engineer.Email,
+		engineer.Address,
+		engineer.Phone,
+		engineer.AddressConfirmed,
+		engineer.AddressConfirmationAt,
+		engineer.CreatedAt,
+		engineer.UpdatedAt,
+	).Scan(&engineer.ID)
 }
 

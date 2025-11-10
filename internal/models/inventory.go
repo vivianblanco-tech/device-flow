@@ -18,8 +18,14 @@ type LaptopFilter struct {
 // GetAllLaptops retrieves all laptops with optional filtering
 func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 	query := `
-		SELECT id, serial_number, brand, model, specs, status, created_at, updated_at
-		FROM laptops
+		SELECT 
+			l.id, l.serial_number, l.sku, l.brand, l.model, l.specs, l.status, 
+			l.client_company_id, l.software_engineer_id, l.created_at, l.updated_at,
+			cc.name as client_company_name,
+			se.name as software_engineer_name
+		FROM laptops l
+		LEFT JOIN client_companies cc ON cc.id = l.client_company_id
+		LEFT JOIN software_engineers se ON se.id = l.software_engineer_id
 	`
 
 	var conditions []string
@@ -30,20 +36,20 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 	if filter != nil {
 		if filter.Status != "" {
 			argCount++
-			conditions = append(conditions, fmt.Sprintf("status = $%d", argCount))
+			conditions = append(conditions, fmt.Sprintf("l.status = $%d", argCount))
 			args = append(args, filter.Status)
 		}
 
 		if filter.Brand != "" {
 			argCount++
-			conditions = append(conditions, fmt.Sprintf("LOWER(brand) = LOWER($%d)", argCount))
+			conditions = append(conditions, fmt.Sprintf("LOWER(l.brand) = LOWER($%d)", argCount))
 			args = append(args, filter.Brand)
 		}
 
 		if filter.Search != "" {
 			argCount++
 			searchPattern := "%" + strings.ToLower(filter.Search) + "%"
-			conditions = append(conditions, fmt.Sprintf("(LOWER(serial_number) LIKE $%d OR LOWER(brand) LIKE $%d OR LOWER(model) LIKE $%d)", argCount, argCount, argCount))
+			conditions = append(conditions, fmt.Sprintf("(LOWER(l.serial_number) LIKE $%d OR LOWER(l.brand) LIKE $%d OR LOWER(l.model) LIKE $%d OR LOWER(l.sku) LIKE $%d)", argCount, argCount, argCount, argCount))
 			args = append(args, searchPattern)
 		}
 	}
@@ -54,7 +60,7 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 	}
 
 	// Add ordering
-	query += " ORDER BY created_at DESC"
+	query += " ORDER BY l.created_at DESC"
 
 	// Add pagination if specified
 	if filter != nil {
@@ -79,19 +85,40 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 	var laptops []Laptop
 	for rows.Next() {
 		var laptop Laptop
+		var sku sql.NullString
+		var clientCompanyName sql.NullString
+		var softwareEngineerName sql.NullString
+
 		err := rows.Scan(
 			&laptop.ID,
 			&laptop.SerialNumber,
+			&sku,
 			&laptop.Brand,
 			&laptop.Model,
 			&laptop.Specs,
 			&laptop.Status,
+			&laptop.ClientCompanyID,
+			&laptop.SoftwareEngineerID,
 			&laptop.CreatedAt,
 			&laptop.UpdatedAt,
+			&clientCompanyName,
+			&softwareEngineerName,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan laptop: %w", err)
 		}
+
+		// Set nullable fields if available
+		if sku.Valid {
+			laptop.SKU = sku.String
+		}
+		if clientCompanyName.Valid {
+			laptop.ClientCompanyName = clientCompanyName.String
+		}
+		if softwareEngineerName.Valid {
+			laptop.SoftwareEngineerName = softwareEngineerName.String
+		}
+
 		laptops = append(laptops, laptop)
 	}
 
@@ -149,21 +176,36 @@ func SearchLaptops(db *sql.DB, searchTerm string) ([]Laptop, error) {
 // GetLaptopByID retrieves a laptop by its ID
 func GetLaptopByID(db *sql.DB, id int64) (*Laptop, error) {
 	query := `
-		SELECT id, serial_number, brand, model, specs, status, created_at, updated_at
-		FROM laptops
-		WHERE id = $1
+		SELECT 
+			l.id, l.serial_number, l.sku, l.brand, l.model, l.specs, l.status, 
+			l.client_company_id, l.software_engineer_id, l.created_at, l.updated_at,
+			cc.name as client_company_name,
+			se.name as software_engineer_name
+		FROM laptops l
+		LEFT JOIN client_companies cc ON cc.id = l.client_company_id
+		LEFT JOIN software_engineers se ON se.id = l.software_engineer_id
+		WHERE l.id = $1
 	`
 
 	var laptop Laptop
+	var sku sql.NullString
+	var clientCompanyName sql.NullString
+	var softwareEngineerName sql.NullString
+
 	err := db.QueryRow(query, id).Scan(
 		&laptop.ID,
 		&laptop.SerialNumber,
+		&sku,
 		&laptop.Brand,
 		&laptop.Model,
 		&laptop.Specs,
 		&laptop.Status,
+		&laptop.ClientCompanyID,
+		&laptop.SoftwareEngineerID,
 		&laptop.CreatedAt,
 		&laptop.UpdatedAt,
+		&clientCompanyName,
+		&softwareEngineerName,
 	)
 
 	if err == sql.ErrNoRows {
@@ -171,6 +213,17 @@ func GetLaptopByID(db *sql.DB, id int64) (*Laptop, error) {
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get laptop: %w", err)
+	}
+
+	// Set nullable fields if available
+	if sku.Valid {
+		laptop.SKU = sku.String
+	}
+	if clientCompanyName.Valid {
+		laptop.ClientCompanyName = clientCompanyName.String
+	}
+	if softwareEngineerName.Valid {
+		laptop.SoftwareEngineerName = softwareEngineerName.String
 	}
 
 	return &laptop, nil
@@ -187,18 +240,21 @@ func CreateLaptop(db *sql.DB, laptop *Laptop) error {
 	laptop.BeforeCreate()
 
 	query := `
-		INSERT INTO laptops (serial_number, brand, model, specs, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO laptops (serial_number, sku, brand, model, specs, status, client_company_id, software_engineer_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id
 	`
 
 	err := db.QueryRow(
 		query,
 		laptop.SerialNumber,
+		laptop.SKU,
 		laptop.Brand,
 		laptop.Model,
 		laptop.Specs,
 		laptop.Status,
+		laptop.ClientCompanyID,
+		laptop.SoftwareEngineerID,
 		laptop.CreatedAt,
 		laptop.UpdatedAt,
 	).Scan(&laptop.ID)
@@ -226,17 +282,21 @@ func UpdateLaptop(db *sql.DB, laptop *Laptop) error {
 
 	query := `
 		UPDATE laptops
-		SET serial_number = $1, brand = $2, model = $3, specs = $4, status = $5, updated_at = $6
-		WHERE id = $7
+		SET serial_number = $1, sku = $2, brand = $3, model = $4, specs = $5, status = $6, 
+		    client_company_id = $7, software_engineer_id = $8, updated_at = $9
+		WHERE id = $10
 	`
 
 	result, err := db.Exec(
 		query,
 		laptop.SerialNumber,
+		laptop.SKU,
 		laptop.Brand,
 		laptop.Model,
 		laptop.Specs,
 		laptop.Status,
+		laptop.ClientCompanyID,
+		laptop.SoftwareEngineerID,
 		laptop.UpdatedAt,
 		laptop.ID,
 	)

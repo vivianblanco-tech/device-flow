@@ -20,14 +20,22 @@ const (
 
 // Laptop represents a laptop device in the inventory
 type Laptop struct {
-	ID           int64        `json:"id" db:"id"`
-	SerialNumber string       `json:"serial_number" db:"serial_number"`
-	Brand        string       `json:"brand,omitempty" db:"brand"`
-	Model        string       `json:"model,omitempty" db:"model"`
-	Specs        string       `json:"specs,omitempty" db:"specs"`
-	Status       LaptopStatus `json:"status" db:"status"`
-	CreatedAt    time.Time    `json:"created_at" db:"created_at"`
-	UpdatedAt    time.Time    `json:"updated_at" db:"updated_at"`
+	ID                 int64        `json:"id" db:"id"`
+	SerialNumber       string       `json:"serial_number" db:"serial_number"`
+	SKU                string       `json:"sku,omitempty" db:"sku"`
+	Brand              string       `json:"brand,omitempty" db:"brand"`
+	Model              string       `json:"model,omitempty" db:"model"`
+	Specs              string       `json:"specs,omitempty" db:"specs"`
+	Status             LaptopStatus `json:"status" db:"status"`
+	ClientCompanyID    *int64       `json:"client_company_id,omitempty" db:"client_company_id"`
+	SoftwareEngineerID *int64       `json:"software_engineer_id,omitempty" db:"software_engineer_id"`
+	CreatedAt          time.Time    `json:"created_at" db:"created_at"`
+	UpdatedAt          time.Time    `json:"updated_at" db:"updated_at"`
+
+	// Relations (not stored in DB directly, populated by queries with joins)
+	ClientCompanyName    string `json:"client_company_name,omitempty" db:"client_company_name"`
+	SoftwareEngineerName string `json:"software_engineer_name,omitempty" db:"software_engineer_name"`
+	EmployeeID           string `json:"employee_id,omitempty" db:"employee_id"`
 }
 
 // Validate validates the Laptop model

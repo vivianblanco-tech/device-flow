@@ -38,6 +38,10 @@
                         <dd class="mt-1 text-lg font-semibold text-gray-900">{{.Laptop.SerialNumber}}</dd>
                     </div>
                     <div>
+                        <dt class="text-sm font-medium text-gray-500">SKU</dt>
+                        <dd class="mt-1 text-lg text-gray-900">{{if .Laptop.SKU}}{{.Laptop.SKU}}{{else}}-{{end}}</dd>
+                    </div>
+                    <div>
                         <dt class="text-sm font-medium text-gray-500">Status</dt>
                         <dd class="mt-1">
                             <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{if eq .Laptop.Status "available"}}bg-green-100 text-green-800{{else if eq .Laptop.Status "at_warehouse"}}bg-indigo-100 text-indigo-800{{else if eq .Laptop.Status "delivered"}}bg-blue-100 text-blue-800{{else if eq .Laptop.Status "retired"}}bg-gray-100 text-gray-800{{else}}bg-purple-100 text-purple-800{{end}}">
@@ -46,12 +50,25 @@
                         </dd>
                     </div>
                     <div>
+                        <dt class="text-sm font-medium text-gray-500">Client Company</dt>
+                        <dd class="mt-1 text-lg text-gray-900">{{if .Laptop.ClientCompanyName}}{{.Laptop.ClientCompanyName}}{{else}}-{{end}}</dd>
+                    </div>
+                    <div>
                         <dt class="text-sm font-medium text-gray-500">Brand</dt>
                         <dd class="mt-1 text-lg text-gray-900">{{if .Laptop.Brand}}{{.Laptop.Brand}}{{else}}-{{end}}</dd>
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Model</dt>
                         <dd class="mt-1 text-lg text-gray-900">{{if .Laptop.Model}}{{.Laptop.Model}}{{else}}-{{end}}</dd>
+                    </div>
+                    <div class="md:col-span-2">
+                        <dt class="text-sm font-medium text-gray-500">Assigned to Software Engineer</dt>
+                        <dd class="mt-1 text-base text-gray-900">
+                            {{if .Laptop.SoftwareEngineerName}}
+                                {{.Laptop.SoftwareEngineerName}}
+                                {{if .Laptop.SoftwareEngineerID}}<span class="text-sm text-gray-600">(Employee ID: {{.Laptop.SoftwareEngineerID}})</span>{{end}}
+                            {{else}}-{{end}}
+                        </dd>
                     </div>
                     <div class="md:col-span-2">
                         <dt class="text-sm font-medium text-gray-500">Specifications</dt>

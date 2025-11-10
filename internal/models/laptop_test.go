@@ -6,12 +6,29 @@ import (
 )
 
 func TestLaptop_Validate(t *testing.T) {
+	clientID := int64(1)
+	engineerID := int64(10)
+
 	tests := []struct {
 		name    string
 		laptop  Laptop
 		wantErr bool
 		errMsg  string
 	}{
+		{
+			name: "valid laptop with all fields including SKU, client, and engineer",
+			laptop: Laptop{
+				SerialNumber:       "SN123456789",
+				SKU:                "SKU-DELL-LAT-5520",
+				Brand:              "Dell",
+				Model:              "Latitude 5520",
+				Specs:              "i7, 16GB RAM, 512GB SSD",
+				Status:             LaptopStatusAvailable,
+				ClientCompanyID:    &clientID,
+				SoftwareEngineerID: &engineerID,
+			},
+			wantErr: false,
+		},
 		{
 			name: "valid laptop with all fields",
 			laptop: Laptop{
@@ -269,6 +286,34 @@ func TestLaptop_GetFullDescription(t *testing.T) {
 				t.Errorf("Laptop.GetFullDescription() = %v, want %v", got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestLaptop_WithNewFields(t *testing.T) {
+	clientID := int64(1)
+	engineerID := int64(10)
+
+	laptop := Laptop{
+		SerialNumber:       "SN123456789",
+		SKU:                "SKU-DELL-LAT-5520",
+		Brand:              "Dell",
+		Model:              "Latitude 5520",
+		Status:             LaptopStatusAvailable,
+		ClientCompanyID:    &clientID,
+		SoftwareEngineerID: &engineerID,
+	}
+
+	// Test that fields are properly set
+	if laptop.SKU != "SKU-DELL-LAT-5520" {
+		t.Errorf("Expected SKU to be 'SKU-DELL-LAT-5520', got %s", laptop.SKU)
+	}
+
+	if laptop.ClientCompanyID == nil || *laptop.ClientCompanyID != 1 {
+		t.Errorf("Expected ClientCompanyID to be 1, got %v", laptop.ClientCompanyID)
+	}
+
+	if laptop.SoftwareEngineerID == nil || *laptop.SoftwareEngineerID != 10 {
+		t.Errorf("Expected SoftwareEngineerID to be 10, got %v", laptop.SoftwareEngineerID)
 	}
 }
 
