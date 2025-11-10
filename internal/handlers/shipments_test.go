@@ -1814,3 +1814,199 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 		}
 	})
 }
+
+func TestSendMagicLinkVisibility(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test logistics user
+	var logisticsUserID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	t.Run("send magic link form is visible when status is pending_pickup_from_client", func(t *testing.T) {
+		// Create shipment with status pending_pickup_from_client
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "TEST-MAGIC-1", time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+		if !strings.Contains(responseBody, "Send Magic Link") {
+			t.Errorf("Expected 'Send Magic Link' form to be visible for status pending_pickup_from_client")
+		}
+	})
+
+	t.Run("send magic link form is visible when status is pickup_from_client_scheduled", func(t *testing.T) {
+		// Create shipment with status pickup_from_client_scheduled
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPickupScheduled, "TEST-MAGIC-2", time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+		if !strings.Contains(responseBody, "Send Magic Link") {
+			t.Errorf("Expected 'Send Magic Link' form to be visible for status pickup_from_client_scheduled")
+		}
+	})
+
+	t.Run("send magic link form is NOT visible when status is picked_up_from_client", func(t *testing.T) {
+		// Create shipment with status picked_up_from_client
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPickedUpFromClient, "TEST-MAGIC-3", time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+		if strings.Contains(responseBody, "Send Magic Link") {
+			t.Errorf("Expected 'Send Magic Link' form to NOT be visible for status picked_up_from_client")
+		}
+	})
+
+	t.Run("send magic link form is NOT visible when status is at_warehouse", func(t *testing.T) {
+		// Create shipment with status at_warehouse
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusAtWarehouse, "TEST-MAGIC-4", time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+		if strings.Contains(responseBody, "Send Magic Link") {
+			t.Errorf("Expected 'Send Magic Link' form to NOT be visible for status at_warehouse")
+		}
+	})
+
+	t.Run("send magic link form is NOT visible when status is delivered", func(t *testing.T) {
+		// Create shipment with status delivered
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusDelivered, "TEST-MAGIC-5", time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+		if strings.Contains(responseBody, "Send Magic Link") {
+			t.Errorf("Expected 'Send Magic Link' form to NOT be visible for status delivered")
+		}
+	})
+}
