@@ -626,6 +626,66 @@ func TestShipmentDetail(t *testing.T) {
 		}
 	})
 
+	t.Run("shipment detail displays updated at timestamp", func(t *testing.T) {
+		// Create a shipment with specific created and updated timestamps
+		createdAt := time.Date(2025, 11, 1, 10, 0, 0, 0, time.UTC)
+		updatedAt := time.Date(2025, 11, 10, 14, 30, 0, 0, time.UTC)
+
+		var testShipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusAtWarehouse, "SCOP-88888", createdAt, updatedAt,
+		).Scan(&testShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(testShipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(testShipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+
+		// Find the Shipment Information section
+		shipmentInfoStart := strings.Index(responseBody, "Shipment Information")
+		if shipmentInfoStart == -1 {
+			t.Fatal("Could not find 'Shipment Information' section in response")
+		}
+
+		// Find the end of Shipment Information section (next major section starts)
+		timelineStart := strings.Index(responseBody[shipmentInfoStart:], "Tracking Timeline")
+		if timelineStart == -1 {
+			timelineStart = len(responseBody) - shipmentInfoStart
+		}
+		shipmentInfoEnd := shipmentInfoStart + timelineStart
+
+		// Extract the Shipment Information section content
+		shipmentInfoSection := responseBody[shipmentInfoStart:shipmentInfoEnd]
+
+		// Verify "Updated" label is present in Shipment Information section
+		if !strings.Contains(shipmentInfoSection, "Updated") {
+			t.Errorf("Expected response to contain 'Updated' label in Shipment Information section")
+		}
+
+		// Verify the formatted updated_at timestamp is present
+		// Format: "Nov 10, 2025 14:30"
+		expectedTimestamp := updatedAt.Format("Jan 02, 2006 15:04")
+		if !strings.Contains(shipmentInfoSection, expectedTimestamp) {
+			t.Errorf("Expected response to contain updated timestamp '%s' in Shipment Information section, but it was not found", expectedTimestamp)
+		}
+	})
+
 	t.Run("missing shipment ID returns error", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments/detail", nil)
 
