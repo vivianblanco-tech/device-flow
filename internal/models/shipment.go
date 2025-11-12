@@ -94,6 +94,26 @@ func (s *Shipment) Validate() error {
 	return nil
 }
 
+// ValidateEngineerAssignment validates engineer assignment based on shipment type
+func (s *Shipment) ValidateEngineerAssignment() error {
+	switch s.ShipmentType {
+	case ShipmentTypeBulkToWarehouse:
+		// Bulk shipments cannot have engineer assigned
+		if s.SoftwareEngineerID != nil {
+			return errors.New("bulk_to_warehouse shipments cannot have software engineer assigned")
+		}
+	case ShipmentTypeWarehouseToEngineer:
+		// Warehouse-to-engineer shipments must have engineer assigned
+		if s.SoftwareEngineerID == nil {
+			return errors.New("warehouse_to_engineer shipments must have software engineer assigned")
+		}
+	case ShipmentTypeSingleFullJourney:
+		// Single full journey can be assigned anytime (optional validation here)
+		// No error - engineer can be nil or assigned
+	}
+	return nil
+}
+
 // IsValidJiraTicketFormat validates the JIRA ticket number format (PROJECT-NUMBER)
 func IsValidJiraTicketFormat(ticket string) bool {
 	// Pattern: uppercase letters, dash, digits

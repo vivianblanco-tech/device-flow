@@ -1,6 +1,7 @@
 package models
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -712,6 +713,90 @@ func TestShipmentType_Validation(t *testing.T) {
 			t.Error("Expected invalid_type to be invalid")
 		}
 	})
+}
+
+func TestShipment_EngineerAssignmentRules(t *testing.T) {
+	engineerID := int64(1)
+	
+	tests := []struct {
+		name          string
+		shipmentType  ShipmentType
+		status        ShipmentStatus
+		engineerID    *int64
+		shouldBeValid bool
+		errorContains string
+	}{
+		{
+			name:          "single_full_journey can have engineer assigned before release",
+			shipmentType:  ShipmentTypeSingleFullJourney,
+			status:        ShipmentStatusAtWarehouse,
+			engineerID:    nil,
+			shouldBeValid: true,
+		},
+		{
+			name:          "single_full_journey can have engineer assigned",
+			shipmentType:  ShipmentTypeSingleFullJourney,
+			status:        ShipmentStatusAtWarehouse,
+			engineerID:    &engineerID,
+			shouldBeValid: true,
+		},
+		{
+			name:          "warehouse_to_engineer must have engineer assigned",
+			shipmentType:  ShipmentTypeWarehouseToEngineer,
+			status:        ShipmentStatusReleasedFromWarehouse,
+			engineerID:    nil,
+			shouldBeValid: false,
+			errorContains: "must have software engineer assigned",
+		},
+		{
+			name:          "warehouse_to_engineer with engineer is valid",
+			shipmentType:  ShipmentTypeWarehouseToEngineer,
+			status:        ShipmentStatusReleasedFromWarehouse,
+			engineerID:    &engineerID,
+			shouldBeValid: true,
+		},
+		{
+			name:          "bulk_to_warehouse cannot have engineer assigned",
+			shipmentType:  ShipmentTypeBulkToWarehouse,
+			status:        ShipmentStatusAtWarehouse,
+			engineerID:    &engineerID,
+			shouldBeValid: false,
+			errorContains: "cannot have software engineer assigned",
+		},
+		{
+			name:          "bulk_to_warehouse without engineer is valid",
+			shipmentType:  ShipmentTypeBulkToWarehouse,
+			status:        ShipmentStatusAtWarehouse,
+			engineerID:    nil,
+			shouldBeValid: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Shipment{
+				ShipmentType:       tt.shipmentType,
+				Status:             tt.status,
+				SoftwareEngineerID: tt.engineerID,
+				ClientCompanyID:    1,
+				JiraTicketNumber:   "SCOP-12345",
+			}
+
+			err := s.ValidateEngineerAssignment()
+			if tt.shouldBeValid && err != nil {
+				t.Errorf("Expected valid, got error: %v", err)
+			}
+			if !tt.shouldBeValid {
+				if err == nil {
+					t.Error("Expected error, got nil")
+				} else if tt.errorContains != "" {
+					if !strings.Contains(err.Error(), tt.errorContains) {
+						t.Errorf("Expected error to contain '%s', got: %v", tt.errorContains, err)
+					}
+				}
+			}
+		})
+	}
 }
 
 // Helper function for creating int64 pointers
