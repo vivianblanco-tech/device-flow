@@ -92,6 +92,27 @@ func (l *Laptop) IsAvailable() bool {
 	return l.Status == LaptopStatusAvailable
 }
 
+// IsAvailableForWarehouseShipment checks if laptop can be used for warehouse-to-engineer shipment
+// Requirements: must be available/at_warehouse, have reception report, and not in active shipment
+func (l *Laptop) IsAvailableForWarehouseShipment(hasReceptionReport bool, inActiveShipment bool) bool {
+	// Must be available or at warehouse
+	if l.Status != LaptopStatusAvailable && l.Status != LaptopStatusAtWarehouse {
+		return false
+	}
+	
+	// Must have completed reception report
+	if !hasReceptionReport {
+		return false
+	}
+	
+	// Must not be in an active shipment
+	if inActiveShipment {
+		return false
+	}
+	
+	return true
+}
+
 // UpdateStatus updates the laptop status
 func (l *Laptop) UpdateStatus(status LaptopStatus) {
 	l.Status = status

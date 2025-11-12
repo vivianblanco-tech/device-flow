@@ -316,3 +316,77 @@ func TestLaptop_WithNewFields(t *testing.T) {
 		t.Errorf("Expected SoftwareEngineerID to be 10, got %v", laptop.SoftwareEngineerID)
 	}
 }
+
+func TestLaptop_IsAvailableForWarehouseShipment(t *testing.T) {
+	tests := []struct {
+		name                 string
+		laptop               Laptop
+		hasReceptionReport   bool
+		inActiveShipment     bool
+		shouldBeAvailable    bool
+	}{
+		{
+			name: "available laptop with reception report and not in shipment",
+			laptop: Laptop{
+				Status: LaptopStatusAvailable,
+			},
+			hasReceptionReport:  true,
+			inActiveShipment:    false,
+			shouldBeAvailable:   true,
+		},
+		{
+			name: "at_warehouse laptop with reception report",
+			laptop: Laptop{
+				Status: LaptopStatusAtWarehouse,
+			},
+			hasReceptionReport:  true,
+			inActiveShipment:    false,
+			shouldBeAvailable:   true,
+		},
+		{
+			name: "available laptop without reception report",
+			laptop: Laptop{
+				Status: LaptopStatusAvailable,
+			},
+			hasReceptionReport:  false,
+			inActiveShipment:    false,
+			shouldBeAvailable:   false,
+		},
+		{
+			name: "laptop in active shipment",
+			laptop: Laptop{
+				Status: LaptopStatusAvailable,
+			},
+			hasReceptionReport:  true,
+			inActiveShipment:    true,
+			shouldBeAvailable:   false,
+		},
+		{
+			name: "laptop in transit (wrong status)",
+			laptop: Laptop{
+				Status: LaptopStatusInTransitToEngineer,
+			},
+			hasReceptionReport:  true,
+			inActiveShipment:    false,
+			shouldBeAvailable:   false,
+		},
+		{
+			name: "retired laptop",
+			laptop: Laptop{
+				Status: LaptopStatusRetired,
+			},
+			hasReceptionReport:  true,
+			inActiveShipment:    false,
+			shouldBeAvailable:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			available := tt.laptop.IsAvailableForWarehouseShipment(tt.hasReceptionReport, tt.inActiveShipment)
+			if available != tt.shouldBeAvailable {
+				t.Errorf("Expected available=%v, got %v", tt.shouldBeAvailable, available)
+			}
+		})
+	}
+}
