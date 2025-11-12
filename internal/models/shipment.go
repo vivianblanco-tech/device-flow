@@ -396,6 +396,35 @@ func (s *Shipment) GetLaptopCount() int {
 	return len(s.Laptops)
 }
 
+// ShouldSyncLaptopStatus returns true if laptop status should sync with shipment status
+// Only single shipments (single_full_journey and warehouse_to_engineer) sync laptop status
+func (s *Shipment) ShouldSyncLaptopStatus() bool {
+	return s.ShipmentType == ShipmentTypeSingleFullJourney ||
+		s.ShipmentType == ShipmentTypeWarehouseToEngineer
+}
+
+// GetLaptopStatusForShipmentStatus returns the corresponding laptop status for the current shipment status
+// Returns empty string if shipment type doesn't sync laptop status
+func (s *Shipment) GetLaptopStatusForShipmentStatus() LaptopStatus {
+	if !s.ShouldSyncLaptopStatus() {
+		return "" // No sync for bulk shipments
+	}
+
+	switch s.Status {
+	case ShipmentStatusPendingPickup, ShipmentStatusPickupScheduled,
+		ShipmentStatusPickedUpFromClient, ShipmentStatusInTransitToWarehouse:
+		return LaptopStatusInTransitToWarehouse
+	case ShipmentStatusAtWarehouse:
+		return LaptopStatusAtWarehouse
+	case ShipmentStatusReleasedFromWarehouse, ShipmentStatusInTransitToEngineer:
+		return LaptopStatusInTransitToEngineer
+	case ShipmentStatusDelivered:
+		return LaptopStatusDelivered
+	default:
+		return LaptopStatusAvailable
+	}
+}
+
 // GetTrackingURL returns the courier's tracking URL for this shipment's tracking number
 // Returns an empty string if the courier is not recognized or if courier name is empty
 // Supports courier names with service types (e.g., "FedEx Express", "UPS Next Day Air")

@@ -1154,6 +1154,97 @@ func TestShipment_ValidateWithType(t *testing.T) {
 	}
 }
 
+func TestShipment_SyncLaptopStatusOnUpdate(t *testing.T) {
+	tests := []struct {
+		name                 string
+		shipmentType         ShipmentType
+		shipmentStatus       ShipmentStatus
+		expectedLaptopStatus LaptopStatus
+		shouldSync           bool
+	}{
+		// Single full journey - should sync
+		{
+			name:                 "single_full_journey syncs laptop status - in transit to warehouse",
+			shipmentType:         ShipmentTypeSingleFullJourney,
+			shipmentStatus:       ShipmentStatusInTransitToWarehouse,
+			expectedLaptopStatus: LaptopStatusInTransitToWarehouse,
+			shouldSync:           true,
+		},
+		{
+			name:                 "single_full_journey syncs laptop status - at warehouse",
+			shipmentType:         ShipmentTypeSingleFullJourney,
+			shipmentStatus:       ShipmentStatusAtWarehouse,
+			expectedLaptopStatus: LaptopStatusAtWarehouse,
+			shouldSync:           true,
+		},
+		{
+			name:                 "single_full_journey syncs laptop status - in transit to engineer",
+			shipmentType:         ShipmentTypeSingleFullJourney,
+			shipmentStatus:       ShipmentStatusInTransitToEngineer,
+			expectedLaptopStatus: LaptopStatusInTransitToEngineer,
+			shouldSync:           true,
+		},
+		{
+			name:                 "single_full_journey syncs laptop status - delivered",
+			shipmentType:         ShipmentTypeSingleFullJourney,
+			shipmentStatus:       ShipmentStatusDelivered,
+			expectedLaptopStatus: LaptopStatusDelivered,
+			shouldSync:           true,
+		},
+		// Warehouse to engineer - should sync
+		{
+			name:                 "warehouse_to_engineer syncs laptop status - in transit",
+			shipmentType:         ShipmentTypeWarehouseToEngineer,
+			shipmentStatus:       ShipmentStatusInTransitToEngineer,
+			expectedLaptopStatus: LaptopStatusInTransitToEngineer,
+			shouldSync:           true,
+		},
+		{
+			name:                 "warehouse_to_engineer syncs laptop status - delivered",
+			shipmentType:         ShipmentTypeWarehouseToEngineer,
+			shipmentStatus:       ShipmentStatusDelivered,
+			expectedLaptopStatus: LaptopStatusDelivered,
+			shouldSync:           true,
+		},
+		// Bulk to warehouse - should NOT sync
+		{
+			name:           "bulk_to_warehouse does not sync laptop status",
+			shipmentType:   ShipmentTypeBulkToWarehouse,
+			shipmentStatus: ShipmentStatusInTransitToWarehouse,
+			shouldSync:     false,
+		},
+		{
+			name:           "bulk_to_warehouse at warehouse does not sync",
+			shipmentType:   ShipmentTypeBulkToWarehouse,
+			shipmentStatus: ShipmentStatusAtWarehouse,
+			shouldSync:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Shipment{
+				ShipmentType:     tt.shipmentType,
+				Status:           tt.shipmentStatus,
+				ClientCompanyID:  1,
+				JiraTicketNumber: "SCOP-12345",
+			}
+
+			shouldSync := s.ShouldSyncLaptopStatus()
+			if shouldSync != tt.shouldSync {
+				t.Errorf("Expected shouldSync=%v, got %v", tt.shouldSync, shouldSync)
+			}
+
+			if tt.shouldSync {
+				laptopStatus := s.GetLaptopStatusForShipmentStatus()
+				if laptopStatus != tt.expectedLaptopStatus {
+					t.Errorf("Expected laptop status %s, got %s", tt.expectedLaptopStatus, laptopStatus)
+				}
+			}
+		})
+	}
+}
+
 // Helper function for creating int64 pointers
 func int64Ptr(i int64) *int64 {
 	return &i
