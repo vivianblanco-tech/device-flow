@@ -1048,14 +1048,14 @@ func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *ht
 			return
 		}
 
-		// Update shipment pickup_scheduled_date
+		// Update shipment pickup_scheduled_date and laptop_count
 		_, err = h.DB.ExecContext(r.Context(),
-			`UPDATE shipments SET pickup_scheduled_date = $1, updated_at = $2 WHERE id = $3`,
-			pickupDateTime, time.Now(), shipmentID,
+			`UPDATE shipments SET pickup_scheduled_date = $1, laptop_count = $2, updated_at = $3 WHERE id = $4`,
+			pickupDateTime, numberOfLaptops, time.Now(), shipmentID,
 		)
 		if err != nil {
 			// Non-critical, log and continue
-			fmt.Printf("Warning: Failed to update shipment pickup date: %v\n", err)
+			fmt.Printf("Warning: Failed to update shipment: %v\n", err)
 		}
 	} else if err == nil {
 		// Update existing pickup form
@@ -1069,14 +1069,14 @@ func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *ht
 			return
 		}
 
-		// Update shipment pickup_scheduled_date
+		// Update shipment pickup_scheduled_date and laptop_count
 		_, err = h.DB.ExecContext(r.Context(),
-			`UPDATE shipments SET pickup_scheduled_date = $1, updated_at = $2 WHERE id = $3`,
-			pickupDateTime, time.Now(), shipmentID,
+			`UPDATE shipments SET pickup_scheduled_date = $1, laptop_count = $2, updated_at = $3 WHERE id = $4`,
+			pickupDateTime, numberOfLaptops, time.Now(), shipmentID,
 		)
 		if err != nil {
 			// Non-critical, log and continue
-			fmt.Printf("Warning: Failed to update shipment pickup date: %v\n", err)
+			fmt.Printf("Warning: Failed to update shipment: %v\n", err)
 		}
 	} else {
 		http.Error(w, "Failed to check existing form", http.StatusInternalServerError)

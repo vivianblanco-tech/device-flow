@@ -386,7 +386,10 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 		}
 
 	case models.ShipmentTypeBulkToWarehouse:
-		if !hasPickupDate {
+		// Pickup date is optional for minimal bulk shipment creation (logistics only)
+		// It's required for full form submission (client completing details)
+		isMinimalCreation := r.FormValue("contact_name") == "" && r.FormValue("contact_email") == ""
+		if !hasPickupDate && !isMinimalCreation {
 			http.Redirect(w, r, "/pickup-form?error=Pickup+date+is+required", http.StatusSeeOther)
 			return
 		}
@@ -752,6 +755,80 @@ func (h *PickupFormHandler) handleLegacyPickupForm(r *http.Request, user *models
 
 // handleBulkToWarehouseForm handles bulk to warehouse shipment form submission
 func (h *PickupFormHandler) handleBulkToWarehouseForm(r *http.Request, user *models.User, companyID int64, pickupDate time.Time, includeAccessories bool) (int64, error) {
+	// Check if this is a minimal creation (logistics user creating with only JIRA + Company)
+	// Minimal creation means no contact information is provided
+	isMinimalCreation := r.FormValue("contact_name") == "" && r.FormValue("contact_email") == ""
+
+	// Parse JIRA ticket (always required)
+	jiraTicketNumber := r.FormValue("jira_ticket_number")
+
+	// For minimal creation, validate only JIRA ticket and company
+	if isMinimalCreation {
+		// Only logistics users can create minimal shipments
+		if user.Role != models.RoleLogistics {
+			return 0, fmt.Errorf("only logistics users can create minimal bulk shipments")
+		}
+
+		// Validate JIRA ticket format
+		if jiraTicketNumber == "" {
+			return 0, fmt.Errorf("JIRA ticket number is required")
+		}
+
+		// Start transaction
+		tx, err := h.DB.BeginTx(r.Context(), nil)
+		if err != nil {
+			return 0, fmt.Errorf("failed to start transaction: %w", err)
+		}
+		defer tx.Rollback()
+
+		// Create minimal shipment (laptop_count defaults to 1, will be updated later)
+		shipment := models.Shipment{
+			ShipmentType:     models.ShipmentTypeBulkToWarehouse,
+			ClientCompanyID:  companyID,
+			Status:           models.ShipmentStatusPendingPickup,
+			LaptopCount:      1, // Default, will be updated when client completes form
+			JiraTicketNumber: jiraTicketNumber,
+		}
+		shipment.BeforeCreate()
+
+		var shipmentID int64
+		err = tx.QueryRowContext(r.Context(),
+			`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			RETURNING id`,
+			shipment.ShipmentType, shipment.ClientCompanyID, shipment.Status, shipment.LaptopCount,
+			shipment.JiraTicketNumber, shipment.CreatedAt, shipment.UpdatedAt,
+		).Scan(&shipmentID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create shipment: %w", err)
+		}
+
+		// Create audit log entry
+		auditDetails, _ := json.Marshal(map[string]interface{}{
+			"action":             "minimal_bulk_shipment_created",
+			"shipment_id":        shipmentID,
+			"jira_ticket_number": jiraTicketNumber,
+		})
+
+		_, err = tx.ExecContext(r.Context(),
+			`INSERT INTO audit_logs (user_id, action, entity_type, entity_id, timestamp, details)
+			VALUES ($1, $2, $3, $4, $5, $6)`,
+			user.ID, "minimal_bulk_shipment_created", "shipment", shipmentID, time.Now(), auditDetails,
+		)
+		if err != nil {
+			// Non-critical, log and continue
+			fmt.Printf("Failed to create audit log: %v\n", err)
+		}
+
+		// Commit transaction
+		if err = tx.Commit(); err != nil {
+			return 0, fmt.Errorf("failed to commit transaction: %w", err)
+		}
+
+		return shipmentID, nil
+	}
+
+	// Full form submission (not minimal) - validate all fields
 	// Parse bulk-specific fields
 	numberOfLaptopsStr := r.FormValue("number_of_laptops")
 	numberOfLaptops, err := strconv.Atoi(numberOfLaptopsStr)
@@ -776,7 +853,7 @@ func (h *PickupFormHandler) handleBulkToWarehouseForm(r *http.Request, user *mod
 		PickupZip:              r.FormValue("pickup_zip"),
 		PickupDate:             r.FormValue("pickup_date"),
 		PickupTimeSlot:         r.FormValue("pickup_time_slot"),
-		JiraTicketNumber:       r.FormValue("jira_ticket_number"),
+		JiraTicketNumber:       jiraTicketNumber,
 		SpecialInstructions:    r.FormValue("special_instructions"),
 		NumberOfLaptops:        numberOfLaptops,
 		BulkLength:             bulkLength,

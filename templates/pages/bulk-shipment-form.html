@@ -41,12 +41,20 @@
         </div>
         {{end}}
 
-        <!-- Bulk Shipment Form -->
+        <!-- Bulk Shipment Form (Minimal Creation) -->
         <div class="bg-white shadow-md rounded-lg p-6 md:p-8">
             <form action="/pickup-form" method="POST" class="space-y-6">
                 
                 <!-- Hidden Field: Shipment Type -->
                 <input type="hidden" name="shipment_type" value="bulk_to_warehouse">
+
+                <!-- Information Box -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-blue-900 mb-2">📋 Creating Bulk Shipment</h4>
+                    <p class="text-sm text-blue-800">
+                        You're creating a bulk shipment placeholder. After creation, you'll be able to send a magic link to the client to complete the pickup details.
+                    </p>
+                </div>
 
                 <!-- Company Selection (for Logistics users) -->
                 {{if eq .User.Role "logistics"}}
@@ -70,315 +78,21 @@
                 <input type="hidden" name="client_company_id" value="{{.CompanyID}}">
                 {{end}}
 
-                <!-- Bulk Shipment Details -->
-                <div class="border-t pt-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Bulk Shipment Information</h3>
-                    
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                        <p class="text-sm text-yellow-800">
-                            <strong>Note:</strong> Individual laptop serial numbers will be recorded during warehouse reception.
-                        </p>
-                    </div>
-
-                    <!-- Number of Laptops -->
-                    <div class="mb-6">
-                        <label for="number_of_laptops" class="block text-sm font-medium text-gray-700 mb-2">
-                            Number of Laptops <span class="text-red-600">*</span>
-                        </label>
-                        <input 
-                            type="number" 
-                            id="number_of_laptops" 
-                            name="number_of_laptops" 
-                            min="2"
-                            required
-                            placeholder="2"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        >
-                        <p class="mt-1 text-sm text-gray-500">Minimum 2 laptops for bulk shipment</p>
-                    </div>
-
-                    <!-- Bulk Dimensions -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label for="bulk_length" class="block text-sm font-medium text-gray-700 mb-2">
-                                Length (cm) <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="number" 
-                                id="bulk_length" 
-                                name="bulk_length" 
-                                min="1"
-                                step="0.1"
-                                required
-                                placeholder="50.0"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <div>
-                            <label for="bulk_width" class="block text-sm font-medium text-gray-700 mb-2">
-                                Width (cm) <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="number" 
-                                id="bulk_width" 
-                                name="bulk_width" 
-                                min="1"
-                                step="0.1"
-                                required
-                                placeholder="40.0"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <div>
-                            <label for="bulk_height" class="block text-sm font-medium text-gray-700 mb-2">
-                                Height (cm) <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="number" 
-                                id="bulk_height" 
-                                name="bulk_height" 
-                                min="1"
-                                step="0.1"
-                                required
-                                placeholder="30.0"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <div>
-                            <label for="bulk_weight" class="block text-sm font-medium text-gray-700 mb-2">
-                                Weight (kg) <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="number" 
-                                id="bulk_weight" 
-                                name="bulk_weight" 
-                                min="0.1"
-                                step="0.1"
-                                required
-                                placeholder="25.0"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Contact Information Section -->
-                <div class="border-t pt-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Contact Name -->
-                        <div>
-                            <label for="contact_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                Contact Name <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                id="contact_name" 
-                                name="contact_name" 
-                                required
-                                placeholder="John Doe"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <!-- Contact Email -->
-                        <div>
-                            <label for="contact_email" class="block text-sm font-medium text-gray-700 mb-2">
-                                Contact Email <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="email" 
-                                id="contact_email" 
-                                name="contact_email" 
-                                required
-                                placeholder="john.doe@company.com"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <!-- Contact Phone -->
-                        <div class="md:col-span-2">
-                            <label for="contact_phone" class="block text-sm font-medium text-gray-700 mb-2">
-                                Contact Phone <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="tel" 
-                                id="contact_phone" 
-                                name="contact_phone" 
-                                required
-                                placeholder="+1-555-0123"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Pickup Details Section -->
-                <div class="border-t pt-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Pickup Details</h3>
-                    
-                    <!-- Pickup Address -->
-                    <div class="mb-6">
-                        <label for="pickup_address" class="block text-sm font-medium text-gray-700 mb-2">
-                            Street Address <span class="text-red-600">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="pickup_address" 
-                            name="pickup_address" 
-                            required
-                            placeholder="123 Main Street, Suite 400"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        >
-                    </div>
-
-                    <!-- City, State, ZIP -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div>
-                            <label for="pickup_city" class="block text-sm font-medium text-gray-700 mb-2">
-                                City <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                id="pickup_city" 
-                                name="pickup_city" 
-                                required
-                                placeholder="New York"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <div>
-                            <label for="pickup_state" class="block text-sm font-medium text-gray-700 mb-2">
-                                State <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                id="pickup_state" 
-                                name="pickup_state" 
-                                required
-                                placeholder="NY"
-                                maxlength="2"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <div>
-                            <label for="pickup_zip" class="block text-sm font-medium text-gray-700 mb-2">
-                                ZIP Code <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                id="pickup_zip" 
-                                name="pickup_zip" 
-                                required
-                                placeholder="10001"
-                                maxlength="5"
-                                pattern="[0-9]{5}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Pickup Date -->
-                        <div>
-                            <label for="pickup_date" class="block text-sm font-medium text-gray-700 mb-2">
-                                Pickup Date <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="date" 
-                                id="pickup_date" 
-                                name="pickup_date" 
-                                required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <!-- Time Slot -->
-                        <div>
-                            <label for="pickup_time_slot" class="block text-sm font-medium text-gray-700 mb-2">
-                                Time Slot <span class="text-red-600">*</span>
-                            </label>
-                            <select 
-                                id="pickup_time_slot" 
-                                name="pickup_time_slot" 
-                                required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                                <option value="">Select...</option>
-                                <option value="morning">Morning (8AM - 12PM)</option>
-                                <option value="afternoon">Afternoon (12PM - 5PM)</option>
-                                <option value="evening">Evening (5PM - 8PM)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- JIRA Ticket -->
-                    <div class="mt-6">
-                        <label for="jira_ticket_number" class="block text-sm font-medium text-gray-700 mb-2">
-                            JIRA Ticket Number <span class="text-red-600">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="jira_ticket_number" 
-                            name="jira_ticket_number" 
-                            required
-                            placeholder="SCOP-12345"
-                            pattern="[A-Z]+-[0-9]+"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        >
-                        <p class="mt-1 text-sm text-gray-500">Format: PROJECT-NUMBER (e.g., SCOP-67702)</p>
-                    </div>
-
-                    <!-- Special Instructions -->
-                    <div class="mt-6">
-                        <label for="special_instructions" class="block text-sm font-medium text-gray-700 mb-2">
-                            Special Instructions (Optional)
-                        </label>
-                        <textarea 
-                            id="special_instructions" 
-                            name="special_instructions" 
-                            rows="3"
-                            placeholder="Any special handling requirements, parking instructions, security protocols, etc."
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        ></textarea>
-                    </div>
-                </div>
-
-                <!-- Accessories Section -->
-                <div class="border-t pt-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Accessories</h3>
-                    
-                    <div class="flex items-center mb-4">
-                        <input 
-                            type="checkbox" 
-                            id="include_accessories" 
-                            name="include_accessories" 
-                            value="true"
-                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        >
-                        <label for="include_accessories" class="ml-2 block text-sm text-gray-900">
-                            Include accessories with this shipment
-                        </label>
-                    </div>
-
-                    <div>
-                        <label for="accessories_description" class="block text-sm font-medium text-gray-700 mb-2">
-                            Accessories Description
-                        </label>
-                        <textarea 
-                            id="accessories_description" 
-                            name="accessories_description" 
-                            rows="2"
-                            placeholder="e.g., Chargers, mice, keyboards, docking stations"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        ></textarea>
-                    </div>
+                <!-- JIRA Ticket -->
+                <div>
+                    <label for="jira_ticket_number" class="block text-sm font-medium text-gray-700 mb-2">
+                        JIRA Ticket Number <span class="text-red-600">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="jira_ticket_number" 
+                        name="jira_ticket_number" 
+                        required
+                        placeholder="SCOP-12345"
+                        pattern="[A-Z]+-[0-9]+"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    >
+                    <p class="mt-1 text-sm text-gray-500">Format: PROJECT-NUMBER (e.g., SCOP-67702)</p>
                 </div>
 
                 <!-- Submit Buttons -->
@@ -401,14 +115,13 @@
 
         <!-- Help Text -->
         <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h4 class="text-sm font-medium text-blue-900 mb-2">Bulk Shipment Process:</h4>
-            <ul class="text-sm text-blue-800 space-y-1 ml-4 list-disc">
-                <li>Multiple laptops picked up from client location</li>
-                <li>Delivered directly to warehouse for storage</li>
-                <li>Warehouse team records individual serial numbers upon reception</li>
-                <li>Shipment ends at warehouse - individual laptops can be shipped later</li>
-                <li>Status tracking through 5 stages (ends at "at_warehouse")</li>
-            </ul>
+            <h4 class="text-sm font-medium text-blue-900 mb-2">Next Steps:</h4>
+            <ol class="text-sm text-blue-800 space-y-1 ml-4 list-decimal">
+                <li>Create the bulk shipment with JIRA ticket and client company</li>
+                <li>Send a magic link to the client from the shipment detail page</li>
+                <li>Client completes pickup details via the magic link</li>
+                <li>Schedule pickup with courier once details are submitted</li>
+            </ol>
         </div>
     </div>
 
