@@ -129,6 +129,242 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Get shipment type
+	shipmentTypeStr := r.FormValue("shipment_type")
+	
+	// Detect legacy form format (no shipment_type and has old fields)
+	isLegacyForm := shipmentTypeStr == "" && r.FormValue("number_of_laptops") != ""
+	
+	// Set shipment type
+	if isLegacyForm {
+		// Legacy forms - will be handled by legacy handler
+		shipmentTypeStr = "legacy"
+	} else if shipmentTypeStr == "" {
+		// New forms without explicit type default to single_full_journey
+		shipmentTypeStr = string(models.ShipmentTypeSingleFullJourney)
+	}
+	
+	shipmentType := models.ShipmentType(shipmentTypeStr)
+
+	// Validate shipment type (skip for legacy)
+	if shipmentType != "legacy" && !models.IsValidShipmentType(shipmentType) {
+		http.Redirect(w, r, "/pickup-form?error=Invalid+shipment+type", http.StatusSeeOther)
+		return
+	}
+
+	// Parse pickup date
+	pickupDateStr := r.FormValue("pickup_date")
+	pickupDate, err := time.Parse("2006-01-02", pickupDateStr)
+	if err != nil {
+		http.Redirect(w, r, "/pickup-form?error=Invalid+date+format", http.StatusSeeOther)
+		return
+	}
+
+	// Parse include accessories checkbox
+	includeAccessories := r.FormValue("include_accessories") == "on" || r.FormValue("include_accessories") == "true"
+
+	var shipmentID int64
+
+	// Branch logic based on shipment type
+	switch shipmentType {
+	case models.ShipmentTypeSingleFullJourney:
+		shipmentID, err = h.handleSingleFullJourneyForm(r, user, companyID, pickupDate, includeAccessories)
+		if err != nil {
+			redirectURL := fmt.Sprintf("/pickup-form?error=%s&company_id=%d",
+				err.Error(), companyID)
+			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+			return
+		}
+
+	case "legacy":
+		// Legacy form handling for backward compatibility
+		shipmentID, err = h.handleLegacyPickupForm(r, user, companyID, pickupDate, includeAccessories)
+		if err != nil {
+			redirectURL := fmt.Sprintf("/pickup-form?error=%s&company_id=%d",
+				err.Error(), companyID)
+			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+			return
+		}
+
+	default:
+		http.Redirect(w, r, "/pickup-form?error=Unsupported+shipment+type", http.StatusSeeOther)
+		return
+	}
+
+	// Send pickup confirmation email (Step 4 in process flow)
+	if h.Notifier != nil {
+		if err := h.Notifier.SendPickupConfirmation(r.Context(), shipmentID); err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Warning: Failed to send pickup confirmation email: %v\n", err)
+		}
+	}
+
+	// Redirect to success page or shipment detail
+	redirectURL := fmt.Sprintf("/shipments/%d?success=Pickup+form+submitted+successfully", shipmentID)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// handleSingleFullJourneyForm handles single full journey shipment form submission
+func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *models.User, companyID int64, pickupDate time.Time, includeAccessories bool) (int64, error) {
+	// Build validation input
+	formInput := validator.SingleFullJourneyFormInput{
+		ClientCompanyID:        companyID,
+		ContactName:            r.FormValue("contact_name"),
+		ContactEmail:           r.FormValue("contact_email"),
+		ContactPhone:           r.FormValue("contact_phone"),
+		PickupAddress:          r.FormValue("pickup_address"),
+		PickupCity:             r.FormValue("pickup_city"),
+		PickupState:            r.FormValue("pickup_state"),
+		PickupZip:              r.FormValue("pickup_zip"),
+		PickupDate:             r.FormValue("pickup_date"),
+		PickupTimeSlot:         r.FormValue("pickup_time_slot"),
+		JiraTicketNumber:       r.FormValue("jira_ticket_number"),
+		SpecialInstructions:    r.FormValue("special_instructions"),
+		LaptopSerialNumber:     r.FormValue("laptop_serial_number"),
+		LaptopSpecs:            r.FormValue("laptop_specs"),
+		EngineerName:           r.FormValue("engineer_name"),
+		IncludeAccessories:     includeAccessories,
+		AccessoriesDescription: r.FormValue("accessories_description"),
+	}
+
+	// Validate form
+	if err := validator.ValidateSingleFullJourneyForm(formInput); err != nil {
+		return 0, err
+	}
+
+	// Start transaction
+	tx, err := h.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Create shipment with single_full_journey type
+	shipment := models.Shipment{
+		ShipmentType:        models.ShipmentTypeSingleFullJourney,
+		ClientCompanyID:     companyID,
+		Status:              models.ShipmentStatusPendingPickup,
+		LaptopCount:         1,
+		JiraTicketNumber:    formInput.JiraTicketNumber,
+		PickupScheduledDate: &pickupDate,
+		Notes:               formInput.SpecialInstructions,
+	}
+	shipment.BeforeCreate()
+
+	var shipmentID int64
+	err = tx.QueryRowContext(r.Context(),
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, pickup_scheduled_date, notes, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING id`,
+		shipment.ShipmentType, shipment.ClientCompanyID, shipment.Status, shipment.LaptopCount,
+		shipment.JiraTicketNumber, shipment.PickupScheduledDate, shipment.Notes,
+		shipment.CreatedAt, shipment.UpdatedAt,
+	).Scan(&shipmentID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create shipment: %w", err)
+	}
+
+	// Auto-create laptop record
+	laptop := models.Laptop{
+		SerialNumber:    formInput.LaptopSerialNumber,
+		Specs:           formInput.LaptopSpecs,
+		Status:          models.LaptopStatusInTransitToWarehouse,
+		ClientCompanyID: &companyID,
+	}
+	laptop.BeforeCreate()
+
+	var laptopID int64
+	err = tx.QueryRowContext(r.Context(),
+		`INSERT INTO laptops (serial_number, specs, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id`,
+		laptop.SerialNumber, laptop.Specs, laptop.Status, laptop.ClientCompanyID,
+		laptop.CreatedAt, laptop.UpdatedAt,
+	).Scan(&laptopID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create laptop: %w", err)
+	}
+
+	// Link laptop to shipment
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at)
+		VALUES ($1, $2, $3)`,
+		shipmentID, laptopID, time.Now(),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to link laptop to shipment: %w", err)
+	}
+
+	// Create pickup form with form data as JSONB
+	formDataJSON, err := json.Marshal(map[string]interface{}{
+		"contact_name":            formInput.ContactName,
+		"contact_email":           formInput.ContactEmail,
+		"contact_phone":           formInput.ContactPhone,
+		"pickup_address":          formInput.PickupAddress,
+		"pickup_city":             formInput.PickupCity,
+		"pickup_state":            formInput.PickupState,
+		"pickup_zip":              formInput.PickupZip,
+		"pickup_date":             formInput.PickupDate,
+		"pickup_time_slot":        formInput.PickupTimeSlot,
+		"jira_ticket_number":      formInput.JiraTicketNumber,
+		"special_instructions":    formInput.SpecialInstructions,
+		"laptop_serial_number":    formInput.LaptopSerialNumber,
+		"laptop_specs":            formInput.LaptopSpecs,
+		"engineer_name":           formInput.EngineerName,
+		"include_accessories":     formInput.IncludeAccessories,
+		"accessories_description": formInput.AccessoriesDescription,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to encode form data: %w", err)
+	}
+
+	pickupForm := models.PickupForm{
+		ShipmentID:        shipmentID,
+		SubmittedByUserID: user.ID,
+		FormData:          formDataJSON,
+	}
+	pickupForm.BeforeCreate()
+
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+		VALUES ($1, $2, $3, $4)`,
+		pickupForm.ShipmentID, pickupForm.SubmittedByUserID,
+		pickupForm.SubmittedAt, pickupForm.FormData,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to save pickup form: %w", err)
+	}
+
+	// Create audit log entry
+	auditDetails, _ := json.Marshal(map[string]interface{}{
+		"action":        "pickup_form_submitted",
+		"shipment_id":   shipmentID,
+		"shipment_type": models.ShipmentTypeSingleFullJourney,
+		"company_id":    companyID,
+		"laptop_id":     laptopID,
+	})
+
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO audit_logs (user_id, action, entity_type, entity_id, timestamp, details)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		user.ID, "pickup_form_submitted", "shipment", shipmentID, time.Now(), auditDetails,
+	)
+	if err != nil {
+		// Non-critical error, just log it
+		fmt.Printf("Failed to create audit log: %v\n", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return shipmentID, nil
+}
+
+// handleLegacyPickupForm handles legacy pickup form submission for backward compatibility
+func (h *PickupFormHandler) handleLegacyPickupForm(r *http.Request, user *models.User, companyID int64, pickupDate time.Time, includeAccessories bool) (int64, error) {
+	// Parse legacy form fields
 	numberOfLaptopsStr := r.FormValue("number_of_laptops")
 	numberOfLaptops, err := strconv.Atoi(numberOfLaptopsStr)
 	if err != nil {
@@ -146,9 +382,6 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 	bulkWidth, _ := strconv.ParseFloat(r.FormValue("bulk_width"), 64)
 	bulkHeight, _ := strconv.ParseFloat(r.FormValue("bulk_height"), 64)
 	bulkWeight, _ := strconv.ParseFloat(r.FormValue("bulk_weight"), 64)
-
-	// Parse include accessories checkbox
-	includeAccessories := r.FormValue("include_accessories") == "on" || r.FormValue("include_accessories") == "true"
 
 	// Build validation input
 	formInput := validator.PickupFormInput{
@@ -177,31 +410,22 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 
 	// Validate form
 	if err := validator.ValidatePickupForm(formInput); err != nil {
-		redirectURL := fmt.Sprintf("/pickup-form?error=%s&company_id=%d",
-			err.Error(), companyID)
-		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
-		return
-	}
-
-	// Parse pickup date
-	pickupDate, err := time.Parse("2006-01-02", formInput.PickupDate)
-	if err != nil {
-		http.Redirect(w, r, "/pickup-form?error=Invalid+date+format", http.StatusSeeOther)
-		return
+		return 0, err
 	}
 
 	// Start transaction
 	tx, err := h.DB.BeginTx(r.Context(), nil)
 	if err != nil {
-		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
-		return
+		return 0, fmt.Errorf("failed to start transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	// Create shipment
+	// Create shipment (legacy - defaults to single_full_journey)
 	shipment := models.Shipment{
+		ShipmentType:        models.ShipmentTypeSingleFullJourney,
 		ClientCompanyID:     companyID,
 		Status:              models.ShipmentStatusPendingPickup,
+		LaptopCount:         1, // Default to 1 for legacy forms
 		JiraTicketNumber:    formInput.JiraTicketNumber,
 		PickupScheduledDate: &pickupDate,
 		Notes:               formInput.SpecialInstructions,
@@ -210,15 +434,15 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 
 	var shipmentID int64
 	err = tx.QueryRowContext(r.Context(),
-		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, pickup_scheduled_date, notes, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, pickup_scheduled_date, notes, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id`,
-		shipment.ClientCompanyID, shipment.Status, shipment.JiraTicketNumber, shipment.PickupScheduledDate,
-		shipment.Notes, shipment.CreatedAt, shipment.UpdatedAt,
+		shipment.ShipmentType, shipment.ClientCompanyID, shipment.Status, shipment.LaptopCount,
+		shipment.JiraTicketNumber, shipment.PickupScheduledDate, shipment.Notes,
+		shipment.CreatedAt, shipment.UpdatedAt,
 	).Scan(&shipmentID)
 	if err != nil {
-		http.Error(w, "Failed to create shipment", http.StatusInternalServerError)
-		return
+		return 0, fmt.Errorf("failed to create shipment: %w", err)
 	}
 
 	// Create pickup form with form data as JSONB
@@ -245,8 +469,7 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 		"accessories_description": formInput.AccessoriesDescription,
 	})
 	if err != nil {
-		http.Error(w, "Failed to encode form data", http.StatusInternalServerError)
-		return
+		return 0, fmt.Errorf("failed to encode form data: %w", err)
 	}
 
 	pickupForm := models.PickupForm{
@@ -263,8 +486,7 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 		pickupForm.SubmittedAt, pickupForm.FormData,
 	)
 	if err != nil {
-		http.Error(w, "Failed to save pickup form", http.StatusInternalServerError)
-		return
+		return 0, fmt.Errorf("failed to save pickup form: %w", err)
 	}
 
 	// Create audit log entry
@@ -286,19 +508,8 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 
 	// Commit transaction
 	if err := tx.Commit(); err != nil {
-		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
-		return
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// Send pickup confirmation email (Step 4 in process flow)
-	if h.Notifier != nil {
-		if err := h.Notifier.SendPickupConfirmation(r.Context(), shipmentID); err != nil {
-			// Log error but don't fail the request
-			fmt.Printf("Warning: Failed to send pickup confirmation email: %v\n", err)
-		}
-	}
-
-	// Redirect to success page or shipment detail
-	redirectURL := fmt.Sprintf("/shipments/%d?success=Pickup+form+submitted+successfully", shipmentID)
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	return shipmentID, nil
 }
