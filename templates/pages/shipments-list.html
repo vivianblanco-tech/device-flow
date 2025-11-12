@@ -12,15 +12,45 @@
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <!-- Header with Actions -->
-        <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center">
-            <div>
-                <h2 class="text-3xl font-bold text-gray-900">Shipments</h2>
-                <p class="mt-2 text-gray-600">Track and manage laptop shipments</p>
+        <div class="mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900">Shipments</h2>
+                    <p class="mt-2 text-gray-600">Track and manage laptop shipments</p>
+                </div>
             </div>
+            
             {{if eq .User.Role "logistics"}}
-            <div class="flex gap-3 mt-4 md:mt-0">
-                <a href="/shipments/create" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium">
-                    + Create Shipment
+            <!-- Three Create Shipment Buttons -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-6 rounded-lg shadow-md border-2 border-gray-200">
+                <a href="/shipments/create/single" class="flex flex-col items-center justify-center px-4 py-4 bg-white border-2 border-blue-500 rounded-lg hover:bg-blue-50 transition group">
+                    <div class="bg-blue-500 rounded-full p-3 mb-3 group-hover:bg-blue-600 transition">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-900">+ Single Shipment</span>
+                    <span class="text-xs text-gray-500 mt-1">Client → Warehouse → Engineer</span>
+                </a>
+                
+                <a href="/shipments/create/bulk" class="flex flex-col items-center justify-center px-4 py-4 bg-white border-2 border-purple-500 rounded-lg hover:bg-purple-50 transition group">
+                    <div class="bg-purple-500 rounded-full p-3 mb-3 group-hover:bg-purple-600 transition">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                        </svg>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-900">+ Bulk to Warehouse</span>
+                    <span class="text-xs text-gray-500 mt-1">Multiple laptops to warehouse</span>
+                </a>
+                
+                <a href="/shipments/create/warehouse-to-engineer" class="flex flex-col items-center justify-center px-4 py-4 bg-white border-2 border-green-500 rounded-lg hover:bg-green-50 transition group">
+                    <div class="bg-green-500 rounded-full p-3 mb-3 group-hover:bg-green-600 transition">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                        </svg>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-900">+ Warehouse → Engineer</span>
+                    <span class="text-xs text-gray-500 mt-1">From warehouse inventory</span>
                 </a>
             </div>
             {{end}}
@@ -42,6 +72,29 @@
         <!-- Filters -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <form method="GET" action="/shipments" class="flex flex-col md:flex-row gap-4">
+                <!-- Type Filter -->
+                <div class="flex-1">
+                    <label for="type" class="block text-sm font-medium text-gray-700 mb-2">
+                        Filter by Type
+                    </label>
+                    <select 
+                        id="type" 
+                        name="type" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="">All Types</option>
+                        {{range .AllShipmentTypes}}
+                        <option value="{{.}}" {{if eq $.TypeFilter .}}selected{{end}}>
+                            {{if eq . "single_full_journey"}}Single Full Journey
+                            {{else if eq . "bulk_to_warehouse"}}Bulk to Warehouse
+                            {{else if eq . "warehouse_to_engineer"}}Warehouse → Engineer
+                            {{else}}{{. | printf "%s" | replace "_" " " | title}}
+                            {{end}}
+                        </option>
+                        {{end}}
+                    </select>
+                </div>
+                
                 <!-- Status Filter -->
                 <div class="flex-1">
                     <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
@@ -99,6 +152,9 @@
                                 Shipment ID
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Type
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 JIRA Ticket
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -123,6 +179,35 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 #{{.Shipment.ID}}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{if eq .Shipment.ShipmentType "single_full_journey"}}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    <svg class="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                                        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Single
+                                </span>
+                                {{else if eq .Shipment.ShipmentType "bulk_to_warehouse"}}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    <svg class="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2 4.5A2.5 2.5 0 014.5 2h11A2.5 2.5 0 0118 4.5v11a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 012 15.5v-11zM4.5 4a.5.5 0 00-.5.5v11a.5.5 0 00.5.5h11a.5.5 0 00.5-.5v-11a.5.5 0 00-.5-.5h-11z"/>
+                                    </svg>
+                                    Bulk ({{.Shipment.LaptopCount}})
+                                </span>
+                                {{else if eq .Shipment.ShipmentType "warehouse_to_engineer"}}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <svg class="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                    </svg>
+                                    WH→ENG
+                                </span>
+                                {{else}}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    {{.Shipment.ShipmentType}}
+                                </span>
+                                {{end}}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-mono">
                                 {{if .Shipment.JiraTicketNumber}}

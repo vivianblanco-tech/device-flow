@@ -20,8 +20,47 @@
 
         <!-- Header -->
         <div class="mb-8">
-            <h2 class="text-3xl font-bold text-gray-900">Shipment #{{.Shipment.ID}}</h2>
-            <p class="mt-2 text-gray-600">Complete shipment details and tracking history</p>
+            <div class="flex items-center gap-4 mb-2">
+                <h2 class="text-3xl font-bold text-gray-900">Shipment #{{.Shipment.ID}}</h2>
+                {{if eq .Shipment.ShipmentType "single_full_journey"}}
+                <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 border-2 border-blue-500">
+                    <svg class="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                    </svg>
+                    Single Full Journey
+                </span>
+                {{else if eq .Shipment.ShipmentType "bulk_to_warehouse"}}
+                <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-purple-100 text-purple-800 border-2 border-purple-500">
+                    <svg class="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 4.5A2.5 2.5 0 014.5 2h11A2.5 2.5 0 0118 4.5v11a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 012 15.5v-11zM4.5 4a.5.5 0 00-.5.5v11a.5.5 0 00.5.5h11a.5.5 0 00.5-.5v-11a.5.5 0 00-.5-.5h-11z"/>
+                    </svg>
+                    Bulk to Warehouse ({{.Shipment.LaptopCount}} laptops)
+                </span>
+                {{else if eq .Shipment.ShipmentType "warehouse_to_engineer"}}
+                <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-green-100 text-green-800 border-2 border-green-500">
+                    <svg class="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                    Warehouse → Engineer
+                </span>
+                {{else}}
+                <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-800 border-2 border-gray-500">
+                    {{.Shipment.ShipmentType}}
+                </span>
+                {{end}}
+            </div>
+            <p class="mt-2 text-gray-600">
+                {{if eq .Shipment.ShipmentType "single_full_journey"}}
+                Complete journey from client to warehouse to engineer
+                {{else if eq .Shipment.ShipmentType "bulk_to_warehouse"}}
+                Bulk shipment to warehouse (laptops registered during reception)
+                {{else if eq .Shipment.ShipmentType "warehouse_to_engineer"}}
+                Direct shipment from warehouse inventory to engineer
+                {{else}}
+                Complete shipment details and tracking history
+                {{end}}
+            </p>
         </div>
 
         <!-- Error/Success/Warning Messages -->
@@ -51,6 +90,27 @@
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Shipment Information</h3>
                     <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Shipment Type</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                {{if eq .Shipment.ShipmentType "single_full_journey"}}
+                                Single Full Journey
+                                {{else if eq .Shipment.ShipmentType "bulk_to_warehouse"}}
+                                Bulk to Warehouse
+                                {{else if eq .Shipment.ShipmentType "warehouse_to_engineer"}}
+                                Warehouse → Engineer
+                                {{else}}
+                                {{.Shipment.ShipmentType}}
+                                {{end}}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Laptop Count</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                {{.Shipment.LaptopCount}}
+                                {{if eq .Shipment.LaptopCount 1}}laptop{{else}}laptops{{end}}
+                            </dd>
+                        </div>
                         <div>
                             <dt class="text-sm font-medium text-gray-500">Status</dt>
                             <dd class="mt-1">
