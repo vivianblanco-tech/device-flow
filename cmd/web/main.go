@@ -296,6 +296,7 @@ func main() {
 	
 	// Three shipment type form routes (Phase 5)
 	protected.HandleFunc("/shipments/create/single", pickupFormHandler.SingleShipmentFormPage).Methods("GET")
+	protected.HandleFunc("/shipments/create/single-minimal", pickupFormHandler.CreateMinimalSingleShipment).Methods("POST")
 	protected.HandleFunc("/shipments/create/bulk", pickupFormHandler.BulkShipmentFormPage).Methods("GET")
 	protected.HandleFunc("/shipments/create/warehouse-to-engineer", pickupFormHandler.WarehouseToEngineerFormPage).Methods("GET")
 
@@ -315,6 +316,8 @@ func main() {
 	protected.HandleFunc("/shipments/{id:[0-9]+}/assign-engineer", shipmentsHandler.AssignEngineer).Methods("POST")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/form", shipmentsHandler.ShipmentPickupFormPage).Methods("GET")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/form", shipmentsHandler.ShipmentPickupFormSubmit).Methods("POST")
+	protected.HandleFunc("/shipments/{id:[0-9]+}/complete-details", pickupFormHandler.CompleteShipmentDetails).Methods("POST")
+	protected.HandleFunc("/shipments/{id:[0-9]+}/edit-details", pickupFormHandler.EditShipmentDetails).Methods("POST")
 
 	// Serve static files
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/",

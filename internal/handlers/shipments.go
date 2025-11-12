@@ -904,7 +904,8 @@ func (h *ShipmentsHandler) ShipmentPickupFormPage(w http.ResponseWriter, r *http
 	}
 
 	if h.Templates != nil {
-		err := h.Templates.ExecuteTemplate(w, "shipment-pickup-form.html", data)
+		// Use the new complete-shipment-details-form template for the magic link workflow
+		err := h.Templates.ExecuteTemplate(w, "complete-shipment-details-form.html", data)
 		if err != nil {
 			http.Error(w, "Failed to render template", http.StatusInternalServerError)
 			return
