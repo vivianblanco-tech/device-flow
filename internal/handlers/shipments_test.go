@@ -307,6 +307,142 @@ func TestShipmentsListWithTypeFilter(t *testing.T) {
 	})
 }
 
+// 🟥 RED: Test shipment detail displays type information
+func TestShipmentDetailWithTypeInformation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test user
+	var userID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	t.Run("detail displays single_full_journey type information", func(t *testing.T) {
+		// Create single_full_journey shipment
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPendingPickup, 1, "TYPE-DETAIL-1", time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		// Should display single_full_journey information
+		if !strings.Contains(body, "TYPE-DETAIL-1") {
+			t.Error("Expected detail to contain shipment JIRA ticket")
+		}
+	})
+
+	t.Run("detail displays bulk_to_warehouse type with laptop count", func(t *testing.T) {
+		// Create bulk_to_warehouse shipment
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			models.ShipmentTypeBulkToWarehouse, companyID, models.ShipmentStatusAtWarehouse, 5, "TYPE-DETAIL-2", time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create bulk shipment: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		// Should display bulk_to_warehouse with laptop count
+		if !strings.Contains(body, "TYPE-DETAIL-2") {
+			t.Error("Expected detail to contain shipment JIRA ticket")
+		}
+	})
+
+	t.Run("detail displays warehouse_to_engineer type", func(t *testing.T) {
+		// Create warehouse_to_engineer shipment
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			models.ShipmentTypeWarehouseToEngineer, companyID, models.ShipmentStatusReleasedFromWarehouse, 1, "TYPE-DETAIL-3", time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create warehouse-to-engineer shipment: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		// Should display warehouse_to_engineer information
+		if !strings.Contains(body, "TYPE-DETAIL-3") {
+			t.Error("Expected detail to contain shipment JIRA ticket")
+		}
+	})
+}
+
 func TestShipmentDetail(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -342,9 +478,9 @@ func TestShipmentDetail(t *testing.T) {
 	// Create test shipment
 	var shipmentID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, tracking_number, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-		companyID, models.ShipmentStatusInTransitToWarehouse, "TEST-12345", "TRACK-12345", time.Now(), time.Now(),
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, tracking_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusInTransitToWarehouse, 1, "TEST-12345", "TRACK-12345", time.Now(), time.Now(),
 	).Scan(&shipmentID)
 	if err != nil {
 		t.Fatalf("Failed to create test shipment: %v", err)

@@ -224,7 +224,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	var engineerEmail sql.NullString
 
 	err = h.DB.QueryRowContext(r.Context(),
-		`SELECT s.id, s.client_company_id, s.software_engineer_id, s.status, 
+		`SELECT s.id, s.shipment_type, s.laptop_count, s.client_company_id, s.software_engineer_id, s.status, 
 		        COALESCE(s.jira_ticket_number, '') as jira_ticket_number,
 		        COALESCE(s.courier_name, '') as courier_name, 
 		        COALESCE(s.tracking_number, '') as tracking_number, 
@@ -239,7 +239,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		WHERE s.id = $1`,
 		shipmentID,
 	).Scan(
-		&s.ID, &s.ClientCompanyID, &s.SoftwareEngineerID, &s.Status,
+		&s.ID, &s.ShipmentType, &s.LaptopCount, &s.ClientCompanyID, &s.SoftwareEngineerID, &s.Status,
 		&s.JiraTicketNumber, &s.CourierName, &s.TrackingNumber, &s.PickupScheduledDate,
 		&s.PickedUpAt, &s.ArrivedWarehouseAt, &s.ReleasedWarehouseAt,
 		&s.ETAToEngineer, &s.DeliveredAt, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
