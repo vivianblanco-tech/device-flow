@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ship from Warehouse to Engineer - Laptop Tracking System</title>
+    <link rel="stylesheet" href="/static/css/output.css" />
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">Ship from Warehouse to Engineer</h2>
+            <p class="mt-2 text-gray-600">Select an available laptop from inventory and ship to a software engineer.</p>
+        </div>
+
+        <!-- Error Message -->
+        {{if .Error}}
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-red-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-sm text-red-800">{{.Error}}</p>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Success Message -->
+        {{if .Success}}
+        <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-green-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-sm text-green-800">{{.Success}}</p>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Warehouse to Engineer Form -->
+        <div class="bg-white shadow-md rounded-lg p-6 md:p-8">
+            <form action="/pickup-form" method="POST" class="space-y-6">
+                
+                <!-- Hidden Field: Shipment Type -->
+                <input type="hidden" name="shipment_type" value="warehouse_to_engineer">
+
+                <!-- Laptop Selection Section -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Select Laptop</h3>
+                    
+                    {{if .Laptops}}
+                    <div class="mb-4">
+                        <label for="laptop_id" class="block text-sm font-medium text-gray-700 mb-2">
+                            Available Laptop <span class="text-red-600">*</span>
+                        </label>
+                        <select 
+                            id="laptop_id" 
+                            name="laptop_id" 
+                            required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            onchange="updateLaptopDetails(this)"
+                        >
+                            <option value="">Select a laptop...</option>
+                            {{range .Laptops}}
+                            <option 
+                                value="{{.ID}}" 
+                                data-serial="{{.SerialNumber}}" 
+                                data-brand="{{.Brand}}" 
+                                data-model="{{.Model}}" 
+                                data-specs="{{.Specs}}"
+                                data-company="{{.ClientCompanyName}}"
+                            >
+                                {{.SerialNumber}} - {{.Brand}} {{.Model}} {{if .ClientCompanyName}}({{.ClientCompanyName}}){{end}}
+                            </option>
+                            {{end}}
+                        </select>
+                        <p class="mt-1 text-sm text-gray-500">{{len .Laptops}} laptop(s) available for shipment</p>
+                    </div>
+
+                    <!-- Laptop Details Display (populated when laptop selected) -->
+                    <div id="laptop-details" class="hidden mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        <h4 class="text-sm font-semibold text-gray-900 mb-2">Laptop Details:</h4>
+                        <dl class="space-y-1 text-sm">
+                            <div>
+                                <dt class="inline font-medium text-gray-700">Serial Number:</dt>
+                                <dd id="detail-serial" class="inline text-gray-900 ml-2"></dd>
+                            </div>
+                            <div>
+                                <dt class="inline font-medium text-gray-700">Brand & Model:</dt>
+                                <dd id="detail-brand-model" class="inline text-gray-900 ml-2"></dd>
+                            </div>
+                            <div id="specs-row" class="hidden">
+                                <dt class="inline font-medium text-gray-700">Specifications:</dt>
+                                <dd id="detail-specs" class="inline text-gray-900 ml-2"></dd>
+                            </div>
+                            <div id="company-row" class="hidden">
+                                <dt class="inline font-medium text-gray-700">Client Company:</dt>
+                                <dd id="detail-company" class="inline text-gray-900 ml-2"></dd>
+                            </div>
+                        </dl>
+                    </div>
+                    {{else}}
+                    <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p class="text-sm text-yellow-800">
+                            <strong>No available laptops</strong> - All laptops are either in active shipments or don't have reception reports.
+                        </p>
+                    </div>
+                    {{end}}
+                </div>
+
+                <!-- Engineer Information Section -->
+                <div class="border-t pt-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Engineer Information</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Engineer Name -->
+                        <div>
+                            <label for="engineer_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                Engineer Name <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="engineer_name" 
+                                name="engineer_name" 
+                                required
+                                placeholder="Jane Smith"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- Engineer Email -->
+                        <div>
+                            <label for="engineer_email" class="block text-sm font-medium text-gray-700 mb-2">
+                                Engineer Email <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="email" 
+                                id="engineer_email" 
+                                name="engineer_email" 
+                                required
+                                placeholder="jane.smith@bairesdev.com"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- Engineer Phone -->
+                        <div class="md:col-span-2">
+                            <label for="engineer_phone" class="block text-sm font-medium text-gray-700 mb-2">
+                                Engineer Phone
+                            </label>
+                            <input 
+                                type="tel" 
+                                id="engineer_phone" 
+                                name="engineer_phone" 
+                                placeholder="+1-555-0123"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delivery Address Section -->
+                <div class="border-t pt-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Delivery Address</h3>
+                    
+                    <!-- Delivery Address -->
+                    <div class="mb-6">
+                        <label for="engineer_address" class="block text-sm font-medium text-gray-700 mb-2">
+                            Street Address <span class="text-red-600">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="engineer_address" 
+                            name="engineer_address" 
+                            required
+                            placeholder="456 Tech Avenue, Apt 12B"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        >
+                    </div>
+
+                    <!-- City, State, ZIP -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label for="engineer_city" class="block text-sm font-medium text-gray-700 mb-2">
+                                City <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="engineer_city" 
+                                name="engineer_city" 
+                                required
+                                placeholder="San Francisco"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="engineer_state" class="block text-sm font-medium text-gray-700 mb-2">
+                                State <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="engineer_state" 
+                                name="engineer_state" 
+                                required
+                                placeholder="CA"
+                                maxlength="2"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="engineer_zip" class="block text-sm font-medium text-gray-700 mb-2">
+                                ZIP Code <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="engineer_zip" 
+                                name="engineer_zip" 
+                                required
+                                placeholder="94102"
+                                maxlength="5"
+                                pattern="[0-9]{5}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipping Information Section -->
+                <div class="border-t pt-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Shipping Information</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Courier Name -->
+                        <div>
+                            <label for="courier_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                Courier Name
+                            </label>
+                            <input 
+                                type="text" 
+                                id="courier_name" 
+                                name="courier_name" 
+                                placeholder="FedEx, UPS, DHL, etc."
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                            <p class="mt-1 text-sm text-gray-500">Can be added later</p>
+                        </div>
+
+                        <!-- Tracking Number -->
+                        <div>
+                            <label for="tracking_number" class="block text-sm font-medium text-gray-700 mb-2">
+                                Tracking Number
+                            </label>
+                            <input 
+                                type="text" 
+                                id="tracking_number" 
+                                name="tracking_number" 
+                                placeholder="1Z999AA10123456784"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                            <p class="mt-1 text-sm text-gray-500">Can be added later</p>
+                        </div>
+                    </div>
+
+                    <!-- JIRA Ticket -->
+                    <div class="mt-6">
+                        <label for="jira_ticket_number" class="block text-sm font-medium text-gray-700 mb-2">
+                            JIRA Ticket Number <span class="text-red-600">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="jira_ticket_number" 
+                            name="jira_ticket_number" 
+                            required
+                            placeholder="SCOP-12345"
+                            pattern="[A-Z]+-[0-9]+"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        >
+                        <p class="mt-1 text-sm text-gray-500">Format: PROJECT-NUMBER (e.g., SCOP-67702)</p>
+                    </div>
+
+                    <!-- Special Instructions -->
+                    <div class="mt-6">
+                        <label for="special_instructions" class="block text-sm font-medium text-gray-700 mb-2">
+                            Special Instructions (Optional)
+                        </label>
+                        <textarea 
+                            id="special_instructions" 
+                            name="special_instructions" 
+                            rows="3"
+                            placeholder="Any special delivery instructions, building access codes, preferred delivery times, etc."
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="flex items-center justify-end space-x-4 pt-6 border-t">
+                    <a 
+                        href="/dashboard" 
+                        class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition font-medium"
+                    >
+                        Cancel
+                    </a>
+                    <button 
+                        type="submit" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition font-medium"
+                        {{if not .Laptops}}disabled{{end}}
+                    >
+                        Create Shipment
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Help Text -->
+        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 class="text-sm font-medium text-blue-900 mb-2">Warehouse to Engineer Shipment Process:</h4>
+            <ul class="text-sm text-blue-800 space-y-1 ml-4 list-disc">
+                <li>Laptop is already at warehouse with completed reception report</li>
+                <li>Ships directly from warehouse to software engineer</li>
+                <li>Simplified 3-status tracking: Released → In Transit → Delivered</li>
+                <li>Ideal for laptops that arrived via bulk shipments</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-600">
+                Need help? Contact <a href="mailto:support@bairesdev.com" class="text-blue-600 hover:text-blue-700">support@bairesdev.com</a>
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript for dynamic laptop details -->
+    <script>
+        function updateLaptopDetails(selectElement) {
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            const detailsDiv = document.getElementById('laptop-details');
+            
+            if (selectedOption.value) {
+                // Populate details
+                document.getElementById('detail-serial').textContent = selectedOption.dataset.serial || 'N/A';
+                document.getElementById('detail-brand-model').textContent = 
+                    (selectedOption.dataset.brand || '') + ' ' + (selectedOption.dataset.model || '');
+                
+                // Show/hide optional fields
+                const specsRow = document.getElementById('specs-row');
+                const companyRow = document.getElementById('company-row');
+                
+                if (selectedOption.dataset.specs) {
+                    document.getElementById('detail-specs').textContent = selectedOption.dataset.specs;
+                    specsRow.classList.remove('hidden');
+                } else {
+                    specsRow.classList.add('hidden');
+                }
+                
+                if (selectedOption.dataset.company) {
+                    document.getElementById('detail-company').textContent = selectedOption.dataset.company;
+                    companyRow.classList.remove('hidden');
+                } else {
+                    companyRow.classList.add('hidden');
+                }
+                
+                detailsDiv.classList.remove('hidden');
+            } else {
+                detailsDiv.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
+
