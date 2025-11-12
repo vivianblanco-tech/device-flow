@@ -761,8 +761,10 @@ func (h *ShipmentsHandler) CreateShipment(w http.ResponseWriter, r *http.Request
 
 	// Create shipment model for validation
 	shipment := models.Shipment{
+		ShipmentType:     models.ShipmentTypeSingleFullJourney, // Default type for manual creation
 		ClientCompanyID:  clientCompanyID,
 		Status:           models.ShipmentStatusPendingPickup,
+		LaptopCount:      1, // Default to 1 for manually created shipments
 		JiraTicketNumber: jiraTicketNumber,
 		Notes:            notes,
 	}
@@ -785,11 +787,11 @@ func (h *ShipmentsHandler) CreateShipment(w http.ResponseWriter, r *http.Request
 	// Insert shipment into database
 	var shipmentID int64
 	err = h.DB.QueryRowContext(r.Context(),
-		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, notes, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, notes, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id`,
-		shipment.ClientCompanyID, shipment.Status, shipment.JiraTicketNumber,
-		shipment.Notes, shipment.CreatedAt, shipment.UpdatedAt,
+		shipment.ShipmentType, shipment.ClientCompanyID, shipment.Status, shipment.LaptopCount,
+		shipment.JiraTicketNumber, shipment.Notes, shipment.CreatedAt, shipment.UpdatedAt,
 	).Scan(&shipmentID)
 	if err != nil {
 		fmt.Printf("Error creating shipment: %v\n", err)
