@@ -293,6 +293,11 @@ func main() {
 	// Pickup form routes
 	protected.HandleFunc("/pickup-form", pickupFormHandler.PickupFormPage).Methods("GET")
 	protected.HandleFunc("/pickup-form", pickupFormHandler.PickupFormSubmit).Methods("POST")
+	
+	// Three shipment type form routes (Phase 5)
+	protected.HandleFunc("/shipments/create/single", pickupFormHandler.SingleShipmentFormPage).Methods("GET")
+	protected.HandleFunc("/shipments/create/bulk", pickupFormHandler.BulkShipmentFormPage).Methods("GET")
+	protected.HandleFunc("/shipments/create/warehouse-to-engineer", pickupFormHandler.WarehouseToEngineerFormPage).Methods("GET")
 
 	// Reception report routes
 	protected.HandleFunc("/reception-report", receptionReportHandler.ReceptionReportPage).Methods("GET")
