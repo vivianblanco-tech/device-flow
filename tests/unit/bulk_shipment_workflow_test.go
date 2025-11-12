@@ -94,7 +94,7 @@ func TestLogisticsCreateMinimalBulkShipment(t *testing.T) {
 		WHERE client_company_id = $1 AND jira_ticket_number = $2`,
 		companyID, "SCOP-12345",
 	).Scan(&shipmentID, &shipmentType, &status, &jiraTicket)
-	
+
 	if err != nil {
 		t.Fatalf("Shipment was not created: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestLogisticsCreateMinimalBulkShipment(t *testing.T) {
 		`SELECT COUNT(*) FROM pickup_forms WHERE shipment_id = $1`,
 		shipmentID,
 	).Scan(&pickupFormCount)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to check pickup forms: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestClientCompletesBulkShipmentDetails(t *testing.T) {
 		`SELECT form_data FROM pickup_forms WHERE shipment_id = $1`,
 		shipmentID,
 	).Scan(&formDataJSON)
-	
+
 	if err == sql.ErrNoRows {
 		t.Fatal("Pickup form was not created")
 	}
@@ -263,7 +263,7 @@ func TestClientCompletesBulkShipmentDetails(t *testing.T) {
 		`SELECT laptop_count FROM shipments WHERE id = $1`,
 		shipmentID,
 	).Scan(&laptopCount)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to get shipment: %v", err)
 	}
@@ -360,14 +360,14 @@ func TestLogisticsEditsBulkShipmentDetails(t *testing.T) {
 	formData := url.Values{}
 	formData.Set("assignment_type", "bulk")
 	formData.Set("number_of_laptops", "7") // Changed from 5 to 7
-	formData.Set("number_of_boxes", "3") // Changed from 2 to 3
+	formData.Set("number_of_boxes", "3")   // Changed from 2 to 3
 	formData.Set("bulk_length", "50.5")
 	formData.Set("bulk_width", "40.2")
 	formData.Set("bulk_height", "30.8")
 	formData.Set("bulk_weight", "25.5")
-	formData.Set("contact_name", "Jane Smith") // Changed
+	formData.Set("contact_name", "Jane Smith")        // Changed
 	formData.Set("contact_email", "jane@company.com") // Changed
-	formData.Set("contact_phone", "+1-555-9999") // Changed
+	formData.Set("contact_phone", "+1-555-9999")      // Changed
 	formData.Set("pickup_address", "123 Main St")
 	formData.Set("pickup_city", "New York")
 	formData.Set("pickup_state", "NY")
@@ -409,7 +409,7 @@ func TestLogisticsEditsBulkShipmentDetails(t *testing.T) {
 		`SELECT form_data FROM pickup_forms WHERE shipment_id = $1`,
 		shipmentID,
 	).Scan(&updatedFormDataJSON)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to get updated pickup form: %v", err)
 	}
@@ -439,7 +439,7 @@ func TestLogisticsEditsBulkShipmentDetails(t *testing.T) {
 		`SELECT jira_ticket_number, client_company_id FROM shipments WHERE id = $1`,
 		shipmentID,
 	).Scan(&jiraTicket, &clientCompID)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to get shipment: %v", err)
 	}
@@ -452,4 +452,3 @@ func TestLogisticsEditsBulkShipmentDetails(t *testing.T) {
 		t.Errorf("Client company should not change. Expected %d, got %d", companyID, clientCompID)
 	}
 }
-

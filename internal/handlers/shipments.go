@@ -845,13 +845,13 @@ func (h *ShipmentsHandler) ShipmentPickupFormPage(w http.ResponseWriter, r *http
 	var pickupScheduledDate sql.NullTime
 	var notes sql.NullString
 	err = h.DB.QueryRowContext(r.Context(),
-		`SELECT s.id, s.client_company_id, s.status, s.jira_ticket_number, 
+		`SELECT s.id, s.shipment_type, s.client_company_id, s.status, s.jira_ticket_number, 
 		        s.pickup_scheduled_date, s.notes, s.created_at, s.updated_at, c.name
 		FROM shipments s
 		JOIN client_companies c ON c.id = s.client_company_id
 		WHERE s.id = $1`,
 		shipmentID,
-	).Scan(&shipment.ID, &shipment.ClientCompanyID, &shipment.Status, &shipment.JiraTicketNumber,
+	).Scan(&shipment.ID, &shipment.ShipmentType, &shipment.ClientCompanyID, &shipment.Status, &shipment.JiraTicketNumber,
 		&pickupScheduledDate, &notes, &shipment.CreatedAt, &shipment.UpdatedAt, &companyName)
 
 	if err == sql.ErrNoRows {
@@ -904,9 +904,17 @@ func (h *ShipmentsHandler) ShipmentPickupFormPage(w http.ResponseWriter, r *http
 	}
 
 	if h.Templates != nil {
-		// Use the new complete-shipment-details-form template for the magic link workflow
-		err := h.Templates.ExecuteTemplate(w, "complete-shipment-details-form.html", data)
+		// Choose template based on shipment type
+		var templateName string
+		if shipment.ShipmentType == models.ShipmentTypeBulkToWarehouse {
+			templateName = "complete-bulk-shipment-details-form.html"
+		} else {
+			templateName = "complete-shipment-details-form.html"
+		}
+		
+		err := h.Templates.ExecuteTemplate(w, templateName, data)
 		if err != nil {
+			fmt.Printf("Error rendering template %s: %v\n", templateName, err)
 			http.Error(w, "Failed to render template", http.StatusInternalServerError)
 			return
 		}
