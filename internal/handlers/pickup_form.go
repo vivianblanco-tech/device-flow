@@ -1086,3 +1086,570 @@ func (h *PickupFormHandler) handleWarehouseToEngineerForm(r *http.Request, user 
 
 	return shipmentID, nil
 }
+
+// CreateMinimalSingleShipment creates a minimal single shipment with only JIRA ticket and company ID
+// This is used by logistics users to initiate a shipment before sending magic link to client
+func (h *PickupFormHandler) CreateMinimalSingleShipment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Only logistics users can create minimal shipments
+	if user.Role != models.RoleLogistics {
+		http.Error(w, "Forbidden: Only logistics users can create minimal shipments", http.StatusForbidden)
+		return
+	}
+
+	// Parse form data
+	err := r.ParseForm()
+	if err != nil {
+		http.Redirect(w, r, "/dashboard?error=Invalid+form+data", http.StatusSeeOther)
+		return
+	}
+
+	// Extract and validate company ID
+	companyIDStr := r.FormValue("client_company_id")
+	if companyIDStr == "" {
+		http.Redirect(w, r, "/dashboard?error=Company+ID+is+required", http.StatusSeeOther)
+		return
+	}
+	companyID, err := strconv.ParseInt(companyIDStr, 10, 64)
+	if err != nil {
+		http.Redirect(w, r, "/dashboard?error=Invalid+company+ID", http.StatusSeeOther)
+		return
+	}
+
+	// Extract and validate JIRA ticket number
+	jiraTicketNumber := r.FormValue("jira_ticket_number")
+	if jiraTicketNumber == "" {
+		http.Redirect(w, r, "/dashboard?error=JIRA+ticket+number+is+required", http.StatusSeeOther)
+		return
+	}
+
+	// Start transaction
+	tx, err := h.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	// Create minimal shipment (no pickup form, no laptop record yet)
+	shipment := models.Shipment{
+		ShipmentType:     models.ShipmentTypeSingleFullJourney,
+		ClientCompanyID:  companyID,
+		Status:           models.ShipmentStatusPendingPickup,
+		LaptopCount:      1,
+		JiraTicketNumber: jiraTicketNumber,
+	}
+	shipment.BeforeCreate()
+
+	var shipmentID int64
+	err = tx.QueryRowContext(r.Context(),
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id`,
+		shipment.ShipmentType, shipment.ClientCompanyID, shipment.Status, shipment.LaptopCount,
+		shipment.JiraTicketNumber, shipment.CreatedAt, shipment.UpdatedAt,
+	).Scan(&shipmentID)
+	if err != nil {
+		http.Error(w, "Failed to create shipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Create audit log entry
+	auditDetails, _ := json.Marshal(map[string]interface{}{
+		"action":             "minimal_shipment_created",
+		"shipment_id":        shipmentID,
+		"shipment_type":      models.ShipmentTypeSingleFullJourney,
+		"company_id":         companyID,
+		"jira_ticket_number": jiraTicketNumber,
+	})
+
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO audit_logs (user_id, action, entity_type, entity_id, timestamp, details)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		user.ID, "minimal_shipment_created", "shipment", shipmentID, time.Now(), auditDetails,
+	)
+	if err != nil {
+		// Non-critical error, just log it
+		fmt.Printf("Failed to create audit log: %v\n", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect to shipment detail page
+	redirectURL := fmt.Sprintf("/shipments/%d?success=Shipment+created+successfully.+Send+magic+link+to+client+to+complete+details", shipmentID)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// CompleteShipmentDetails handles client completing shipment details via magic link
+func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Parse form data
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	// Extract and validate shipment ID
+	shipmentIDStr := r.FormValue("shipment_id")
+	if shipmentIDStr == "" {
+		http.Error(w, "Shipment ID is required", http.StatusBadRequest)
+		return
+	}
+	shipmentID, err := strconv.ParseInt(shipmentIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid shipment ID", http.StatusBadRequest)
+		return
+	}
+
+	// Check if shipment already has a pickup form (prevent duplicate submissions)
+	var existingFormCount int
+	err = h.DB.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM pickup_forms WHERE shipment_id = $1`,
+		shipmentID,
+	).Scan(&existingFormCount)
+	if err != nil {
+		http.Error(w, "Failed to check shipment status", http.StatusInternalServerError)
+		return
+	}
+	if existingFormCount > 0 {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Shipment+details+already+completed", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Parse pickup date
+	pickupDateStr := r.FormValue("pickup_date")
+	if pickupDateStr == "" {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Pickup+date+is+required", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+	pickupDate, err := time.Parse("2006-01-02", pickupDateStr)
+	if err != nil {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Invalid+date+format", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Parse include accessories checkbox
+	includeAccessories := r.FormValue("include_accessories") == "on" || r.FormValue("include_accessories") == "true"
+
+	// Build validation input (using CompleteShipmentDetails validator - doesn't require JIRA/Company)
+	formInput := validator.CompleteShipmentDetailsInput{
+		ShipmentID:             shipmentID,
+		ContactName:            r.FormValue("contact_name"),
+		ContactEmail:           r.FormValue("contact_email"),
+		ContactPhone:           r.FormValue("contact_phone"),
+		PickupAddress:          r.FormValue("pickup_address"),
+		PickupCity:             r.FormValue("pickup_city"),
+		PickupState:            r.FormValue("pickup_state"),
+		PickupZip:              r.FormValue("pickup_zip"),
+		PickupDate:             pickupDateStr,
+		PickupTimeSlot:         r.FormValue("pickup_time_slot"),
+		SpecialInstructions:    r.FormValue("special_instructions"),
+		LaptopSerialNumber:     r.FormValue("laptop_serial_number"),
+		LaptopSpecs:            r.FormValue("laptop_specs"),
+		EngineerName:           r.FormValue("engineer_name"),
+		IncludeAccessories:     includeAccessories,
+		AccessoriesDescription: r.FormValue("accessories_description"),
+	}
+
+	// Validate form
+	if err := validator.ValidateCompleteShipmentDetails(formInput); err != nil {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=%s", shipmentID, err.Error())
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Start transaction
+	tx, err := h.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	// Get shipment and company ID
+	var companyID int64
+	var shipmentType models.ShipmentType
+	err = tx.QueryRowContext(r.Context(),
+		`SELECT client_company_id, shipment_type FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&companyID, &shipmentType)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Shipment not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Failed to query shipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Create laptop record
+	laptop := models.Laptop{
+		SerialNumber:    formInput.LaptopSerialNumber,
+		Specs:           formInput.LaptopSpecs,
+		Status:          models.LaptopStatusInTransitToWarehouse,
+		ClientCompanyID: &companyID,
+	}
+	laptop.BeforeCreate()
+
+	var laptopID int64
+	err = tx.QueryRowContext(r.Context(),
+		`INSERT INTO laptops (serial_number, specs, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id`,
+		laptop.SerialNumber, laptop.Specs, laptop.Status, laptop.ClientCompanyID,
+		laptop.CreatedAt, laptop.UpdatedAt,
+	).Scan(&laptopID)
+	if err != nil {
+		http.Error(w, "Failed to create laptop", http.StatusInternalServerError)
+		return
+	}
+
+	// Link laptop to shipment
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at)
+		VALUES ($1, $2, $3)`,
+		shipmentID, laptopID, time.Now(),
+	)
+	if err != nil {
+		http.Error(w, "Failed to link laptop to shipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Update shipment with pickup_scheduled_date
+	_, err = tx.ExecContext(r.Context(),
+		`UPDATE shipments SET pickup_scheduled_date = $1, updated_at = $2 WHERE id = $3`,
+		pickupDate, time.Now(), shipmentID,
+	)
+	if err != nil {
+		http.Error(w, "Failed to update shipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Create pickup form with form data as JSONB
+	formDataJSON, err := json.Marshal(map[string]interface{}{
+		"contact_name":            formInput.ContactName,
+		"contact_email":           formInput.ContactEmail,
+		"contact_phone":           formInput.ContactPhone,
+		"pickup_address":          formInput.PickupAddress,
+		"pickup_city":             formInput.PickupCity,
+		"pickup_state":            formInput.PickupState,
+		"pickup_zip":              formInput.PickupZip,
+		"pickup_date":             formInput.PickupDate,
+		"pickup_time_slot":        formInput.PickupTimeSlot,
+		"special_instructions":    formInput.SpecialInstructions,
+		"laptop_serial_number":    formInput.LaptopSerialNumber,
+		"laptop_specs":            formInput.LaptopSpecs,
+		"engineer_name":           formInput.EngineerName,
+		"include_accessories":     formInput.IncludeAccessories,
+		"accessories_description": formInput.AccessoriesDescription,
+	})
+	if err != nil {
+		http.Error(w, "Failed to encode form data", http.StatusInternalServerError)
+		return
+	}
+
+	pickupForm := models.PickupForm{
+		ShipmentID:        shipmentID,
+		SubmittedByUserID: user.ID,
+		FormData:          formDataJSON,
+	}
+	pickupForm.BeforeCreate()
+
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+		VALUES ($1, $2, $3, $4)`,
+		pickupForm.ShipmentID, pickupForm.SubmittedByUserID,
+		pickupForm.SubmittedAt, pickupForm.FormData,
+	)
+	if err != nil {
+		http.Error(w, "Failed to save pickup form", http.StatusInternalServerError)
+		return
+	}
+
+	// Create audit log entry
+	auditDetails, _ := json.Marshal(map[string]interface{}{
+		"action":       "shipment_details_completed",
+		"shipment_id":  shipmentID,
+		"company_id":   companyID,
+		"laptop_id":    laptopID,
+		"completed_by": user.Email,
+	})
+
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO audit_logs (user_id, action, entity_type, entity_id, timestamp, details)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		user.ID, "shipment_details_completed", "shipment", shipmentID, time.Now(), auditDetails,
+	)
+	if err != nil {
+		// Non-critical error, just log it
+		fmt.Printf("Failed to create audit log: %v\n", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
+		return
+	}
+
+	// Send pickup confirmation email (Step 4 in process flow)
+	if h.Notifier != nil {
+		if err := h.Notifier.SendPickupConfirmation(r.Context(), shipmentID); err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Warning: Failed to send pickup confirmation email: %v\n", err)
+		}
+	}
+
+	// Redirect to shipment detail page with success message
+	redirectURL := fmt.Sprintf("/shipments/%d?success=Shipment+details+completed+successfully", shipmentID)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// EditShipmentDetails handles logistics users editing shipment details (except JIRA ticket and company)
+func (h *PickupFormHandler) EditShipmentDetails(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Only logistics users can edit shipment details
+	if user.Role != models.RoleLogistics {
+		http.Error(w, "Forbidden: Only logistics users can edit shipment details", http.StatusForbidden)
+		return
+	}
+
+	// Parse form data
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	// Extract and validate shipment ID
+	shipmentIDStr := r.FormValue("shipment_id")
+	if shipmentIDStr == "" {
+		http.Error(w, "Shipment ID is required", http.StatusBadRequest)
+		return
+	}
+	shipmentID, err := strconv.ParseInt(shipmentIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid shipment ID", http.StatusBadRequest)
+		return
+	}
+
+	// Parse pickup date
+	pickupDateStr := r.FormValue("pickup_date")
+	if pickupDateStr == "" {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Pickup+date+is+required", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+	pickupDate, err := time.Parse("2006-01-02", pickupDateStr)
+	if err != nil {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Invalid+date+format", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Parse include accessories checkbox
+	includeAccessories := r.FormValue("include_accessories") == "on" || r.FormValue("include_accessories") == "true"
+
+	// Build validation input for editing (laptop serial number is NOT included, will be preserved)
+	formInput := validator.EditShipmentDetailsInput{
+		ShipmentID:             shipmentID,
+		ContactName:            r.FormValue("contact_name"),
+		ContactEmail:           r.FormValue("contact_email"),
+		ContactPhone:           r.FormValue("contact_phone"),
+		PickupAddress:          r.FormValue("pickup_address"),
+		PickupCity:             r.FormValue("pickup_city"),
+		PickupState:            r.FormValue("pickup_state"),
+		PickupZip:              r.FormValue("pickup_zip"),
+		PickupDate:             pickupDateStr,
+		PickupTimeSlot:         r.FormValue("pickup_time_slot"),
+		SpecialInstructions:    r.FormValue("special_instructions"),
+		LaptopSpecs:            r.FormValue("laptop_specs"),
+		EngineerName:           r.FormValue("engineer_name"),
+		IncludeAccessories:     includeAccessories,
+		AccessoriesDescription: r.FormValue("accessories_description"),
+	}
+
+	// Validate form using edit validator (doesn't require laptop_serial_number)
+	if err := validator.ValidateEditShipmentDetails(formInput); err != nil {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=%s", shipmentID, err.Error())
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Start transaction
+	tx, err := h.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	// Verify shipment exists and get related IDs
+	var companyID int64
+	var jiraTicket string
+	err = tx.QueryRowContext(r.Context(),
+		`SELECT client_company_id, jira_ticket_number FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&companyID, &jiraTicket)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Shipment not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Failed to query shipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Get existing form data to preserve fields not being updated
+	var existingFormDataJSON json.RawMessage
+	err = tx.QueryRowContext(r.Context(),
+		`SELECT form_data FROM pickup_forms WHERE shipment_id = $1`,
+		shipmentID,
+	).Scan(&existingFormDataJSON)
+	if err != nil {
+		http.Error(w, "Failed to query existing form data", http.StatusInternalServerError)
+		return
+	}
+
+	// Parse existing form data
+	var existingFormData map[string]interface{}
+	err = json.Unmarshal(existingFormDataJSON, &existingFormData)
+	if err != nil {
+		http.Error(w, "Failed to parse existing form data", http.StatusInternalServerError)
+		return
+	}
+
+	// Get laptop ID from shipment
+	var laptopID int64
+	err = tx.QueryRowContext(r.Context(),
+		`SELECT laptop_id FROM shipment_laptops WHERE shipment_id = $1 LIMIT 1`,
+		shipmentID,
+	).Scan(&laptopID)
+	if err != nil && err != sql.ErrNoRows {
+		http.Error(w, "Failed to query laptop", http.StatusInternalServerError)
+		return
+	}
+
+	// Update laptop specs if laptop exists
+	if laptopID > 0 && formInput.LaptopSpecs != "" {
+		_, err = tx.ExecContext(r.Context(),
+			`UPDATE laptops SET specs = $1, updated_at = $2 WHERE id = $3`,
+			formInput.LaptopSpecs, time.Now(), laptopID,
+		)
+		if err != nil {
+			http.Error(w, "Failed to update laptop", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Update shipment pickup_scheduled_date
+	_, err = tx.ExecContext(r.Context(),
+		`UPDATE shipments SET pickup_scheduled_date = $1, updated_at = $2 WHERE id = $3`,
+		pickupDate, time.Now(), shipmentID,
+	)
+	if err != nil {
+		http.Error(w, "Failed to update shipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Merge new form data with existing (preserving laptop_serial_number and other fields)
+	updatedFormData := map[string]interface{}{
+		"contact_name":            formInput.ContactName,
+		"contact_email":           formInput.ContactEmail,
+		"contact_phone":           formInput.ContactPhone,
+		"pickup_address":          formInput.PickupAddress,
+		"pickup_city":             formInput.PickupCity,
+		"pickup_state":            formInput.PickupState,
+		"pickup_zip":              formInput.PickupZip,
+		"pickup_date":             formInput.PickupDate,
+		"pickup_time_slot":        formInput.PickupTimeSlot,
+		"special_instructions":    formInput.SpecialInstructions,
+		"laptop_specs":            formInput.LaptopSpecs,
+		"engineer_name":           formInput.EngineerName,
+		"include_accessories":     formInput.IncludeAccessories,
+		"accessories_description": formInput.AccessoriesDescription,
+		"jira_ticket_number":      jiraTicket,                              // Preserved from shipment
+		"laptop_serial_number":    existingFormData["laptop_serial_number"], // Preserved from existing form
+	}
+
+	// Update pickup form with merged data
+	formDataJSON, err := json.Marshal(updatedFormData)
+	if err != nil {
+		http.Error(w, "Failed to encode form data", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = tx.ExecContext(r.Context(),
+		`UPDATE pickup_forms SET form_data = $1 WHERE shipment_id = $2`,
+		formDataJSON, shipmentID,
+	)
+	if err != nil {
+		http.Error(w, "Failed to update pickup form", http.StatusInternalServerError)
+		return
+	}
+
+	// Create audit log entry
+	auditDetails, _ := json.Marshal(map[string]interface{}{
+		"action":      "shipment_details_edited",
+		"shipment_id": shipmentID,
+		"edited_by":   user.Email,
+	})
+
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO audit_logs (user_id, action, entity_type, entity_id, timestamp, details)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		user.ID, "shipment_details_edited", "shipment", shipmentID, time.Now(), auditDetails,
+	)
+	if err != nil {
+		// Non-critical error, just log it
+		fmt.Printf("Failed to create audit log: %v\n", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect to shipment detail page with success message
+	redirectURL := fmt.Sprintf("/shipments/%d?success=Shipment+details+updated+successfully", shipmentID)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}

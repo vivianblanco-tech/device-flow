@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -1101,6 +1102,713 @@ func TestWarehouseToEngineerFormPage(t *testing.T) {
 			t.Log("Note: No available laptops found - this is expected behavior when inventory is empty or laptops are in active shipments")
 		} else if !strings.Contains(body, "laptop_id") {
 			t.Error("Expected form to contain laptop_id field when laptops are available")
+		}
+	})
+}
+
+// TestCreateMinimalSingleShipment tests creating a single shipment with only JIRA ticket and company ID
+func TestCreateMinimalSingleShipment(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test client company
+	var companyID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create logistics user
+	var userID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@bairesdev.com", "$2a$12$test.hash", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create logistics user: %v", err)
+	}
+
+	handler := NewPickupFormHandler(db, nil, nil)
+
+	t.Run("Logistics user creates minimal single shipment with JIRA ticket and company", func(t *testing.T) {
+		// Prepare form data
+		formData := url.Values{}
+		formData.Set("shipment_type", string(models.ShipmentTypeSingleFullJourney))
+		formData.Set("client_company_id", strconv.FormatInt(companyID, 10))
+		formData.Set("jira_ticket_number", "SCOP-12345")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/create/single-minimal", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		
+		// Add logistics user to context
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    userID,
+			Email: "logistics@bairesdev.com",
+			Role:  models.RoleLogistics,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+
+		handler.CreateMinimalSingleShipment(w, req)
+
+		// Should redirect to shipment detail page on success
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify shipment was created in database
+		var shipmentID int64
+		var shipmentType models.ShipmentType
+		var jiraTicket string
+		var status models.ShipmentStatus
+		var laptopCount int
+		err := db.QueryRowContext(ctx,
+			`SELECT id, shipment_type, jira_ticket_number, status, laptop_count 
+			FROM shipments 
+			WHERE client_company_id = $1 AND jira_ticket_number = $2`,
+			companyID, "SCOP-12345",
+		).Scan(&shipmentID, &shipmentType, &jiraTicket, &status, &laptopCount)
+		if err != nil {
+			t.Fatalf("Failed to find created shipment: %v", err)
+		}
+
+		// Verify shipment properties
+		if shipmentType != models.ShipmentTypeSingleFullJourney {
+			t.Errorf("Expected shipment type %s, got %s", models.ShipmentTypeSingleFullJourney, shipmentType)
+		}
+		if jiraTicket != "SCOP-12345" {
+			t.Errorf("Expected JIRA ticket SCOP-12345, got %s", jiraTicket)
+		}
+		if status != models.ShipmentStatusPendingPickup {
+			t.Errorf("Expected status %s, got %s", models.ShipmentStatusPendingPickup, status)
+		}
+		if laptopCount != 1 {
+			t.Errorf("Expected laptop count 1, got %d", laptopCount)
+		}
+
+		// Verify NO pickup form was created (it should be empty until client fills it)
+		var pickupFormCount int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM pickup_forms WHERE shipment_id = $1`,
+			shipmentID,
+		).Scan(&pickupFormCount)
+		if err != nil {
+			t.Fatalf("Failed to query pickup forms: %v", err)
+		}
+		if pickupFormCount != 0 {
+			t.Errorf("Expected no pickup form yet, found %d", pickupFormCount)
+		}
+
+		// Verify NO laptop was created (it should be created when client fills the form)
+		var laptopCountInDB int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM shipment_laptops WHERE shipment_id = $1`,
+			shipmentID,
+		).Scan(&laptopCountInDB)
+		if err != nil {
+			t.Fatalf("Failed to query shipment laptops: %v", err)
+		}
+		if laptopCountInDB != 0 {
+			t.Errorf("Expected no laptops linked yet, found %d", laptopCountInDB)
+		}
+	})
+
+	t.Run("Rejects creation if JIRA ticket is missing", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("shipment_type", string(models.ShipmentTypeSingleFullJourney))
+		formData.Set("client_company_id", strconv.FormatInt(companyID, 10))
+		// No JIRA ticket
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/create/single-minimal", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    userID,
+			Email: "logistics@bairesdev.com",
+			Role:  models.RoleLogistics,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.CreateMinimalSingleShipment(w, req)
+
+		// Should redirect with error
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		location := w.Header().Get("Location")
+		if !strings.Contains(location, "error=") {
+			t.Error("Expected error parameter in redirect URL")
+		}
+	})
+
+	t.Run("Rejects creation if company ID is missing", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("shipment_type", string(models.ShipmentTypeSingleFullJourney))
+		formData.Set("jira_ticket_number", "SCOP-12345")
+		// No company ID
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/create/single-minimal", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    userID,
+			Email: "logistics@bairesdev.com",
+			Role:  models.RoleLogistics,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.CreateMinimalSingleShipment(w, req)
+
+		// Should redirect with error
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		location := w.Header().Get("Location")
+		if !strings.Contains(location, "error=") {
+			t.Error("Expected error parameter in redirect URL")
+		}
+	})
+
+	t.Run("Rejects creation by non-logistics users", func(t *testing.T) {
+		// Create client user
+		var clientUserID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			"client@company.com", "$2a$12$test.hash", models.RoleClient, time.Now(), time.Now(),
+		).Scan(&clientUserID)
+		if err != nil {
+			t.Fatalf("Failed to create client user: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_type", string(models.ShipmentTypeSingleFullJourney))
+		formData.Set("client_company_id", strconv.FormatInt(companyID, 10))
+		formData.Set("jira_ticket_number", "SCOP-12345")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/create/single-minimal", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    clientUserID,
+			Email: "client@company.com",
+			Role:  models.RoleClient,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.CreateMinimalSingleShipment(w, req)
+
+		// Should return forbidden
+		if w.Code != http.StatusForbidden {
+			t.Errorf("Expected status 403, got %d", w.Code)
+		}
+	})
+}
+
+// TestCompleteShipmentDetailsViaMagicLink tests client completing shipment details via magic link
+func TestCompleteShipmentDetailsViaMagicLink(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test client company
+	var companyID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create logistics user
+	var logisticsUserID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@bairesdev.com", "$2a$12$test.hash", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create logistics user: %v", err)
+	}
+
+	// Create client user
+	var clientUserID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"client@company.com", "$2a$12$test.hash", models.RoleClient, time.Now(), time.Now(),
+	).Scan(&clientUserID)
+	if err != nil {
+		t.Fatalf("Failed to create client user: %v", err)
+	}
+
+	// Create a minimal shipment (as logistics would do)
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPendingPickup, 1, "SCOP-12345",
+		time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create minimal shipment: %v", err)
+	}
+
+	handler := NewPickupFormHandler(db, nil, nil)
+
+	t.Run("Client completes shipment details with all required fields", func(t *testing.T) {
+		// Prepare form data
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("laptop_serial_number", "ABC123456789")
+		formData.Set("laptop_specs", "Dell XPS 15, Intel Core i7, 16GB RAM, 512GB SSD")
+		formData.Set("engineer_name", "Jane Smith")
+		formData.Set("contact_name", "John Doe")
+		formData.Set("contact_email", "john.doe@company.com")
+		formData.Set("contact_phone", "+1-555-0123")
+		formData.Set("pickup_address", "123 Main Street, Suite 400")
+		formData.Set("pickup_city", "New York")
+		formData.Set("pickup_state", "NY")
+		formData.Set("pickup_zip", "10001")
+		formData.Set("pickup_date", "2025-12-15")
+		formData.Set("pickup_time_slot", "morning")
+		formData.Set("special_instructions", "Call before arriving")
+		formData.Set("include_accessories", "true")
+		formData.Set("accessories_description", "Charger, mouse, keyboard")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/"+strconv.FormatInt(shipmentID, 10)+"/complete-details", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		
+		// Add client user to context (came via magic link)
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    clientUserID,
+			Email: "client@company.com",
+			Role:  models.RoleClient,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+
+		handler.CompleteShipmentDetails(w, req)
+
+		// Should redirect to success page
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify pickup form was created
+		var pickupFormID int64
+		var submittedByUserID int64
+		err := db.QueryRowContext(ctx,
+			`SELECT id, submitted_by_user_id FROM pickup_forms WHERE shipment_id = $1`,
+			shipmentID,
+		).Scan(&pickupFormID, &submittedByUserID)
+		if err != nil {
+			t.Fatalf("Failed to find pickup form: %v", err)
+		}
+		if submittedByUserID != clientUserID {
+			t.Errorf("Expected pickup form submitted by client user %d, got %d", clientUserID, submittedByUserID)
+		}
+
+		// Verify laptop was created and linked to shipment
+		var laptopID int64
+		var serialNumber string
+		var laptopStatus models.LaptopStatus
+		err = db.QueryRowContext(ctx,
+			`SELECT l.id, l.serial_number, l.status 
+			FROM laptops l
+			JOIN shipment_laptops sl ON sl.laptop_id = l.id
+			WHERE sl.shipment_id = $1`,
+			shipmentID,
+		).Scan(&laptopID, &serialNumber, &laptopStatus)
+		if err != nil {
+			t.Fatalf("Failed to find laptop: %v", err)
+		}
+		if serialNumber != "ABC123456789" {
+			t.Errorf("Expected serial number ABC123456789, got %s", serialNumber)
+		}
+		if laptopStatus != models.LaptopStatusInTransitToWarehouse {
+			t.Errorf("Expected laptop status %s, got %s", models.LaptopStatusInTransitToWarehouse, laptopStatus)
+		}
+
+		// Verify shipment pickup_scheduled_date was updated
+		var pickupScheduledDate sql.NullTime
+		err = db.QueryRowContext(ctx,
+			`SELECT pickup_scheduled_date FROM shipments WHERE id = $1`,
+			shipmentID,
+		).Scan(&pickupScheduledDate)
+		if err != nil {
+			t.Fatalf("Failed to query shipment: %v", err)
+		}
+		if !pickupScheduledDate.Valid {
+			t.Error("Expected pickup_scheduled_date to be set")
+		}
+	})
+
+	t.Run("Rejects completion if shipment ID is missing", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("laptop_serial_number", "ABC123456789")
+		// No shipment_id
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/complete-details", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    clientUserID,
+			Email: "client@company.com",
+			Role:  models.RoleClient,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.CompleteShipmentDetails(w, req)
+
+		// Should return bad request
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400, got %d", w.Code)
+		}
+	})
+
+	t.Run("Rejects completion if laptop serial number is missing", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("contact_name", "John Doe")
+		// No laptop_serial_number
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/"+strconv.FormatInt(shipmentID, 10)+"/complete-details", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    clientUserID,
+			Email: "client@company.com",
+			Role:  models.RoleClient,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.CompleteShipmentDetails(w, req)
+
+		// Should redirect with error
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		location := w.Header().Get("Location")
+		if !strings.Contains(location, "error=") {
+			t.Error("Expected error parameter in redirect URL")
+		}
+	})
+
+	t.Run("Rejects completion if shipment already has details", func(t *testing.T) {
+		// Create another minimal shipment
+		var shipmentID2 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPendingPickup, 1, "SCOP-12346",
+			time.Now(), time.Now(),
+		).Scan(&shipmentID2)
+		if err != nil {
+			t.Fatalf("Failed to create minimal shipment: %v", err)
+		}
+
+		// Create a pickup form for it (simulating it's already completed)
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+			VALUES ($1, $2, $3, $4)`,
+			shipmentID2, clientUserID, time.Now(), json.RawMessage(`{}`),
+		)
+		if err != nil {
+			t.Fatalf("Failed to create pickup form: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID2, 10))
+		formData.Set("laptop_serial_number", "XYZ987654321")
+		formData.Set("contact_name", "John Doe")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/"+strconv.FormatInt(shipmentID2, 10)+"/complete-details", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    clientUserID,
+			Email: "client@company.com",
+			Role:  models.RoleClient,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.CompleteShipmentDetails(w, req)
+
+		// Should redirect with error indicating shipment details already exist
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		location := w.Header().Get("Location")
+		if !strings.Contains(location, "error=") {
+			t.Error("Expected error parameter in redirect URL")
+		}
+	})
+}
+
+// TestLogisticsEditShipmentDetails tests logistics users editing shipment details (except JIRA + Company)
+func TestLogisticsEditShipmentDetails(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test client company
+	var companyID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create logistics user
+	var logisticsUserID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@bairesdev.com", "$2a$12$test.hash", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create logistics user: %v", err)
+	}
+
+	// Create a shipment with completed details
+	var shipmentID int64
+	pickupDate := time.Now().AddDate(0, 0, 7)
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, pickup_scheduled_date, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPendingPickup, 1, "SCOP-12345", pickupDate,
+		time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create shipment: %v", err)
+	}
+
+	// Create laptop
+	var laptopID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO laptops (serial_number, specs, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		"ABC123456789", "Dell XPS 15", models.LaptopStatusInTransitToWarehouse, companyID, time.Now(), time.Now(),
+	).Scan(&laptopID)
+	if err != nil {
+		t.Fatalf("Failed to create laptop: %v", err)
+	}
+
+	// Link laptop to shipment
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at)
+		VALUES ($1, $2, $3)`,
+		shipmentID, laptopID, time.Now(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to link laptop: %v", err)
+	}
+
+	// Create pickup form with details
+	formDataJSON, _ := json.Marshal(map[string]interface{}{
+		"contact_name":         "John Doe",
+		"contact_email":        "john@company.com",
+		"contact_phone":        "+1-555-0123",
+		"pickup_address":       "123 Main St",
+		"pickup_city":          "New York",
+		"pickup_state":         "NY",
+		"pickup_zip":           "10001",
+		"pickup_date":          pickupDate.Format("2006-01-02"),
+		"pickup_time_slot":     "morning",
+		"laptop_serial_number": "ABC123456789",
+		"laptop_specs":         "Dell XPS 15",
+		"engineer_name":        "Jane Smith",
+	})
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+		VALUES ($1, $2, $3, $4)`,
+		shipmentID, logisticsUserID, time.Now(), formDataJSON,
+	)
+	if err != nil {
+		t.Fatalf("Failed to create pickup form: %v", err)
+	}
+
+	handler := NewPickupFormHandler(db, nil, nil)
+
+	t.Run("Logistics user updates shipment details successfully", func(t *testing.T) {
+		// Prepare form data with updated values
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("contact_name", "Jane Updated")
+		formData.Set("contact_email", "jane.updated@company.com")
+		formData.Set("contact_phone", "+1-555-9999")
+		formData.Set("pickup_address", "456 Updated Ave")
+		formData.Set("pickup_city", "Boston")
+		formData.Set("pickup_state", "MA")
+		formData.Set("pickup_zip", "02101")
+		formData.Set("pickup_date", "2025-12-20")
+		formData.Set("pickup_time_slot", "afternoon")
+		formData.Set("laptop_specs", "Dell XPS 15, 32GB RAM, 1TB SSD")
+		formData.Set("engineer_name", "John Engineer")
+		formData.Set("special_instructions", "Updated instructions")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/"+strconv.FormatInt(shipmentID, 10)+"/edit-details", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		
+		// Add logistics user to context
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    logisticsUserID,
+			Email: "logistics@bairesdev.com",
+			Role:  models.RoleLogistics,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+
+		handler.EditShipmentDetails(w, req)
+
+		// Should redirect to success page
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify pickup form was updated
+		var updatedFormData json.RawMessage
+		err := db.QueryRowContext(ctx,
+			`SELECT form_data FROM pickup_forms WHERE shipment_id = $1`,
+			shipmentID,
+		).Scan(&updatedFormData)
+		if err != nil {
+			t.Fatalf("Failed to find pickup form: %v", err)
+		}
+
+		// Parse and verify updated data
+		var formDataMap map[string]interface{}
+		json.Unmarshal(updatedFormData, &formDataMap)
+		
+		if formDataMap["contact_name"] != "Jane Updated" {
+			t.Errorf("Expected contact name 'Jane Updated', got %v", formDataMap["contact_name"])
+		}
+		if formDataMap["contact_email"] != "jane.updated@company.com" {
+			t.Errorf("Expected contact email 'jane.updated@company.com', got %v", formDataMap["contact_email"])
+		}
+		if formDataMap["pickup_city"] != "Boston" {
+			t.Errorf("Expected pickup city 'Boston', got %v", formDataMap["pickup_city"])
+		}
+
+		// Verify shipment pickup_scheduled_date was updated
+		var updatedPickupDate sql.NullTime
+		err = db.QueryRowContext(ctx,
+			`SELECT pickup_scheduled_date FROM shipments WHERE id = $1`,
+			shipmentID,
+		).Scan(&updatedPickupDate)
+		if err != nil {
+			t.Fatalf("Failed to query shipment: %v", err)
+		}
+		if !updatedPickupDate.Valid {
+			t.Error("Expected pickup_scheduled_date to be set")
+		}
+		expectedDate := "2025-12-20"
+		if updatedPickupDate.Time.Format("2006-01-02") != expectedDate {
+			t.Errorf("Expected pickup date %s, got %s", expectedDate, updatedPickupDate.Time.Format("2006-01-02"))
+		}
+
+		// Verify laptop specs were updated
+		var updatedSpecs string
+		err = db.QueryRowContext(ctx,
+			`SELECT specs FROM laptops WHERE id = $1`,
+			laptopID,
+		).Scan(&updatedSpecs)
+		if err != nil {
+			t.Fatalf("Failed to query laptop: %v", err)
+		}
+		if updatedSpecs != "Dell XPS 15, 32GB RAM, 1TB SSD" {
+			t.Errorf("Expected updated specs, got %s", updatedSpecs)
+		}
+	})
+
+	t.Run("Rejects update by non-logistics users", func(t *testing.T) {
+		// Create client user
+		var clientUserID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			"client@company.com", "$2a$12$test.hash", models.RoleClient, time.Now(), time.Now(),
+		).Scan(&clientUserID)
+		if err != nil {
+			t.Fatalf("Failed to create client user: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("contact_name", "Hacker Attempt")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/"+strconv.FormatInt(shipmentID, 10)+"/edit-details", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    clientUserID,
+			Email: "client@company.com",
+			Role:  models.RoleClient,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.EditShipmentDetails(w, req)
+
+		// Should return forbidden
+		if w.Code != http.StatusForbidden {
+			t.Errorf("Expected status 403, got %d", w.Code)
+		}
+	})
+
+	t.Run("Rejects update if shipment ID is missing", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("contact_name", "Jane Updated")
+		// No shipment_id
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/edit-details", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    logisticsUserID,
+			Email: "logistics@bairesdev.com",
+			Role:  models.RoleLogistics,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.EditShipmentDetails(w, req)
+
+		// Should return bad request
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400, got %d", w.Code)
 		}
 	})
 }
