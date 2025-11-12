@@ -1150,7 +1150,7 @@ func TestCreateMinimalSingleShipment(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodPost, "/shipments/create/single-minimal", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		
+
 		// Add logistics user to context
 		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
 			ID:    userID,
@@ -1399,7 +1399,7 @@ func TestCompleteShipmentDetailsViaMagicLink(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodPost, "/shipments/"+strconv.FormatInt(shipmentID, 10)+"/complete-details", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		
+
 		// Add client user to context (came via magic link)
 		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
 			ID:    clientUserID,
@@ -1682,7 +1682,7 @@ func TestLogisticsEditShipmentDetails(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodPost, "/shipments/"+strconv.FormatInt(shipmentID, 10)+"/edit-details", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		
+
 		// Add logistics user to context
 		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
 			ID:    logisticsUserID,
@@ -1713,7 +1713,7 @@ func TestLogisticsEditShipmentDetails(t *testing.T) {
 		// Parse and verify updated data
 		var formDataMap map[string]interface{}
 		json.Unmarshal(updatedFormData, &formDataMap)
-		
+
 		if formDataMap["contact_name"] != "Jane Updated" {
 			t.Errorf("Expected contact name 'Jane Updated', got %v", formDataMap["contact_name"])
 		}

@@ -43,12 +43,12 @@
 
         <!-- Shipment Form -->
         <div class="bg-white shadow-md rounded-lg p-6 md:p-8">
-            <form action="/pickup-form" method="POST" class="space-y-6">
+            <form action="/shipments/create/single-minimal" method="POST" class="space-y-6">
                 
                 <!-- Hidden Field: Shipment Type -->
                 <input type="hidden" name="shipment_type" value="single_full_journey">
 
-                <!-- Company Selection (for Logistics users) -->
+                <!-- Company Selection (for Logistics users only) -->
                 {{if eq .User.Role "logistics"}}
                 <div>
                     <label for="client_company_id" class="block text-sm font-medium text-gray-700 mb-2">
@@ -66,278 +66,30 @@
                         {{end}}
                     </select>
                 </div>
+
+                <!-- JIRA Ticket (Logistics users only) -->
+                <div>
+                    <label for="jira_ticket_number" class="block text-sm font-medium text-gray-700 mb-2">
+                        JIRA Ticket Number <span class="text-red-600">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="jira_ticket_number" 
+                        name="jira_ticket_number" 
+                        required
+                        placeholder="SCOP-12345"
+                        pattern="[A-Z]+-[0-9]+"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    >
+                    <p class="mt-1 text-sm text-gray-500">Format: PROJECT-NUMBER (e.g., SCOP-67702)</p>
+                </div>
                 {{else}}
-                <input type="hidden" name="client_company_id" value="{{.CompanyID}}">
+                <!-- Non-logistics users shouldn't see this form -->
+                <p class="text-red-600">Access Denied: Only logistics users can create shipments.</p>
                 {{end}}
 
-                <!-- Laptop Details Section -->
-                <div class="border-t pt-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Laptop Information</h3>
-                    
-                    <!-- Serial Number -->
-                    <div class="mb-6">
-                        <label for="laptop_serial_number" class="block text-sm font-medium text-gray-700 mb-2">
-                            Laptop Serial Number <span class="text-red-600">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="laptop_serial_number" 
-                            name="laptop_serial_number" 
-                            required
-                            placeholder="e.g., ABC123456789"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        >
-                        <p class="mt-1 text-sm text-gray-500">Enter the exact serial number from the laptop label</p>
-                    </div>
-
-                    <!-- Laptop Specifications -->
-                    <div class="mb-6">
-                        <label for="laptop_specs" class="block text-sm font-medium text-gray-700 mb-2">
-                            Laptop Specifications (Optional)
-                        </label>
-                        <textarea 
-                            id="laptop_specs" 
-                            name="laptop_specs" 
-                            rows="3"
-                            placeholder="e.g., Dell XPS 15, Intel Core i7, 16GB RAM, 512GB SSD"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        ></textarea>
-                        <p class="mt-1 text-sm text-gray-500">Include brand, model, processor, RAM, storage, etc.</p>
-                    </div>
-
-                    <!-- Engineer Name (Optional) -->
-                    <div>
-                        <label for="engineer_name" class="block text-sm font-medium text-gray-700 mb-2">
-                            Software Engineer Name (Optional)
-                        </label>
-                        <input 
-                            type="text" 
-                            id="engineer_name" 
-                            name="engineer_name" 
-                            placeholder="e.g., Jane Smith"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        >
-                        <p class="mt-1 text-sm text-gray-500">Can be assigned later if not known yet</p>
-                    </div>
-                </div>
-
-                <!-- Contact Information Section -->
-                <div class="border-t pt-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Contact Name -->
-                        <div>
-                            <label for="contact_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                Contact Name <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                id="contact_name" 
-                                name="contact_name" 
-                                required
-                                placeholder="John Doe"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <!-- Contact Email -->
-                        <div>
-                            <label for="contact_email" class="block text-sm font-medium text-gray-700 mb-2">
-                                Contact Email <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="email" 
-                                id="contact_email" 
-                                name="contact_email" 
-                                required
-                                placeholder="john.doe@company.com"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <!-- Contact Phone -->
-                        <div class="md:col-span-2">
-                            <label for="contact_phone" class="block text-sm font-medium text-gray-700 mb-2">
-                                Contact Phone <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="tel" 
-                                id="contact_phone" 
-                                name="contact_phone" 
-                                required
-                                placeholder="+1-555-0123"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Pickup Details Section -->
-                <div class="border-t pt-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Pickup Details</h3>
-                    
-                    <!-- Pickup Address -->
-                    <div class="mb-6">
-                        <label for="pickup_address" class="block text-sm font-medium text-gray-700 mb-2">
-                            Street Address <span class="text-red-600">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="pickup_address" 
-                            name="pickup_address" 
-                            required
-                            placeholder="123 Main Street, Suite 400"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        >
-                    </div>
-
-                    <!-- City, State, ZIP -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div>
-                            <label for="pickup_city" class="block text-sm font-medium text-gray-700 mb-2">
-                                City <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                id="pickup_city" 
-                                name="pickup_city" 
-                                required
-                                placeholder="New York"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <div>
-                            <label for="pickup_state" class="block text-sm font-medium text-gray-700 mb-2">
-                                State <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                id="pickup_state" 
-                                name="pickup_state" 
-                                required
-                                placeholder="NY"
-                                maxlength="2"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <div>
-                            <label for="pickup_zip" class="block text-sm font-medium text-gray-700 mb-2">
-                                ZIP Code <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                id="pickup_zip" 
-                                name="pickup_zip" 
-                                required
-                                placeholder="10001"
-                                maxlength="5"
-                                pattern="[0-9]{5}"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Pickup Date -->
-                        <div>
-                            <label for="pickup_date" class="block text-sm font-medium text-gray-700 mb-2">
-                                Pickup Date <span class="text-red-600">*</span>
-                            </label>
-                            <input 
-                                type="date" 
-                                id="pickup_date" 
-                                name="pickup_date" 
-                                required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                        </div>
-
-                        <!-- Time Slot -->
-                        <div>
-                            <label for="pickup_time_slot" class="block text-sm font-medium text-gray-700 mb-2">
-                                Time Slot <span class="text-red-600">*</span>
-                            </label>
-                            <select 
-                                id="pickup_time_slot" 
-                                name="pickup_time_slot" 
-                                required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                                <option value="">Select...</option>
-                                <option value="morning">Morning (8AM - 12PM)</option>
-                                <option value="afternoon">Afternoon (12PM - 5PM)</option>
-                                <option value="evening">Evening (5PM - 8PM)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- JIRA Ticket -->
-                    <div class="mt-6">
-                        <label for="jira_ticket_number" class="block text-sm font-medium text-gray-700 mb-2">
-                            JIRA Ticket Number <span class="text-red-600">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="jira_ticket_number" 
-                            name="jira_ticket_number" 
-                            required
-                            placeholder="SCOP-12345"
-                            pattern="[A-Z]+-[0-9]+"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        >
-                        <p class="mt-1 text-sm text-gray-500">Format: PROJECT-NUMBER (e.g., SCOP-67702)</p>
-                    </div>
-
-                    <!-- Special Instructions -->
-                    <div class="mt-6">
-                        <label for="special_instructions" class="block text-sm font-medium text-gray-700 mb-2">
-                            Special Instructions (Optional)
-                        </label>
-                        <textarea 
-                            id="special_instructions" 
-                            name="special_instructions" 
-                            rows="3"
-                            placeholder="Any special handling requirements, parking instructions, security protocols, etc."
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        ></textarea>
-                    </div>
-                </div>
-
-                <!-- Accessories Section -->
-                <div class="border-t pt-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Accessories</h3>
-                    
-                    <div class="flex items-center mb-4">
-                        <input 
-                            type="checkbox" 
-                            id="include_accessories" 
-                            name="include_accessories" 
-                            value="true"
-                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        >
-                        <label for="include_accessories" class="ml-2 block text-sm text-gray-900">
-                            Include accessories with this shipment
-                        </label>
-                    </div>
-
-                    <div>
-                        <label for="accessories_description" class="block text-sm font-medium text-gray-700 mb-2">
-                            Accessories Description
-                        </label>
-                        <textarea 
-                            id="accessories_description" 
-                            name="accessories_description" 
-                            rows="2"
-                            placeholder="e.g., Charger, mouse, keyboard, docking station"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        ></textarea>
-                    </div>
-                </div>
-
-                <!-- Submit Buttons -->
+                <!-- Submit Buttons (only for logistics users) -->
+                {{if eq .User.Role "logistics"}}
                 <div class="flex items-center justify-end space-x-4 pt-6 border-t">
                     <a 
                         href="/dashboard" 
@@ -352,19 +104,23 @@
                         Create Shipment
                     </button>
                 </div>
+                {{end}}
             </form>
         </div>
 
         <!-- Help Text -->
+        {{if eq .User.Role "logistics"}}
         <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h4 class="text-sm font-medium text-blue-900 mb-2">Single Laptop Shipment Process:</h4>
-            <ul class="text-sm text-blue-800 space-y-1 ml-4 list-disc">
-                <li>Laptop will be picked up from client location</li>
-                <li>Delivered to warehouse for inspection and storage</li>
-                <li>Released from warehouse and shipped to software engineer</li>
-                <li>Full tracking available through all 8 status stages</li>
+            <h4 class="text-sm font-medium text-blue-900 mb-2">📋 Next Steps After Creating Shipment:</h4>
+            <ul class="text-sm text-blue-800 space-y-2 ml-4 list-disc">
+                <li><strong>Step 1:</strong> Create the shipment with JIRA ticket and client company</li>
+                <li><strong>Step 2:</strong> Send a magic link to the client to complete pickup details</li>
+                <li><strong>Step 3:</strong> Client fills in laptop info, contact details, pickup address, and schedule</li>
+                <li><strong>Step 4:</strong> You can edit shipment details anytime (except JIRA ticket and company)</li>
+                <li><strong>Step 5:</strong> Full tracking available through all 8 status stages</li>
             </ul>
         </div>
+        {{end}}
     </div>
 
     <!-- Footer -->
