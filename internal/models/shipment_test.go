@@ -895,6 +895,102 @@ func TestShipment_TypeSpecificStatusFlows(t *testing.T) {
 	}
 }
 
+func TestShipment_LaptopCountTracking(t *testing.T) {
+	tests := []struct {
+		name          string
+		shipmentType  ShipmentType
+		laptopCount   int
+		shouldBeValid bool
+		errorContains string
+	}{
+		{
+			name:          "single_full_journey must have count = 1",
+			shipmentType:  ShipmentTypeSingleFullJourney,
+			laptopCount:   1,
+			shouldBeValid: true,
+		},
+		{
+			name:          "single_full_journey cannot have count > 1",
+			shipmentType:  ShipmentTypeSingleFullJourney,
+			laptopCount:   2,
+			shouldBeValid: false,
+			errorContains: "exactly 1 laptop",
+		},
+		{
+			name:          "single_full_journey cannot have count = 0",
+			shipmentType:  ShipmentTypeSingleFullJourney,
+			laptopCount:   0,
+			shouldBeValid: false,
+			errorContains: "exactly 1 laptop",
+		},
+		{
+			name:          "bulk_to_warehouse must have count >= 2",
+			shipmentType:  ShipmentTypeBulkToWarehouse,
+			laptopCount:   2,
+			shouldBeValid: true,
+		},
+		{
+			name:          "bulk_to_warehouse can have count > 2",
+			shipmentType:  ShipmentTypeBulkToWarehouse,
+			laptopCount:   10,
+			shouldBeValid: true,
+		},
+		{
+			name:          "bulk_to_warehouse cannot have count = 1",
+			shipmentType:  ShipmentTypeBulkToWarehouse,
+			laptopCount:   1,
+			shouldBeValid: false,
+			errorContains: "at least 2 laptops",
+		},
+		{
+			name:          "bulk_to_warehouse cannot have count = 0",
+			shipmentType:  ShipmentTypeBulkToWarehouse,
+			laptopCount:   0,
+			shouldBeValid: false,
+			errorContains: "at least 2 laptops",
+		},
+		{
+			name:          "warehouse_to_engineer must have count = 1",
+			shipmentType:  ShipmentTypeWarehouseToEngineer,
+			laptopCount:   1,
+			shouldBeValid: true,
+		},
+		{
+			name:          "warehouse_to_engineer cannot have count > 1",
+			shipmentType:  ShipmentTypeWarehouseToEngineer,
+			laptopCount:   2,
+			shouldBeValid: false,
+			errorContains: "exactly 1 laptop",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Shipment{
+				ShipmentType:     tt.shipmentType,
+				LaptopCount:      tt.laptopCount,
+				ClientCompanyID:  1,
+				Status:           ShipmentStatusPendingPickup,
+				JiraTicketNumber: "SCOP-12345",
+			}
+
+			err := s.ValidateLaptopCount()
+			if tt.shouldBeValid && err != nil {
+				t.Errorf("Expected valid, got error: %v", err)
+			}
+			if !tt.shouldBeValid {
+				if err == nil {
+					t.Error("Expected error, got nil")
+				} else if tt.errorContains != "" {
+					if !strings.Contains(err.Error(), tt.errorContains) {
+						t.Errorf("Expected error to contain '%s', got: %v", tt.errorContains, err)
+					}
+				}
+			}
+		})
+	}
+}
+
 // Helper function for creating int64 pointers
 func int64Ptr(i int64) *int64 {
 	return &i

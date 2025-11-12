@@ -46,6 +46,7 @@ type Shipment struct {
 	ClientCompanyID     int64           `json:"client_company_id" db:"client_company_id"`
 	SoftwareEngineerID  *int64          `json:"software_engineer_id,omitempty" db:"software_engineer_id"`
 	Status              ShipmentStatus  `json:"status" db:"status"`
+	LaptopCount         int             `json:"laptop_count" db:"laptop_count"`
 	JiraTicketNumber    string          `json:"jira_ticket_number" db:"jira_ticket_number"`
 	CourierName         string          `json:"courier_name,omitempty" db:"courier_name"`
 	TrackingNumber      string          `json:"tracking_number,omitempty" db:"tracking_number"`
@@ -110,6 +111,23 @@ func (s *Shipment) ValidateEngineerAssignment() error {
 	case ShipmentTypeSingleFullJourney:
 		// Single full journey can be assigned anytime (optional validation here)
 		// No error - engineer can be nil or assigned
+	}
+	return nil
+}
+
+// ValidateLaptopCount validates laptop count based on shipment type
+func (s *Shipment) ValidateLaptopCount() error {
+	switch s.ShipmentType {
+	case ShipmentTypeSingleFullJourney, ShipmentTypeWarehouseToEngineer:
+		// Single shipments must have exactly 1 laptop
+		if s.LaptopCount != 1 {
+			return errors.New("single shipments must have exactly 1 laptop")
+		}
+	case ShipmentTypeBulkToWarehouse:
+		// Bulk shipments must have at least 2 laptops
+		if s.LaptopCount < 2 {
+			return errors.New("bulk shipments must have at least 2 laptops")
+		}
 	}
 	return nil
 }
