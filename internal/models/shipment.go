@@ -29,9 +29,20 @@ const (
 	CourierDHL   = "DHL"
 )
 
+// ShipmentType represents the type of shipment
+type ShipmentType string
+
+// Shipment type constants
+const (
+	ShipmentTypeSingleFullJourney    ShipmentType = "single_full_journey"
+	ShipmentTypeBulkToWarehouse      ShipmentType = "bulk_to_warehouse"
+	ShipmentTypeWarehouseToEngineer  ShipmentType = "warehouse_to_engineer"
+)
+
 // Shipment represents a shipment of laptops through the delivery pipeline
 type Shipment struct {
 	ID                  int64           `json:"id" db:"id"`
+	ShipmentType        ShipmentType    `json:"shipment_type" db:"shipment_type"`
 	ClientCompanyID     int64           `json:"client_company_id" db:"client_company_id"`
 	SoftwareEngineerID  *int64          `json:"software_engineer_id,omitempty" db:"software_engineer_id"`
 	Status              ShipmentStatus  `json:"status" db:"status"`
@@ -119,6 +130,17 @@ func IsValidShipmentStatus(status ShipmentStatus) bool {
 		ShipmentStatusReleasedFromWarehouse,
 		ShipmentStatusInTransitToEngineer,
 		ShipmentStatusDelivered:
+		return true
+	}
+	return false
+}
+
+// IsValidShipmentType checks if a given shipment type is valid
+func IsValidShipmentType(shipmentType ShipmentType) bool {
+	switch shipmentType {
+	case ShipmentTypeSingleFullJourney,
+		ShipmentTypeBulkToWarehouse,
+		ShipmentTypeWarehouseToEngineer:
 		return true
 	}
 	return false

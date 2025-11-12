@@ -487,9 +487,9 @@ func TestShipment_UpdateStatus_WithoutETA(t *testing.T) {
 // TestShipment_GetNextAllowedStatuses tests getting the next valid statuses for sequential transitions
 func TestShipment_GetNextAllowedStatuses(t *testing.T) {
 	tests := []struct {
-		name           string
-		currentStatus  ShipmentStatus
-		expectedNext   []ShipmentStatus
+		name          string
+		currentStatus ShipmentStatus
+		expectedNext  []ShipmentStatus
 	}{
 		{
 			name:          "from pending_pickup_from_client",
@@ -539,13 +539,13 @@ func TestShipment_GetNextAllowedStatuses(t *testing.T) {
 				Status: tt.currentStatus,
 			}
 			got := shipment.GetNextAllowedStatuses()
-			
+
 			// Check length matches
 			if len(got) != len(tt.expectedNext) {
 				t.Errorf("GetNextAllowedStatuses() returned %d statuses, expected %d", len(got), len(tt.expectedNext))
 				return
 			}
-			
+
 			// Check each expected status is present
 			for _, expected := range tt.expectedNext {
 				found := false
@@ -614,7 +614,7 @@ func TestShipment_IsValidStatusTransition(t *testing.T) {
 			newStatus:     ShipmentStatusDelivered,
 			expected:      true,
 		},
-		
+
 		// Invalid transitions - skipping statuses
 		{
 			name:          "invalid: pending_pickup_from_client -> picked_up_from_client (skipping pickup_from_client_scheduled)",
@@ -634,7 +634,7 @@ func TestShipment_IsValidStatusTransition(t *testing.T) {
 			newStatus:     ShipmentStatusAtWarehouse,
 			expected:      false,
 		},
-		
+
 		// Invalid transitions - going backwards
 		{
 			name:          "invalid: at_warehouse -> pending_pickup_from_client (backwards)",
@@ -654,7 +654,7 @@ func TestShipment_IsValidStatusTransition(t *testing.T) {
 			newStatus:     ShipmentStatusPickedUpFromClient,
 			expected:      false,
 		},
-		
+
 		// Invalid transitions - same status
 		{
 			name:          "invalid: pending_pickup_from_client -> pending_pickup_from_client (same status)",
@@ -668,7 +668,7 @@ func TestShipment_IsValidStatusTransition(t *testing.T) {
 			newStatus:     ShipmentStatusAtWarehouse,
 			expected:      false,
 		},
-		
+
 		// Invalid transitions - from delivered (final status)
 		{
 			name:          "invalid: delivered -> any status (final status)",
@@ -689,6 +689,29 @@ func TestShipment_IsValidStatusTransition(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestShipmentType_Validation(t *testing.T) {
+	validTypes := []ShipmentType{
+		ShipmentTypeSingleFullJourney,
+		ShipmentTypeBulkToWarehouse,
+		ShipmentTypeWarehouseToEngineer,
+	}
+
+	for _, shipmentType := range validTypes {
+		t.Run(string(shipmentType), func(t *testing.T) {
+			if !IsValidShipmentType(shipmentType) {
+				t.Errorf("Expected %s to be valid", shipmentType)
+			}
+		})
+	}
+
+	// Test invalid type
+	t.Run("invalid type", func(t *testing.T) {
+		if IsValidShipmentType("invalid_type") {
+			t.Error("Expected invalid_type to be invalid")
+		}
+	})
 }
 
 // Helper function for creating int64 pointers

@@ -27,7 +27,33 @@ Write-Host ""
 Write-Host "Retrieving data summary..." -ForegroundColor Yellow
 Write-Host ""
 
-docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "SELECT 'Client Companies' as entity, COUNT(*) as count FROM client_companies UNION ALL SELECT 'Software Engineers', COUNT(*) FROM software_engineers UNION ALL SELECT 'Laptops', COUNT(*) FROM laptops UNION ALL SELECT 'Shipments', COUNT(*) FROM shipments UNION ALL SELECT 'Shipment-Laptop Links', COUNT(*) FROM shipment_laptops;"
+docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "
+SELECT 
+    'Entity' as category,
+    'Count' as total
+UNION ALL
+SELECT '-------------------------', '-----'
+UNION ALL
+SELECT 'Users (all roles)', COUNT(*)::text FROM users WHERE role != 'admin'
+UNION ALL
+SELECT 'Client Companies', COUNT(*)::text FROM client_companies
+UNION ALL
+SELECT 'Software Engineers', COUNT(*)::text FROM software_engineers
+UNION ALL
+SELECT 'Laptops', COUNT(*)::text FROM laptops
+UNION ALL
+SELECT 'Shipments', COUNT(*)::text FROM shipments
+UNION ALL
+SELECT 'Pickup Forms', COUNT(*)::text FROM pickup_forms
+UNION ALL
+SELECT 'Reception Reports', COUNT(*)::text FROM reception_reports
+UNION ALL
+SELECT 'Delivery Forms', COUNT(*)::text FROM delivery_forms
+UNION ALL
+SELECT 'Audit Log Entries', COUNT(*)::text FROM audit_logs
+UNION ALL
+SELECT 'Shipment-Laptop Links', COUNT(*)::text FROM shipment_laptops;
+"
 
 Write-Host ""
 Write-Host "------------------------------------------------" -ForegroundColor Cyan
@@ -55,11 +81,65 @@ docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "SE
 
 Write-Host ""
 Write-Host "------------------------------------------------" -ForegroundColor Cyan
-Write-Host "  Sample Shipments with Details" -ForegroundColor Cyan
+Write-Host "  Bulk Shipments (Multi-Laptop)" -ForegroundColor Cyan
 Write-Host "------------------------------------------------" -ForegroundColor Cyan
 Write-Host ""
 
-docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "SELECT s.id, cc.name as client, se.name as engineer, s.status, s.courier_name as courier FROM shipments s JOIN client_companies cc ON s.client_company_id = cc.id LEFT JOIN software_engineers se ON s.software_engineer_id = se.id ORDER BY s.created_at DESC LIMIT 10;"
+docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "
+SELECT 
+    s.id,
+    s.jira_ticket_number as ticket,
+    s.status,
+    COUNT(sl.laptop_id) as laptop_count,
+    cc.name as client
+FROM shipments s
+JOIN shipment_laptops sl ON sl.shipment_id = s.id
+JOIN client_companies cc ON cc.id = s.client_company_id
+GROUP BY s.id, s.jira_ticket_number, s.status, cc.name
+HAVING COUNT(sl.laptop_id) > 1
+ORDER BY COUNT(sl.laptop_id) DESC, s.id
+LIMIT 10;
+"
+
+Write-Host ""
+Write-Host "------------------------------------------------" -ForegroundColor Cyan
+Write-Host "  Recent Shipments with Details" -ForegroundColor Cyan
+Write-Host "------------------------------------------------" -ForegroundColor Cyan
+Write-Host ""
+
+docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "
+SELECT 
+    s.id, 
+    s.jira_ticket_number as ticket,
+    cc.name as client, 
+    COALESCE(se.name, 'Unassigned') as engineer, 
+    s.status, 
+    COUNT(sl.laptop_id) as laptops
+FROM shipments s 
+JOIN client_companies cc ON s.client_company_id = cc.id 
+LEFT JOIN software_engineers se ON s.software_engineer_id = se.id
+LEFT JOIN shipment_laptops sl ON sl.shipment_id = s.id
+GROUP BY s.id, s.jira_ticket_number, cc.name, se.name, s.status
+ORDER BY s.created_at DESC 
+LIMIT 10;
+"
+
+Write-Host ""
+Write-Host "------------------------------------------------" -ForegroundColor Cyan
+Write-Host "  Laptop Brands Distribution" -ForegroundColor Cyan
+Write-Host "------------------------------------------------" -ForegroundColor Cyan
+Write-Host ""
+
+docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "
+SELECT 
+    brand, 
+    COUNT(*) as total,
+    COUNT(CASE WHEN status = 'available' THEN 1 END) as available,
+    COUNT(CASE WHEN status = 'delivered' THEN 1 END) as delivered
+FROM laptops 
+GROUP BY brand 
+ORDER BY COUNT(*) DESC;
+"
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Green
@@ -67,8 +147,20 @@ Write-Host "  Verification Complete!" -ForegroundColor Green
 Write-Host "================================================" -ForegroundColor Green
 Write-Host ""
 
+Write-Host "Key Features in Sample Data:" -ForegroundColor Cyan
+Write-Host "  * Multiple bulk shipments with 3-6 laptops each" -ForegroundColor White
+Write-Host "  * All shipment statuses represented" -ForegroundColor White
+Write-Host "  * High-end workstations and premium laptops" -ForegroundColor White
+Write-Host "  * Realistic accessories and detailed notes" -ForegroundColor White
+Write-Host "  * Complete pickup, reception, and delivery forms" -ForegroundColor White
+Write-Host ""
+
 Write-Host "Next steps:" -ForegroundColor Yellow
-Write-Host "  1. Start the application: go run cmd/web/main.go" -ForegroundColor White
-Write-Host "  2. Open browser: http://localhost:8080" -ForegroundColor White
-Write-Host "  3. View test data documentation: scripts/TEST_DATA_README.md" -ForegroundColor White
+Write-Host "  1. Application is running at: http://localhost:8080" -ForegroundColor White
+Write-Host "  2. View logs: docker compose logs -f app" -ForegroundColor White
+Write-Host "  3. Test with different users (all password: Test123!):" -ForegroundColor White
+Write-Host "     - logistics@bairesdev.com (Logistics role)" -ForegroundColor Gray
+Write-Host "     - warehouse@bairesdev.com (Warehouse role)" -ForegroundColor Gray
+Write-Host "     - pm@bairesdev.com (Project Manager)" -ForegroundColor Gray
+Write-Host "     - client@techcorp.com (Client role)" -ForegroundColor Gray
 Write-Host ""

@@ -59,28 +59,39 @@ try {
             exit 1
         }
         
-        # Ask if user wants to load test data (companies, engineers, laptops, shipments)
-        Write-Host "`nDo you want to load additional test data? (companies, engineers, laptops, shipments)" -ForegroundColor Yellow
-        Write-Host "This includes:" -ForegroundColor Cyan
-        Write-Host "  - 5 Client Companies" -ForegroundColor Cyan
-        Write-Host "  - 10 Software Engineers" -ForegroundColor Cyan
-        Write-Host "  - 15 Laptops" -ForegroundColor Cyan
-        Write-Host "  - 13 Shipments" -ForegroundColor Cyan
+        # Ask if user wants to load comprehensive test data
+        Write-Host "`nDo you want to load comprehensive sample data?" -ForegroundColor Yellow
+        Write-Host "This includes realistic data with:" -ForegroundColor Cyan
+        Write-Host "  - 8 Client Companies" -ForegroundColor Cyan
+        Write-Host "  - 22 Software Engineers" -ForegroundColor Cyan
+        Write-Host "  - 35+ Laptops (Dell, HP, Lenovo, Apple, Microsoft, ASUS, Acer)" -ForegroundColor Cyan
+        Write-Host "  - 15 Shipments (including BULK shipments)" -ForegroundColor Cyan
+        Write-Host "  - Complete forms, reports, and audit logs" -ForegroundColor Cyan
+        Write-Host "  - All shipment statuses represented" -ForegroundColor Cyan
         
-        $response = Read-Host "`nLoad test data? (y/N)"
+        $response = Read-Host "`nLoad comprehensive sample data? (y/N)"
         
         if ($response -eq "y" -or $response -eq "Y") {
-            Write-Host "`nLoading test data..." -ForegroundColor Cyan
-            Get-Content scripts/create-test-data.sql | docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev
+            Write-Host "`nLoading comprehensive sample data..." -ForegroundColor Cyan
+            Write-Host "This may take a moment..." -ForegroundColor Yellow
+            Get-Content scripts/enhanced-sample-data.sql | docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev
             
             if ($LASTEXITCODE -eq 0) {
-                Write-Host "[OK] Test data loaded successfully!" -ForegroundColor Green
+                Write-Host "[OK] Comprehensive sample data loaded successfully!" -ForegroundColor Green
+                Write-Host "`nData loaded includes:" -ForegroundColor Cyan
+                Write-Host "  * Multiple bulk shipments (3-6 laptops each)" -ForegroundColor Green
+                Write-Host "  * High-end workstations (Dell Precision, HP ZBook, Lenovo P-Series)" -ForegroundColor Green
+                Write-Host "  * Premium laptops (MacBook Pro M2, Dell XPS, ThinkPad X1)" -ForegroundColor Green
+                Write-Host "  * All shipment statuses from pending to delivered" -ForegroundColor Green
+                Write-Host "  * Realistic accessories and detailed notes" -ForegroundColor Green
+                Write-Host "  * Complete pickup forms with bulk shipment details" -ForegroundColor Green
+                Write-Host "  * Comprehensive reception and delivery reports" -ForegroundColor Green
             } else {
-                Write-Host "[X] Failed to load test data" -ForegroundColor Red
+                Write-Host "[X] Failed to load comprehensive sample data" -ForegroundColor Red
                 exit 1
             }
         } else {
-            Write-Host "Skipping test data." -ForegroundColor Yellow
+            Write-Host "Skipping sample data. Only test users will be available." -ForegroundColor Yellow
         }
         
         Write-Host "`n========================================" -ForegroundColor Green

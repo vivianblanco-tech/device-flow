@@ -82,11 +82,18 @@ Write-Host "  Web Application:  http://localhost:8080" -ForegroundColor White
 Write-Host "  MailHog (Email):  http://localhost:8025" -ForegroundColor White
 Write-Host "  PostgreSQL:       localhost:5432" -ForegroundColor White
 Write-Host ""
-Write-Host "Test Credentials:" -ForegroundColor Cyan
-Write-Host "  Email: logistics@bairesdev.com  |  Password: Test123!" -ForegroundColor White
-Write-Host "  Email: warehouse@bairesdev.com  |  Password: Test123!" -ForegroundColor White
-Write-Host "  Email: client@bairesdev.com     |  Password: Test123!" -ForegroundColor White
-Write-Host "  Email: pm@bairesdev.com         |  Password: Test123!" -ForegroundColor White
+Write-Host "Test Credentials (Password: Test123!):" -ForegroundColor Cyan
+Write-Host "  Logistics:        logistics@bairesdev.com" -ForegroundColor White
+Write-Host "  Warehouse:        warehouse@bairesdev.com" -ForegroundColor White
+Write-Host "  Project Manager:  pm@bairesdev.com" -ForegroundColor White
+Write-Host "  Client Users:     client@techcorp.com, admin@innovate.io" -ForegroundColor White
+Write-Host ""
+Write-Host "Sample Data Features:" -ForegroundColor Cyan
+Write-Host "  * 15 shipments with all statuses" -ForegroundColor Green
+Write-Host "  * Multiple BULK shipments (3-6 laptops)" -ForegroundColor Green
+Write-Host "  * 35+ laptops (Dell, HP, Lenovo, Apple, ASUS, Acer)" -ForegroundColor Green
+Write-Host "  * Realistic accessories and detailed notes" -ForegroundColor Green
+Write-Host "  * Complete forms and reports" -ForegroundColor Green
 Write-Host ""
 Write-Host "Useful Commands:" -ForegroundColor Cyan
 Write-Host "  View logs:        docker compose logs -f" -ForegroundColor Yellow
