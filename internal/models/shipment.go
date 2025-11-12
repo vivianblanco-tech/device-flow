@@ -166,6 +166,53 @@ func IsValidShipmentType(shipmentType ShipmentType) bool {
 	return false
 }
 
+// GetValidStatusesForType returns valid statuses for a shipment type
+func GetValidStatusesForType(shipmentType ShipmentType) []ShipmentStatus {
+	switch shipmentType {
+	case ShipmentTypeSingleFullJourney:
+		// Full journey: all statuses
+		return []ShipmentStatus{
+			ShipmentStatusPendingPickup,
+			ShipmentStatusPickupScheduled,
+			ShipmentStatusPickedUpFromClient,
+			ShipmentStatusInTransitToWarehouse,
+			ShipmentStatusAtWarehouse,
+			ShipmentStatusReleasedFromWarehouse,
+			ShipmentStatusInTransitToEngineer,
+			ShipmentStatusDelivered,
+		}
+	case ShipmentTypeBulkToWarehouse:
+		// Bulk to warehouse: stops at warehouse
+		return []ShipmentStatus{
+			ShipmentStatusPendingPickup,
+			ShipmentStatusPickupScheduled,
+			ShipmentStatusPickedUpFromClient,
+			ShipmentStatusInTransitToWarehouse,
+			ShipmentStatusAtWarehouse,
+		}
+	case ShipmentTypeWarehouseToEngineer:
+		// Warehouse to engineer: starts from released
+		return []ShipmentStatus{
+			ShipmentStatusReleasedFromWarehouse,
+			ShipmentStatusInTransitToEngineer,
+			ShipmentStatusDelivered,
+		}
+	default:
+		return []ShipmentStatus{}
+	}
+}
+
+// IsValidStatusForType checks if a status is valid for the shipment type
+func (s *Shipment) IsValidStatusForType(status ShipmentStatus) bool {
+	validStatuses := GetValidStatusesForType(s.ShipmentType)
+	for _, validStatus := range validStatuses {
+		if status == validStatus {
+			return true
+		}
+	}
+	return false
+}
+
 // IsValidCourier checks if a given courier name is valid
 func IsValidCourier(courier string) bool {
 	switch courier {
@@ -177,36 +224,40 @@ func IsValidCourier(courier string) bool {
 
 // GetNextAllowedStatuses returns the list of valid next statuses for the current shipment status
 // This enforces sequential status transitions and prevents skipping or going backwards
+// Now considers shipment type to restrict available statuses
 func (s *Shipment) GetNextAllowedStatuses() []ShipmentStatus {
-	switch s.Status {
-	case ShipmentStatusPendingPickup:
-		return []ShipmentStatus{ShipmentStatusPickupScheduled}
-	case ShipmentStatusPickupScheduled:
-		return []ShipmentStatus{ShipmentStatusPickedUpFromClient}
-	case ShipmentStatusPickedUpFromClient:
-		return []ShipmentStatus{ShipmentStatusInTransitToWarehouse}
-	case ShipmentStatusInTransitToWarehouse:
-		return []ShipmentStatus{ShipmentStatusAtWarehouse}
-	case ShipmentStatusAtWarehouse:
-		return []ShipmentStatus{ShipmentStatusReleasedFromWarehouse}
-	case ShipmentStatusReleasedFromWarehouse:
-		return []ShipmentStatus{ShipmentStatusInTransitToEngineer}
-	case ShipmentStatusInTransitToEngineer:
-		return []ShipmentStatus{ShipmentStatusDelivered}
-	case ShipmentStatusDelivered:
-		return []ShipmentStatus{} // Final status, no next statuses
-	default:
-		return []ShipmentStatus{}
+	// Get valid statuses for this type
+	validStatuses := GetValidStatusesForType(s.ShipmentType)
+	
+	// Find current status index
+	currentIndex := -1
+	for i, status := range validStatuses {
+		if status == s.Status {
+			currentIndex = i
+			break
+		}
 	}
+	
+	// Return next status if available
+	if currentIndex >= 0 && currentIndex < len(validStatuses)-1 {
+		return []ShipmentStatus{validStatuses[currentIndex+1]}
+	}
+	
+	return []ShipmentStatus{} // No next status available
 }
 
 // IsValidStatusTransition checks if transitioning from the current status to the new status is valid
 // Returns true only if the transition is sequential (to the immediate next status)
 // Returns false for: skipping statuses, going backwards, staying at same status
+// Now considers shipment type to enforce type-specific status flows
 func (s *Shipment) IsValidStatusTransition(newStatus ShipmentStatus) bool {
-	allowedStatuses := s.GetNextAllowedStatuses()
+	// First check if the new status is valid for this shipment type
+	if !s.IsValidStatusForType(newStatus) {
+		return false
+	}
 	
-	// Check if the new status is in the list of allowed next statuses
+	// Then check if it's the immediate next status
+	allowedStatuses := s.GetNextAllowedStatuses()
 	for _, allowed := range allowedStatuses {
 		if allowed == newStatus {
 			return true

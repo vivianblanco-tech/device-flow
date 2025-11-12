@@ -799,6 +799,102 @@ func TestShipment_EngineerAssignmentRules(t *testing.T) {
 	}
 }
 
+func TestShipment_TypeSpecificStatusFlows(t *testing.T) {
+	tests := []struct {
+		name          string
+		shipmentType  ShipmentType
+		currentStatus ShipmentStatus
+		nextStatus    ShipmentStatus
+		shouldBeValid bool
+	}{
+		// Single full journey - full flow
+		{
+			name:          "single_full_journey allows full flow to delivered",
+			shipmentType:  ShipmentTypeSingleFullJourney,
+			currentStatus: ShipmentStatusInTransitToEngineer,
+			nextStatus:    ShipmentStatusDelivered,
+			shouldBeValid: true,
+		},
+		{
+			name:          "single_full_journey allows warehouse to release transition",
+			shipmentType:  ShipmentTypeSingleFullJourney,
+			currentStatus: ShipmentStatusAtWarehouse,
+			nextStatus:    ShipmentStatusReleasedFromWarehouse,
+			shouldBeValid: true,
+		},
+		// Bulk to warehouse - stops at warehouse
+		{
+			name:          "bulk_to_warehouse can reach at_warehouse",
+			shipmentType:  ShipmentTypeBulkToWarehouse,
+			currentStatus: ShipmentStatusInTransitToWarehouse,
+			nextStatus:    ShipmentStatusAtWarehouse,
+			shouldBeValid: true,
+		},
+		{
+			name:          "bulk_to_warehouse cannot go past at_warehouse to released",
+			shipmentType:  ShipmentTypeBulkToWarehouse,
+			currentStatus: ShipmentStatusAtWarehouse,
+			nextStatus:    ShipmentStatusReleasedFromWarehouse,
+			shouldBeValid: false,
+		},
+		{
+			name:          "bulk_to_warehouse cannot reach in_transit_to_engineer",
+			shipmentType:  ShipmentTypeBulkToWarehouse,
+			currentStatus: ShipmentStatusReleasedFromWarehouse,
+			nextStatus:    ShipmentStatusInTransitToEngineer,
+			shouldBeValid: false,
+		},
+		// Warehouse to engineer - starts from released
+		{
+			name:          "warehouse_to_engineer starts from released_from_warehouse",
+			shipmentType:  ShipmentTypeWarehouseToEngineer,
+			currentStatus: ShipmentStatusReleasedFromWarehouse,
+			nextStatus:    ShipmentStatusInTransitToEngineer,
+			shouldBeValid: true,
+		},
+		{
+			name:          "warehouse_to_engineer can reach delivered",
+			shipmentType:  ShipmentTypeWarehouseToEngineer,
+			currentStatus: ShipmentStatusInTransitToEngineer,
+			nextStatus:    ShipmentStatusDelivered,
+			shouldBeValid: true,
+		},
+		{
+			name:          "warehouse_to_engineer cannot have pending_pickup status",
+			shipmentType:  ShipmentTypeWarehouseToEngineer,
+			currentStatus: ShipmentStatusPendingPickup,
+			nextStatus:    ShipmentStatusPickupScheduled,
+			shouldBeValid: false,
+		},
+		{
+			name:          "warehouse_to_engineer cannot have at_warehouse status",
+			shipmentType:  ShipmentTypeWarehouseToEngineer,
+			currentStatus: ShipmentStatusAtWarehouse,
+			nextStatus:    ShipmentStatusReleasedFromWarehouse,
+			shouldBeValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Shipment{
+				ShipmentType:     tt.shipmentType,
+				Status:           tt.currentStatus,
+				ClientCompanyID:  1,
+				JiraTicketNumber: "SCOP-12345",
+			}
+
+			isValid := s.IsValidStatusTransition(tt.nextStatus)
+			if tt.shouldBeValid && !isValid {
+				t.Errorf("Expected transition from %s to %s to be valid for %s", tt.currentStatus, tt.nextStatus, tt.shipmentType)
+			}
+			if !tt.shouldBeValid && isValid {
+				t.Errorf("Expected transition from %s to %s to be invalid for %s", tt.currentStatus, tt.nextStatus, tt.shipmentType)
+			}
+		})
+	}
+}
+
 // Helper function for creating int64 pointers
 func int64Ptr(i int64) *int64 {
 	return &i
