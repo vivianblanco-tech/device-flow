@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -71,6 +72,14 @@ type Shipment struct {
 
 // Validate validates the Shipment model
 func (s *Shipment) Validate() error {
+	// Shipment type validation
+	if s.ShipmentType == "" {
+		return errors.New("shipment type is required")
+	}
+	if !IsValidShipmentType(s.ShipmentType) {
+		return errors.New("invalid shipment type")
+	}
+
 	// Client company validation
 	if s.ClientCompanyID == 0 {
 		return errors.New("client company ID is required")
@@ -83,6 +92,11 @@ func (s *Shipment) Validate() error {
 	if !IsValidShipmentStatus(s.Status) {
 		return errors.New("invalid status")
 	}
+	
+	// Validate status is valid for this shipment type
+	if !s.IsValidStatusForType(s.Status) {
+		return fmt.Errorf("status %s is not valid for shipment type %s", s.Status, s.ShipmentType)
+	}
 
 	// JIRA ticket validation
 	if s.JiraTicketNumber == "" {
@@ -90,6 +104,16 @@ func (s *Shipment) Validate() error {
 	}
 	if !IsValidJiraTicketFormat(s.JiraTicketNumber) {
 		return errors.New("JIRA ticket number must be in format PROJECT-NUMBER (e.g., SCOP-67702)")
+	}
+
+	// Laptop count validation
+	if err := s.ValidateLaptopCount(); err != nil {
+		return err
+	}
+
+	// Engineer assignment validation
+	if err := s.ValidateEngineerAssignment(); err != nil {
+		return err
 	}
 
 	return nil

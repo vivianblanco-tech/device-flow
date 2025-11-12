@@ -991,6 +991,169 @@ func TestShipment_LaptopCountTracking(t *testing.T) {
 	}
 }
 
+func TestShipment_ValidateWithType(t *testing.T) {
+	engineerID := int64(1)
+	
+	tests := []struct {
+		name          string
+		shipment      Shipment
+		shouldBeValid bool
+		errorContains string
+	}{
+		{
+			name: "valid single_full_journey",
+			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
+				ClientCompanyID:  1,
+				LaptopCount:      1,
+				Status:           ShipmentStatusPendingPickup,
+				JiraTicketNumber: "SCOP-12345",
+			},
+			shouldBeValid: true,
+		},
+		{
+			name: "invalid single_full_journey - wrong laptop count",
+			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
+				ClientCompanyID:  1,
+				LaptopCount:      2,
+				Status:           ShipmentStatusPendingPickup,
+				JiraTicketNumber: "SCOP-12345",
+			},
+			shouldBeValid: false,
+			errorContains: "exactly 1 laptop",
+		},
+		{
+			name: "invalid single_full_journey - invalid status for type",
+			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
+				ClientCompanyID:  1,
+				LaptopCount:      1,
+				Status:           "invalid_status",
+				JiraTicketNumber: "SCOP-12345",
+			},
+			shouldBeValid: false,
+			errorContains: "invalid status",
+		},
+		{
+			name: "valid bulk_to_warehouse",
+			shipment: Shipment{
+				ShipmentType:     ShipmentTypeBulkToWarehouse,
+				ClientCompanyID:  1,
+				LaptopCount:      5,
+				Status:           ShipmentStatusAtWarehouse,
+				JiraTicketNumber: "SCOP-12345",
+			},
+			shouldBeValid: true,
+		},
+		{
+			name: "invalid bulk_to_warehouse - has engineer assigned",
+			shipment: Shipment{
+				ShipmentType:       ShipmentTypeBulkToWarehouse,
+				ClientCompanyID:    1,
+				LaptopCount:        5,
+				Status:             ShipmentStatusAtWarehouse,
+				JiraTicketNumber:   "SCOP-12345",
+				SoftwareEngineerID: &engineerID,
+			},
+			shouldBeValid: false,
+			errorContains: "cannot have software engineer assigned",
+		},
+		{
+			name: "invalid bulk_to_warehouse - laptop count too low",
+			shipment: Shipment{
+				ShipmentType:     ShipmentTypeBulkToWarehouse,
+				ClientCompanyID:  1,
+				LaptopCount:      1,
+				Status:           ShipmentStatusAtWarehouse,
+				JiraTicketNumber: "SCOP-12345",
+			},
+			shouldBeValid: false,
+			errorContains: "at least 2 laptops",
+		},
+		{
+			name: "invalid bulk_to_warehouse - status past allowed",
+			shipment: Shipment{
+				ShipmentType:     ShipmentTypeBulkToWarehouse,
+				ClientCompanyID:  1,
+				LaptopCount:      5,
+				Status:           ShipmentStatusInTransitToEngineer,
+				JiraTicketNumber: "SCOP-12345",
+			},
+			shouldBeValid: false,
+			errorContains: "not valid for shipment type",
+		},
+		{
+			name: "valid warehouse_to_engineer",
+			shipment: Shipment{
+				ShipmentType:       ShipmentTypeWarehouseToEngineer,
+				ClientCompanyID:    1,
+				LaptopCount:        1,
+				Status:             ShipmentStatusReleasedFromWarehouse,
+				JiraTicketNumber:   "SCOP-12345",
+				SoftwareEngineerID: &engineerID,
+			},
+			shouldBeValid: true,
+		},
+		{
+			name: "invalid warehouse_to_engineer - missing engineer",
+			shipment: Shipment{
+				ShipmentType:     ShipmentTypeWarehouseToEngineer,
+				ClientCompanyID:  1,
+				LaptopCount:      1,
+				Status:           ShipmentStatusReleasedFromWarehouse,
+				JiraTicketNumber: "SCOP-12345",
+			},
+			shouldBeValid: false,
+			errorContains: "must have software engineer assigned",
+		},
+		{
+			name: "invalid warehouse_to_engineer - wrong laptop count",
+			shipment: Shipment{
+				ShipmentType:       ShipmentTypeWarehouseToEngineer,
+				ClientCompanyID:    1,
+				LaptopCount:        2,
+				Status:             ShipmentStatusReleasedFromWarehouse,
+				JiraTicketNumber:   "SCOP-12345",
+				SoftwareEngineerID: &engineerID,
+			},
+			shouldBeValid: false,
+			errorContains: "exactly 1 laptop",
+		},
+		{
+			name: "invalid warehouse_to_engineer - invalid status for type",
+			shipment: Shipment{
+				ShipmentType:       ShipmentTypeWarehouseToEngineer,
+				ClientCompanyID:    1,
+				LaptopCount:        1,
+				Status:             ShipmentStatusPendingPickup,
+				JiraTicketNumber:   "SCOP-12345",
+				SoftwareEngineerID: &engineerID,
+			},
+			shouldBeValid: false,
+			errorContains: "not valid for shipment type",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.shipment.Validate()
+			if tt.shouldBeValid && err != nil {
+				t.Errorf("Expected valid, got error: %v", err)
+			}
+			if !tt.shouldBeValid {
+				if err == nil {
+					t.Error("Expected error, got nil")
+				} else if tt.errorContains != "" {
+					if !strings.Contains(err.Error(), tt.errorContains) {
+						t.Errorf("Expected error to contain '%s', got: %v", tt.errorContains, err)
+					}
+				}
+			}
+		})
+	}
+}
+
 // Helper function for creating int64 pointers
 func int64Ptr(i int64) *int64 {
 	return &i
