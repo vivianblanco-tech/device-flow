@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/yourusername/laptop-tracking-system/internal/email"
@@ -1329,6 +1330,17 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 		laptop.CreatedAt, laptop.UpdatedAt,
 	).Scan(&laptopID)
 	if err != nil {
+		// Log the actual database error for debugging
+		fmt.Printf("Failed to create laptop: %v (serial: %s, specs: %s, status: %s, company: %v)\n", 
+			err, laptop.SerialNumber, laptop.Specs, laptop.Status, laptop.ClientCompanyID)
+		
+		// Check if it's a duplicate serial number error
+		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
+			redirectURL := fmt.Sprintf("/shipments/%d?error=Laptop+serial+number+already+exists", shipmentID)
+			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+			return
+		}
+		
 		http.Error(w, "Failed to create laptop", http.StatusInternalServerError)
 		return
 	}

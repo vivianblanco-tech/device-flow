@@ -216,6 +216,33 @@
                         </div>
                         {{end}}
 
+                        <!-- Laptop Information -->
+                        {{if or (index .PickupFormData "laptop_serial_number") (index .PickupFormData "laptop_specs") (index .PickupFormData "engineer_name")}}
+                        <div class="mb-4">
+                            <h5 class="text-sm font-semibold text-gray-700 mb-3">Laptop Information</h5>
+                            <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {{if index .PickupFormData "laptop_serial_number"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Serial Number</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "laptop_serial_number"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "laptop_specs"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Specifications</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "laptop_specs"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "engineer_name"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Software Engineer Name</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "engineer_name"}}</dd>
+                                </div>
+                                {{end}}
+                            </dl>
+                        </div>
+                        {{end}}
+
                         <!-- Pickup Address -->
                         {{if or (index .PickupFormData "pickup_address") (index .PickupFormData "pickup_city") (index .PickupFormData "pickup_state") (index .PickupFormData "pickup_zip")}}
                         <div class="mb-4">
