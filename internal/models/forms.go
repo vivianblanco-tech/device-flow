@@ -48,6 +48,13 @@ type ReceptionReport struct {
 	ReceivedAt      time.Time `json:"received_at" db:"received_at"`
 	Notes           string    `json:"notes,omitempty" db:"notes"`
 	PhotoURLs       []string  `json:"photo_urls,omitempty" db:"photo_urls"`
+	
+	// Serial number correction tracking
+	ExpectedSerialNumber  string  `json:"expected_serial_number,omitempty" db:"expected_serial_number"`
+	ActualSerialNumber    string  `json:"actual_serial_number,omitempty" db:"actual_serial_number"`
+	SerialNumberCorrected bool    `json:"serial_number_corrected" db:"serial_number_corrected"`
+	CorrectionNote        string  `json:"correction_note,omitempty" db:"correction_note"`
+	CorrectionApprovedBy  *int64  `json:"correction_approved_by,omitempty" db:"correction_approved_by"`
 
 	// Relations
 	Shipment *Shipment `json:"shipment,omitempty" db:"-"`
@@ -78,6 +85,16 @@ func (r *ReceptionReport) BeforeCreate() {
 // HasPhotos returns true if the reception report has photos
 func (r *ReceptionReport) HasPhotos() bool {
 	return len(r.PhotoURLs) > 0
+}
+
+// HasSerialNumberCorrection returns true if serial number was corrected
+func (r *ReceptionReport) HasSerialNumberCorrection() bool {
+	return r.SerialNumberCorrected
+}
+
+// SerialNumberCorrectionNote returns the correction note
+func (r *ReceptionReport) SerialNumberCorrectionNote() string {
+	return r.CorrectionNote
 }
 
 // DeliveryForm represents a form submitted when a laptop is delivered to an engineer

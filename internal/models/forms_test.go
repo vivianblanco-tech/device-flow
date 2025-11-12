@@ -277,6 +277,46 @@ func TestDeliveryForm_HasPhotos(t *testing.T) {
 
 // Test BeforeCreate and BeforeUpdate for all forms
 
+func TestReceptionReport_SerialNumberCorrection(t *testing.T) {
+	approvedBy := int64(2)
+	
+	report := &ReceptionReport{
+		ShipmentID:              1,
+		WarehouseUserID:         1,
+		ExpectedSerialNumber:    "ABC123",
+		ActualSerialNumber:      "ABC456",
+		SerialNumberCorrected:   true,
+		CorrectionNote:          "Serial number mismatch - updated to match physical device",
+		CorrectionApprovedBy:    &approvedBy,
+	}
+	
+	if !report.HasSerialNumberCorrection() {
+		t.Error("Expected serial number correction to be detected")
+	}
+	
+	if report.SerialNumberCorrectionNote() == "" {
+		t.Error("Expected correction note to be present")
+	}
+	
+	if report.SerialNumberCorrectionNote() != "Serial number mismatch - updated to match physical device" {
+		t.Errorf("Expected correction note to match, got: %s", report.SerialNumberCorrectionNote())
+	}
+}
+
+func TestReceptionReport_NoCorrection(t *testing.T) {
+	report := &ReceptionReport{
+		ShipmentID:            1,
+		WarehouseUserID:       1,
+		ExpectedSerialNumber:  "ABC123",
+		ActualSerialNumber:    "ABC123",
+		SerialNumberCorrected: false,
+	}
+	
+	if report.HasSerialNumberCorrection() {
+		t.Error("Expected no serial number correction")
+	}
+}
+
 func TestForms_BeforeCreate(t *testing.T) {
 	t.Run("PickupForm", func(t *testing.T) {
 		form := &PickupForm{ShipmentID: 1, SubmittedByUserID: 5}
