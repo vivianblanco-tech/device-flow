@@ -269,24 +269,24 @@ func TestDashboardThreeShipmentTypeButtons(t *testing.T) {
 
 	// Check that all three shipment type buttons are present
 	body := rr.Body.String()
-	
+
 	// Debug: Save body to file for inspection
 	err := os.WriteFile("dashboard_test_output.html", []byte(body), 0644)
 	if err != nil {
 		t.Logf("Failed to write body to file: %v", err)
 	}
-	
+
 	// Debug: Output first 1000 chars if test fails
 	t.Logf("Response body length: %d", len(body))
 	if len(body) > 0 && len(body) < 2000 {
 		t.Logf("Full body: %s", body)
 	}
-	
+
 	// Check if Quick Actions section exists
 	if !strings.Contains(body, "Quick Actions") {
 		t.Error("Quick Actions section not found in dashboard")
 	}
-	
+
 	if !strings.Contains(body, `/shipments/create/single`) {
 		t.Error("Expected dashboard to contain link to single shipment form")
 		t.Logf("Body snippet: %s", body[:min(len(body), 1000)])
@@ -294,14 +294,14 @@ func TestDashboardThreeShipmentTypeButtons(t *testing.T) {
 	if !strings.Contains(body, `Single Shipment`) && !strings.Contains(body, `Single Full Journey`) {
 		t.Error("Expected dashboard to contain 'Single Shipment' or 'Single Full Journey' button text")
 	}
-	
+
 	if !strings.Contains(body, `/shipments/create/bulk`) {
 		t.Error("Expected dashboard to contain link to bulk shipment form")
 	}
 	if !strings.Contains(body, `Bulk`) {
 		t.Error("Expected dashboard to contain 'Bulk' button text")
 	}
-	
+
 	if !strings.Contains(body, `/shipments/create/warehouse-to-engineer`) {
 		t.Error("Expected dashboard to contain link to warehouse-to-engineer form")
 	}
@@ -371,7 +371,7 @@ func TestDashboardQuickActionsRemovedButtons(t *testing.T) {
 				endOfSection = len(quickActionsSection)
 			}
 			quickActionsContent := quickActionsSection[:endOfSection]
-			
+
 			if strings.Contains(quickActionsContent, `href="/pickup-form"`) {
 				t.Error("Expected /pickup-form link to be removed from Quick Actions section")
 			}
@@ -393,7 +393,7 @@ func TestDashboardQuickActionsRemovedButtons(t *testing.T) {
 			endOfSection = len(quickActionsSection)
 		}
 		quickActionsContent := quickActionsSection[:endOfSection]
-		
+
 		// Check for standalone /shipments link (not /shipments/create/...)
 		if strings.Contains(quickActionsContent, `href="/shipments"`) && !strings.Contains(quickActionsContent, `href="/shipments/create/`) {
 			t.Error("Expected standalone /shipments link to be removed from Quick Actions section")

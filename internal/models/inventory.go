@@ -86,6 +86,9 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 	for rows.Next() {
 		var laptop Laptop
 		var sku sql.NullString
+		var brand sql.NullString
+		var model sql.NullString
+		var specs sql.NullString
 		var clientCompanyName sql.NullString
 		var softwareEngineerName sql.NullString
 
@@ -93,9 +96,9 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 			&laptop.ID,
 			&laptop.SerialNumber,
 			&sku,
-			&laptop.Brand,
-			&laptop.Model,
-			&laptop.Specs,
+			&brand,
+			&model,
+			&specs,
 			&laptop.Status,
 			&laptop.ClientCompanyID,
 			&laptop.SoftwareEngineerID,
@@ -111,6 +114,15 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 		// Set nullable fields if available
 		if sku.Valid {
 			laptop.SKU = sku.String
+		}
+		if brand.Valid {
+			laptop.Brand = brand.String
+		}
+		if model.Valid {
+			laptop.Model = model.String
+		}
+		if specs.Valid {
+			laptop.Specs = specs.String
 		}
 		if clientCompanyName.Valid {
 			laptop.ClientCompanyName = clientCompanyName.String

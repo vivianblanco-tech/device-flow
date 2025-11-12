@@ -520,3 +520,51 @@ func CreateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
 	).Scan(&engineer.ID)
 }
 
+// TestGetAllLaptopsHandlesNullFields tests that GetAllLaptops can handle NULL values in brand, model, and specs
+func TestGetAllLaptopsHandlesNullFields(t *testing.T) {
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Create a laptop with NULL brand, model, and specs by inserting directly
+	// (bypassing validation to simulate existing data in the database)
+	query := `
+		INSERT INTO laptops (serial_number, brand, model, specs, status, created_at, updated_at)
+		VALUES ($1, NULL, NULL, NULL, $2, NOW(), NOW())
+		RETURNING id
+	`
+	
+	var laptopID int64
+	err := db.QueryRow(query, "NULL_TEST_001", LaptopStatusAvailable).Scan(&laptopID)
+	if err != nil {
+		t.Fatalf("Failed to create laptop with NULL fields: %v", err)
+	}
+
+	// Test: Get all laptops should not fail when encountering NULL values
+	laptops, err := GetAllLaptops(db, nil)
+	if err != nil {
+		t.Fatalf("GetAllLaptops failed with NULL fields: %v", err)
+	}
+
+	// Find our test laptop
+	found := false
+	for _, laptop := range laptops {
+		if laptop.ID == laptopID {
+			found = true
+			// Verify NULL fields are handled as empty strings
+			if laptop.Brand != "" {
+				t.Errorf("Expected empty brand for NULL value, got %s", laptop.Brand)
+			}
+			if laptop.Model != "" {
+				t.Errorf("Expected empty model for NULL value, got %s", laptop.Model)
+			}
+			if laptop.Specs != "" {
+				t.Errorf("Expected empty specs for NULL value, got %s", laptop.Specs)
+			}
+		}
+	}
+
+	if !found {
+		t.Error("Test laptop with NULL fields not found in results")
+	}
+}
+
