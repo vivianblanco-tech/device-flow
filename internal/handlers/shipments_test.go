@@ -157,6 +157,156 @@ func TestShipmentsList(t *testing.T) {
 	})
 }
 
+// 🟥 RED: Test shipment type filtering in list
+func TestShipmentsListWithTypeFilter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test user
+	var userID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create shipments of each type
+	shipmentTypes := []models.ShipmentType{
+		models.ShipmentTypeSingleFullJourney,
+		models.ShipmentTypeBulkToWarehouse,
+		models.ShipmentTypeWarehouseToEngineer,
+	}
+
+	for i, shipmentType := range shipmentTypes {
+		laptopCount := 1
+		if shipmentType == models.ShipmentTypeBulkToWarehouse {
+			laptopCount = 5
+		}
+
+		status := models.ShipmentStatusPendingPickup
+		if shipmentType == models.ShipmentTypeWarehouseToEngineer {
+			status = models.ShipmentStatusReleasedFromWarehouse
+		}
+
+		_, err := db.ExecContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			shipmentType, companyID, status, laptopCount, fmt.Sprintf("TYPE-TEST-%d", i+1), time.Now(), time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment of type %s: %v", shipmentType, err)
+		}
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	t.Run("list includes shipment type information", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments", nil)
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentsList(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		// The response should include all three shipment types
+		body := w.Body.String()
+		// Templates will display type badges/labels
+		if !strings.Contains(body, "TYPE-TEST-1") || !strings.Contains(body, "TYPE-TEST-2") || !strings.Contains(body, "TYPE-TEST-3") {
+			t.Error("Expected list to contain all test shipments")
+		}
+	})
+
+	t.Run("filter by single_full_journey type", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments?type=single_full_journey", nil)
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentsList(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		// Should contain single_full_journey shipment
+		if !strings.Contains(body, "TYPE-TEST-1") {
+			t.Error("Expected filtered list to contain single_full_journey shipment (TYPE-TEST-1)")
+		}
+	})
+
+	t.Run("filter by bulk_to_warehouse type", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments?type=bulk_to_warehouse", nil)
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentsList(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		// Should contain bulk_to_warehouse shipment
+		if !strings.Contains(body, "TYPE-TEST-2") {
+			t.Error("Expected filtered list to contain bulk_to_warehouse shipment (TYPE-TEST-2)")
+		}
+	})
+
+	t.Run("filter by warehouse_to_engineer type", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments?type=warehouse_to_engineer", nil)
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentsList(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		// Should contain warehouse_to_engineer shipment
+		if !strings.Contains(body, "TYPE-TEST-3") {
+			t.Error("Expected filtered list to contain warehouse_to_engineer shipment (TYPE-TEST-3)")
+		}
+	})
+}
+
 func TestShipmentDetail(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")

@@ -49,6 +49,7 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 
 	// Get filter parameters
 	statusFilter := r.URL.Query().Get("status")
+	typeFilter := r.URL.Query().Get("type")
 	searchQuery := r.URL.Query().Get("search")
 
 	// Build query based on user role
@@ -57,7 +58,7 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 	argCount := 1
 
 	baseQuery := `
-		SELECT s.id, s.client_company_id, s.software_engineer_id, s.status, 
+		SELECT s.id, s.shipment_type, s.laptop_count, s.client_company_id, s.software_engineer_id, s.status, 
 		       s.jira_ticket_number, s.courier_name, s.tracking_number, s.pickup_scheduled_date,
 		       s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, 
 		       s.delivered_at, s.notes, s.created_at, s.updated_at,
@@ -90,6 +91,13 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 		argCount++
 	}
 
+	// Type filter
+	if typeFilter != "" {
+		baseQuery += fmt.Sprintf(" AND s.shipment_type = $%d", argCount)
+		args = append(args, typeFilter)
+		argCount++
+	}
+
 	// Search filter (by tracking number or company name)
 	if searchQuery != "" {
 		baseQuery += fmt.Sprintf(" AND (s.tracking_number ILIKE $%d OR c.name ILIKE $%d)", argCount, argCount)
@@ -119,7 +127,7 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 		var notes sql.NullString
 
 		err := rows.Scan(
-			&s.ID, &s.ClientCompanyID, &s.SoftwareEngineerID, &s.Status,
+			&s.ID, &s.ShipmentType, &s.LaptopCount, &s.ClientCompanyID, &s.SoftwareEngineerID, &s.Status,
 			&jiraTicket, &courierName, &trackingNumber, &s.PickupScheduledDate,
 			&s.PickedUpAt, &s.ArrivedWarehouseAt, &s.ReleasedWarehouseAt,
 			&s.DeliveredAt, &notes, &s.CreatedAt, &s.UpdatedAt,
@@ -155,6 +163,7 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 		"CurrentPage":  "shipments",
 		"Shipments":    shipments,
 		"StatusFilter": statusFilter,
+		"TypeFilter":   typeFilter,
 		"SearchQuery":  searchQuery,
 		"AllStatuses": []models.ShipmentStatus{
 			models.ShipmentStatusPendingPickup,
@@ -164,6 +173,11 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 			models.ShipmentStatusReleasedFromWarehouse,
 			models.ShipmentStatusInTransitToEngineer,
 			models.ShipmentStatusDelivered,
+		},
+		"AllShipmentTypes": []models.ShipmentType{
+			models.ShipmentTypeSingleFullJourney,
+			models.ShipmentTypeBulkToWarehouse,
+			models.ShipmentTypeWarehouseToEngineer,
 		},
 	}
 
