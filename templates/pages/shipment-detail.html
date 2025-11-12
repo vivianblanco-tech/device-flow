@@ -141,6 +141,7 @@
                             <dt class="text-sm font-medium text-gray-500">Client Company</dt>
                             <dd class="mt-1 text-sm text-gray-900">{{.CompanyName}}</dd>
                         </div>
+                        {{if ne .Shipment.ShipmentType "bulk_to_warehouse"}}
                         <div>
                             <dt class="text-sm font-medium text-gray-500">Software Engineer</dt>
                             <dd class="mt-1 text-sm text-gray-900">
@@ -151,6 +152,7 @@
                                 {{end}}
                             </dd>
                         </div>
+                        {{end}}
                         {{if .Shipment.CourierName}}
                         <div>
                             <dt class="text-sm font-medium text-gray-500">Courier</dt>
@@ -643,8 +645,8 @@
                         });
                         </script>
 
-                        <!-- Assign Engineer Form -->
-                        {{if and (not .Shipment.SoftwareEngineerID) .Engineers}}
+                        <!-- Assign Engineer Form (not for bulk shipments) -->
+                        {{if and (ne .Shipment.ShipmentType "bulk_to_warehouse") (not .Shipment.SoftwareEngineerID) .Engineers}}
                         <form action="/shipments/{{.Shipment.ID}}/assign-engineer" method="POST" class="space-y-3 pt-3 border-t">
                             <div>
                                 <label for="engineer_id" class="block text-sm font-medium text-gray-700 mb-2">
@@ -723,7 +725,7 @@
                             <p class="text-gray-500 mb-1">Client Company</p>
                             <p class="text-gray-900 font-medium">{{.CompanyName}}</p>
                         </div>
-                        {{if .EngineerName}}
+                        {{if and (ne .Shipment.ShipmentType "bulk_to_warehouse") .EngineerName}}
                         <div>
                             <p class="text-gray-500 mb-1">Software Engineer</p>
                             <p class="text-gray-900 font-medium">{{.EngineerName}}</p>
