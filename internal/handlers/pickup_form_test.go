@@ -398,3 +398,218 @@ func TestPickupFormHandler_SubmitSingleFullJourney(t *testing.T) {
 		}
 	})
 }
+
+// 🟥 RED: Test bulk to warehouse form submission
+func TestPickupFormHandler_SubmitBulkToWarehouse(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test client company
+	var companyID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test user
+	var userID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"client@company.com", "$2a$12$test.hash.for.testing.purposes", models.RoleClient, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	handler := NewPickupFormHandler(db, nil, nil)
+
+	t.Run("bulk to warehouse form creates shipment with correct type", func(t *testing.T) {
+		formData := url.Values{
+			"shipment_type":     {string(models.ShipmentTypeBulkToWarehouse)},
+			"client_company_id": {strconv.FormatInt(companyID, 10)},
+			"contact_name":      {"John Doe"},
+			"contact_email":     {"john@test.com"},
+			"contact_phone":     {"+1-555-0123"},
+			"pickup_address":    {"123 Main St"},
+			"pickup_city":       {"New York"},
+			"pickup_state":      {"NY"},
+			"pickup_zip":        {"10001"},
+			"pickup_date":       {time.Now().Add(24 * time.Hour).Format("2006-01-02")},
+			"pickup_time_slot":  {"morning"},
+			"jira_ticket_number": {"SCOP-12348"},
+			"number_of_laptops":  {"5"},
+			"bulk_length":        {"30.5"},
+			"bulk_width":         {"20.0"},
+			"bulk_height":        {"15.5"},
+			"bulk_weight":        {"50.0"},
+			"include_accessories": {"false"},
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserContextKey, &models.User{ID: userID, Role: models.RoleClient}))
+
+		w := httptest.NewRecorder()
+
+		handler.PickupFormSubmit(w, req)
+
+		// Check response
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify shipment was created with correct type
+		var shipmentID int64
+		var shipmentType models.ShipmentType
+		var laptopCount int
+		err := db.QueryRowContext(ctx,
+			`SELECT id, shipment_type, laptop_count 
+			FROM shipments 
+			WHERE client_company_id = $1 AND jira_ticket_number = $2`,
+			companyID, "SCOP-12348",
+		).Scan(&shipmentID, &shipmentType, &laptopCount)
+
+		if err != nil {
+			t.Fatalf("Shipment not created: %v", err)
+		}
+
+		if shipmentType != models.ShipmentTypeBulkToWarehouse {
+			t.Errorf("Expected shipment type %s, got %s", models.ShipmentTypeBulkToWarehouse, shipmentType)
+		}
+
+		if laptopCount != 5 {
+			t.Errorf("Expected laptop count 5, got %d", laptopCount)
+		}
+
+		// Verify NO laptop records were created
+		var laptopRecordCount int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM shipment_laptops WHERE shipment_id = $1`,
+			shipmentID,
+		).Scan(&laptopRecordCount)
+
+		if err != nil {
+			t.Fatalf("Failed to query laptop records: %v", err)
+		}
+
+		if laptopRecordCount != 0 {
+			t.Errorf("Expected 0 laptop records, got %d", laptopRecordCount)
+		}
+	})
+
+	t.Run("bulk to warehouse without bulk dimensions fails validation", func(t *testing.T) {
+		formData := url.Values{
+			"shipment_type":     {string(models.ShipmentTypeBulkToWarehouse)},
+			"client_company_id": {strconv.FormatInt(companyID, 10)},
+			"contact_name":      {"John Doe"},
+			"contact_email":     {"john@test.com"},
+			"contact_phone":     {"+1-555-0123"},
+			"pickup_address":    {"123 Main St"},
+			"pickup_city":       {"New York"},
+			"pickup_state":      {"NY"},
+			"pickup_zip":        {"10001"},
+			"pickup_date":       {time.Now().Add(24 * time.Hour).Format("2006-01-02")},
+			"pickup_time_slot":  {"morning"},
+			"jira_ticket_number": {"SCOP-12349"},
+			"number_of_laptops":  {"3"},
+			// Missing bulk dimensions (required)
+			"include_accessories": {"false"},
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserContextKey, &models.User{ID: userID, Role: models.RoleClient}))
+
+		w := httptest.NewRecorder()
+
+		handler.PickupFormSubmit(w, req)
+
+		// Should redirect with error
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		location := w.Header().Get("Location")
+		if !strings.Contains(location, "error=") {
+			t.Errorf("Expected error in redirect URL, got: %s", location)
+		}
+
+		// Verify shipment was NOT created
+		var count int
+		err := db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM shipments WHERE jira_ticket_number = $1`,
+			"SCOP-12349",
+		).Scan(&count)
+		if err != nil {
+			t.Fatalf("Failed to query shipments: %v", err)
+		}
+		if count != 0 {
+			t.Errorf("Expected 0 shipments, got %d", count)
+		}
+	})
+
+	t.Run("bulk to warehouse with laptop count < 2 fails validation", func(t *testing.T) {
+		formData := url.Values{
+			"shipment_type":     {string(models.ShipmentTypeBulkToWarehouse)},
+			"client_company_id": {strconv.FormatInt(companyID, 10)},
+			"contact_name":      {"John Doe"},
+			"contact_email":     {"john@test.com"},
+			"contact_phone":     {"+1-555-0123"},
+			"pickup_address":    {"123 Main St"},
+			"pickup_city":       {"New York"},
+			"pickup_state":      {"NY"},
+			"pickup_zip":        {"10001"},
+			"pickup_date":       {time.Now().Add(24 * time.Hour).Format("2006-01-02")},
+			"pickup_time_slot":  {"morning"},
+			"jira_ticket_number": {"SCOP-12350"},
+			"number_of_laptops":  {"1"}, // Too low for bulk
+			"bulk_length":        {"30.5"},
+			"bulk_width":         {"20.0"},
+			"bulk_height":        {"15.5"},
+			"bulk_weight":        {"50.0"},
+			"include_accessories": {"false"},
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserContextKey, &models.User{ID: userID, Role: models.RoleClient}))
+
+		w := httptest.NewRecorder()
+
+		handler.PickupFormSubmit(w, req)
+
+		// Should redirect with error
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		location := w.Header().Get("Location")
+		if !strings.Contains(location, "error=") {
+			t.Errorf("Expected error in redirect URL, got: %s", location)
+		}
+
+		// Verify shipment was NOT created
+		var count int
+		err := db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM shipments WHERE jira_ticket_number = $1`,
+			"SCOP-12350",
+		).Scan(&count)
+		if err != nil {
+			t.Fatalf("Failed to query shipments: %v", err)
+		}
+		if count != 0 {
+			t.Errorf("Expected 0 shipments, got %d", count)
+		}
+	})
+}

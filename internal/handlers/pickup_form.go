@@ -176,6 +176,15 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
+	case models.ShipmentTypeBulkToWarehouse:
+		shipmentID, err = h.handleBulkToWarehouseForm(r, user, companyID, pickupDate, includeAccessories)
+		if err != nil {
+			redirectURL := fmt.Sprintf("/pickup-form?error=%s&company_id=%d",
+				err.Error(), companyID)
+			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+			return
+		}
+
 	case "legacy":
 		// Legacy form handling for backward compatibility
 		shipmentID, err = h.handleLegacyPickupForm(r, user, companyID, pickupDate, includeAccessories)
@@ -494,6 +503,153 @@ func (h *PickupFormHandler) handleLegacyPickupForm(r *http.Request, user *models
 		"action":      "pickup_form_submitted",
 		"shipment_id": shipmentID,
 		"company_id":  companyID,
+	})
+
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO audit_logs (user_id, action, entity_type, entity_id, timestamp, details)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		user.ID, "pickup_form_submitted", "shipment", shipmentID, time.Now(), auditDetails,
+	)
+	if err != nil {
+		// Non-critical error, just log it
+		fmt.Printf("Failed to create audit log: %v\n", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return shipmentID, nil
+}
+
+// handleBulkToWarehouseForm handles bulk to warehouse shipment form submission
+func (h *PickupFormHandler) handleBulkToWarehouseForm(r *http.Request, user *models.User, companyID int64, pickupDate time.Time, includeAccessories bool) (int64, error) {
+	// Parse bulk-specific fields
+	numberOfLaptopsStr := r.FormValue("number_of_laptops")
+	numberOfLaptops, err := strconv.Atoi(numberOfLaptopsStr)
+	if err != nil {
+		return 0, fmt.Errorf("invalid laptop count")
+	}
+
+	bulkLength, _ := strconv.ParseFloat(r.FormValue("bulk_length"), 64)
+	bulkWidth, _ := strconv.ParseFloat(r.FormValue("bulk_width"), 64)
+	bulkHeight, _ := strconv.ParseFloat(r.FormValue("bulk_height"), 64)
+	bulkWeight, _ := strconv.ParseFloat(r.FormValue("bulk_weight"), 64)
+
+	// Build validation input
+	formInput := validator.BulkToWarehouseFormInput{
+		ClientCompanyID:        companyID,
+		ContactName:            r.FormValue("contact_name"),
+		ContactEmail:           r.FormValue("contact_email"),
+		ContactPhone:           r.FormValue("contact_phone"),
+		PickupAddress:          r.FormValue("pickup_address"),
+		PickupCity:             r.FormValue("pickup_city"),
+		PickupState:            r.FormValue("pickup_state"),
+		PickupZip:              r.FormValue("pickup_zip"),
+		PickupDate:             r.FormValue("pickup_date"),
+		PickupTimeSlot:         r.FormValue("pickup_time_slot"),
+		JiraTicketNumber:       r.FormValue("jira_ticket_number"),
+		SpecialInstructions:    r.FormValue("special_instructions"),
+		NumberOfLaptops:        numberOfLaptops,
+		BulkLength:             bulkLength,
+		BulkWidth:              bulkWidth,
+		BulkHeight:             bulkHeight,
+		BulkWeight:             bulkWeight,
+		IncludeAccessories:     includeAccessories,
+		AccessoriesDescription: r.FormValue("accessories_description"),
+	}
+
+	// Validate form
+	if err := validator.ValidateBulkToWarehouseForm(formInput); err != nil {
+		return 0, err
+	}
+
+	// Start transaction
+	tx, err := h.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Create shipment with bulk_to_warehouse type (NO laptops created)
+	shipment := models.Shipment{
+		ShipmentType:        models.ShipmentTypeBulkToWarehouse,
+		ClientCompanyID:     companyID,
+		Status:              models.ShipmentStatusPendingPickup,
+		LaptopCount:         numberOfLaptops,
+		JiraTicketNumber:    formInput.JiraTicketNumber,
+		PickupScheduledDate: &pickupDate,
+		Notes:               formInput.SpecialInstructions,
+	}
+	shipment.BeforeCreate()
+
+	var shipmentID int64
+	err = tx.QueryRowContext(r.Context(),
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, pickup_scheduled_date, notes, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING id`,
+		shipment.ShipmentType, shipment.ClientCompanyID, shipment.Status, shipment.LaptopCount,
+		shipment.JiraTicketNumber, shipment.PickupScheduledDate, shipment.Notes,
+		shipment.CreatedAt, shipment.UpdatedAt,
+	).Scan(&shipmentID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create shipment: %w", err)
+	}
+
+	// Create pickup form with form data as JSONB (including bulk dimensions)
+	formDataJSON, err := json.Marshal(map[string]interface{}{
+		"contact_name":            formInput.ContactName,
+		"contact_email":           formInput.ContactEmail,
+		"contact_phone":           formInput.ContactPhone,
+		"pickup_address":          formInput.PickupAddress,
+		"pickup_city":             formInput.PickupCity,
+		"pickup_state":            formInput.PickupState,
+		"pickup_zip":              formInput.PickupZip,
+		"pickup_date":             formInput.PickupDate,
+		"pickup_time_slot":        formInput.PickupTimeSlot,
+		"jira_ticket_number":      formInput.JiraTicketNumber,
+		"special_instructions":    formInput.SpecialInstructions,
+		"number_of_laptops":       formInput.NumberOfLaptops,
+		"bulk_length":             formInput.BulkLength,
+		"bulk_width":              formInput.BulkWidth,
+		"bulk_height":             formInput.BulkHeight,
+		"bulk_weight":             formInput.BulkWeight,
+		"include_accessories":     formInput.IncludeAccessories,
+		"accessories_description": formInput.AccessoriesDescription,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to encode form data: %w", err)
+	}
+
+	pickupForm := models.PickupForm{
+		ShipmentID:        shipmentID,
+		SubmittedByUserID: user.ID,
+		FormData:          formDataJSON,
+	}
+	pickupForm.BeforeCreate()
+
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+		VALUES ($1, $2, $3, $4)`,
+		pickupForm.ShipmentID, pickupForm.SubmittedByUserID,
+		pickupForm.SubmittedAt, pickupForm.FormData,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to save pickup form: %w", err)
+	}
+
+	// Create audit log entry
+	auditDetails, _ := json.Marshal(map[string]interface{}{
+		"action":         "pickup_form_submitted",
+		"shipment_id":    shipmentID,
+		"shipment_type":  models.ShipmentTypeBulkToWarehouse,
+		"company_id":     companyID,
+		"laptop_count":   numberOfLaptops,
+		"bulk_length":    bulkLength,
+		"bulk_width":     bulkWidth,
+		"bulk_height":    bulkHeight,
+		"bulk_weight":    bulkWeight,
 	})
 
 	_, err = tx.ExecContext(r.Context(),
