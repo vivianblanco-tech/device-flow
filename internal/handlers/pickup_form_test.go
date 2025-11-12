@@ -1020,7 +1020,7 @@ func TestWarehouseToEngineerFormPage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client company: %v", err)
 	}
-	
+
 	// Create a bulk shipment that's completed and at warehouse (needed for reception report)
 	var shipmentID int64
 	err = db.QueryRowContext(ctx,
@@ -1080,7 +1080,7 @@ func TestWarehouseToEngineerFormPage(t *testing.T) {
 
 		// Verify template contains required fields for warehouse-to-engineer shipment
 		body := w.Body.String()
-		
+
 		// These fields should always be present
 		if !strings.Contains(body, "engineer_name") {
 			t.Error("Expected form to contain engineer_name field")
@@ -1094,7 +1094,7 @@ func TestWarehouseToEngineerFormPage(t *testing.T) {
 		if !strings.Contains(body, "warehouse_to_engineer") {
 			t.Error("Expected form to have shipment_type set to warehouse_to_engineer")
 		}
-		
+
 		// laptop_id field is conditional on available laptops
 		// TODO: The inventory query needs refinement to correctly find available laptops from bulk shipments
 		if strings.Contains(body, "No available laptops") {

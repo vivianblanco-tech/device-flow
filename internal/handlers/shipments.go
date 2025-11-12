@@ -445,9 +445,9 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 	// Get current shipment to validate sequential transition
 	var currentShipment models.Shipment
 	err = h.DB.QueryRowContext(r.Context(),
-		`SELECT id, status FROM shipments WHERE id = $1`,
+		`SELECT id, status, shipment_type, laptop_count FROM shipments WHERE id = $1`,
 		shipmentID,
-	).Scan(&currentShipment.ID, &currentShipment.Status)
+	).Scan(&currentShipment.ID, &currentShipment.Status, &currentShipment.ShipmentType, &currentShipment.LaptopCount)
 	if err != nil {
 		http.Error(w, "Failed to fetch current shipment", http.StatusInternalServerError)
 		return

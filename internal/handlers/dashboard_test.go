@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -222,5 +223,180 @@ func TestDashboardMenuVisibility(t *testing.T) {
 				t.Errorf("did not expect dashboard link in HTML for %s role, but it was found", tt.userRole)
 			}
 		})
+	}
+}
+
+// Phase 5 Test: Test that dashboard displays three shipment type creation buttons for logistics users
+func TestDashboardThreeShipmentTypeButtons(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Setup test database
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Load templates
+	templates := loadTestTemplates(t)
+
+	// Create dashboard handler
+	handler := NewDashboardHandler(db, templates)
+
+	// Create test user with logistics role
+	user := &models.User{
+		ID:    1,
+		Email: "logistics@bairesdev.com",
+		Role:  models.RoleLogistics,
+	}
+
+	// Create request
+	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+
+	// Add user to context
+	ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+	req = req.WithContext(ctx)
+
+	// Create response recorder
+	rr := httptest.NewRecorder()
+
+	// Call handler
+	handler.Dashboard(rr, req)
+
+	// Check status code
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rr.Code)
+	}
+
+	// Check that all three shipment type buttons are present
+	body := rr.Body.String()
+	
+	// Debug: Save body to file for inspection
+	err := os.WriteFile("dashboard_test_output.html", []byte(body), 0644)
+	if err != nil {
+		t.Logf("Failed to write body to file: %v", err)
+	}
+	
+	// Debug: Output first 1000 chars if test fails
+	t.Logf("Response body length: %d", len(body))
+	if len(body) > 0 && len(body) < 2000 {
+		t.Logf("Full body: %s", body)
+	}
+	
+	// Check if Quick Actions section exists
+	if !strings.Contains(body, "Quick Actions") {
+		t.Error("Quick Actions section not found in dashboard")
+	}
+	
+	if !strings.Contains(body, `/shipments/create/single`) {
+		t.Error("Expected dashboard to contain link to single shipment form")
+		t.Logf("Body snippet: %s", body[:min(len(body), 1000)])
+	}
+	if !strings.Contains(body, `Single Shipment`) && !strings.Contains(body, `Single Full Journey`) {
+		t.Error("Expected dashboard to contain 'Single Shipment' or 'Single Full Journey' button text")
+	}
+	
+	if !strings.Contains(body, `/shipments/create/bulk`) {
+		t.Error("Expected dashboard to contain link to bulk shipment form")
+	}
+	if !strings.Contains(body, `Bulk`) {
+		t.Error("Expected dashboard to contain 'Bulk' button text")
+	}
+	
+	if !strings.Contains(body, `/shipments/create/warehouse-to-engineer`) {
+		t.Error("Expected dashboard to contain link to warehouse-to-engineer form")
+	}
+	if !strings.Contains(body, `Warehouse`) && !strings.Contains(body, `Engineer`) {
+		t.Error("Expected dashboard to contain 'Warehouse' or 'Engineer' button text")
+	}
+}
+
+// Test that old Quick Actions buttons (New Pickup Request and View All Shipments) are NOT present
+func TestDashboardQuickActionsRemovedButtons(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Setup test database
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Load templates
+	templates := loadTestTemplates(t)
+
+	// Create dashboard handler
+	handler := NewDashboardHandler(db, templates)
+
+	// Test for logistics user
+	logisticsUser := &models.User{
+		ID:    1,
+		Email: "logistics@bairesdev.com",
+		Role:  models.RoleLogistics,
+	}
+
+	// Create request
+	req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+
+	// Add user to context
+	ctx := context.WithValue(req.Context(), middleware.UserContextKey, logisticsUser)
+	req = req.WithContext(ctx)
+
+	// Create response recorder
+	rr := httptest.NewRecorder()
+
+	// Call handler
+	handler.Dashboard(rr, req)
+
+	// Check status code
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rr.Code)
+	}
+
+	body := rr.Body.String()
+
+	// Verify "New Pickup Request" button is NOT present
+	if strings.Contains(body, "New Pickup Request") || strings.Contains(body, "+ New Pickup Request") {
+		t.Error("Expected 'New Pickup Request' button to be removed from Quick Actions")
+	}
+
+	// Verify direct /pickup-form link in Quick Actions is NOT present
+	// (but it may exist elsewhere in navbar, so be specific about Quick Actions context)
+	if strings.Contains(body, `href="/pickup-form"`) && strings.Contains(body, "Quick Actions") {
+		// Check if pickup-form link appears in the Quick Actions section
+		quickActionsStart := strings.Index(body, "Quick Actions")
+		if quickActionsStart != -1 {
+			// Find the end of Quick Actions section (next major section or end of div)
+			quickActionsSection := body[quickActionsStart:]
+			endOfSection := strings.Index(quickActionsSection, "</div>\n        {{end}}\n    </div>")
+			if endOfSection == -1 {
+				endOfSection = len(quickActionsSection)
+			}
+			quickActionsContent := quickActionsSection[:endOfSection]
+			
+			if strings.Contains(quickActionsContent, `href="/pickup-form"`) {
+				t.Error("Expected /pickup-form link to be removed from Quick Actions section")
+			}
+		}
+	}
+
+	// Verify "View All Shipments" button is NOT present in Quick Actions
+	// (It's OK if "Shipments" appears in the three shipment type buttons)
+	if strings.Contains(body, "View All Shipments") {
+		t.Error("Expected 'View All Shipments' button to be removed from Quick Actions")
+	}
+
+	// Verify direct /shipments link in Quick Actions (without create path) is NOT present
+	quickActionsStart := strings.Index(body, "Quick Actions")
+	if quickActionsStart != -1 {
+		quickActionsSection := body[quickActionsStart:]
+		endOfSection := strings.Index(quickActionsSection, "</div>\n        {{end}}\n    </div>")
+		if endOfSection == -1 {
+			endOfSection = len(quickActionsSection)
+		}
+		quickActionsContent := quickActionsSection[:endOfSection]
+		
+		// Check for standalone /shipments link (not /shipments/create/...)
+		if strings.Contains(quickActionsContent, `href="/shipments"`) && !strings.Contains(quickActionsContent, `href="/shipments/create/`) {
+			t.Error("Expected standalone /shipments link to be removed from Quick Actions section")
+		}
 	}
 }

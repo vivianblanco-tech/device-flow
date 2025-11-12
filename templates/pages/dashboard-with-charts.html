@@ -162,21 +162,13 @@
             {{end}}
             
             <!-- Other Quick Actions -->
+            {{if eq .User.Role "warehouse"}}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {{if eq .User.Role "logistics"}}
-                <a href="/pickup-form" class="flex items-center justify-center px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition">
-                    <span class="text-sm font-medium text-gray-700">+ New Pickup Request</span>
-                </a>
-                {{end}}
-                <a href="/shipments" class="flex items-center justify-center px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition">
-                    <span class="text-sm font-medium text-gray-700">View All Shipments</span>
-                </a>
-                {{if eq .User.Role "warehouse"}}
                 <a href="/reception-report" class="flex items-center justify-center px-4 py-3 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition">
                     <span class="text-sm font-medium text-gray-700">+ New Reception Report</span>
                 </a>
-                {{end}}
             </div>
+            {{end}}
         </div>
         {{end}}
     </div>
