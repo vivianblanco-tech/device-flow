@@ -17,7 +17,9 @@ type EditShipmentDetailsInput struct {
 	PickupDate             string
 	PickupTimeSlot         string
 	SpecialInstructions    string
-	LaptopSpecs            string
+	LaptopModel            string
+	LaptopRAMGB            string
+	LaptopSSDGB            string
 	EngineerName           string
 	IncludeAccessories     bool
 	AccessoriesDescription string
@@ -46,9 +48,19 @@ func ValidateEditShipmentDetails(input EditShipmentDetailsInput) error {
 		return err
 	}
 
-	// Laptop specs validation (optional but validated if provided)
-	if len(input.LaptopSpecs) > 500 {
-		return errors.New("laptop specs must be less than 500 characters")
+	// Laptop model validation (optional for editing, validated if provided)
+	if input.LaptopModel != "" && len(input.LaptopModel) > 200 {
+		return errors.New("laptop model must be less than 200 characters")
+	}
+
+	// Laptop RAM validation (optional for editing, validated if provided)
+	if input.LaptopRAMGB != "" && len(input.LaptopRAMGB) > 50 {
+		return errors.New("laptop RAM must be less than 50 characters")
+	}
+
+	// Laptop SSD validation (optional for editing, validated if provided)
+	if input.LaptopSSDGB != "" && len(input.LaptopSSDGB) > 50 {
+		return errors.New("laptop SSD must be less than 50 characters")
 	}
 
 	// Engineer name validation (optional)

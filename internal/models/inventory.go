@@ -19,7 +19,7 @@ type LaptopFilter struct {
 func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 	query := `
 		SELECT 
-			l.id, l.serial_number, l.sku, l.brand, l.model, l.specs, l.status, 
+			l.id, l.serial_number, l.sku, l.brand, l.model, l.ram_gb, l.ssd_gb, l.status, 
 			l.client_company_id, l.software_engineer_id, l.created_at, l.updated_at,
 			cc.name as client_company_name,
 			se.name as software_engineer_name
@@ -87,8 +87,6 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 		var laptop Laptop
 		var sku sql.NullString
 		var brand sql.NullString
-		var model sql.NullString
-		var specs sql.NullString
 		var clientCompanyName sql.NullString
 		var softwareEngineerName sql.NullString
 
@@ -97,8 +95,9 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 			&laptop.SerialNumber,
 			&sku,
 			&brand,
-			&model,
-			&specs,
+			&laptop.Model,
+			&laptop.RAMGB,
+			&laptop.SSDGB,
 			&laptop.Status,
 			&laptop.ClientCompanyID,
 			&laptop.SoftwareEngineerID,
@@ -117,12 +116,6 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 		}
 		if brand.Valid {
 			laptop.Brand = brand.String
-		}
-		if model.Valid {
-			laptop.Model = model.String
-		}
-		if specs.Valid {
-			laptop.Specs = specs.String
 		}
 		if clientCompanyName.Valid {
 			laptop.ClientCompanyName = clientCompanyName.String
@@ -144,7 +137,7 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 // SearchLaptops searches for laptops by serial number, brand, or model
 func SearchLaptops(db *sql.DB, searchTerm string) ([]Laptop, error) {
 	query := `
-		SELECT id, serial_number, brand, model, specs, status, created_at, updated_at
+		SELECT id, serial_number, brand, model, ram_gb, ssd_gb, status, created_at, updated_at
 		FROM laptops
 		WHERE LOWER(serial_number) LIKE $1 
 		   OR LOWER(brand) LIKE $1 
@@ -167,7 +160,8 @@ func SearchLaptops(db *sql.DB, searchTerm string) ([]Laptop, error) {
 			&laptop.SerialNumber,
 			&laptop.Brand,
 			&laptop.Model,
-			&laptop.Specs,
+			&laptop.RAMGB,
+			&laptop.SSDGB,
 			&laptop.Status,
 			&laptop.CreatedAt,
 			&laptop.UpdatedAt,
@@ -189,7 +183,7 @@ func SearchLaptops(db *sql.DB, searchTerm string) ([]Laptop, error) {
 func GetLaptopByID(db *sql.DB, id int64) (*Laptop, error) {
 	query := `
 		SELECT 
-			l.id, l.serial_number, l.sku, l.brand, l.model, l.specs, l.status, 
+			l.id, l.serial_number, l.sku, l.brand, l.model, l.ram_gb, l.ssd_gb, l.status, 
 			l.client_company_id, l.software_engineer_id, l.created_at, l.updated_at,
 			cc.name as client_company_name,
 			se.name as software_engineer_name
@@ -210,7 +204,8 @@ func GetLaptopByID(db *sql.DB, id int64) (*Laptop, error) {
 		&sku,
 		&laptop.Brand,
 		&laptop.Model,
-		&laptop.Specs,
+		&laptop.RAMGB,
+		&laptop.SSDGB,
 		&laptop.Status,
 		&laptop.ClientCompanyID,
 		&laptop.SoftwareEngineerID,
@@ -252,8 +247,8 @@ func CreateLaptop(db *sql.DB, laptop *Laptop) error {
 	laptop.BeforeCreate()
 
 	query := `
-		INSERT INTO laptops (serial_number, sku, brand, model, specs, status, client_company_id, software_engineer_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO laptops (serial_number, sku, brand, model, ram_gb, ssd_gb, status, client_company_id, software_engineer_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id
 	`
 
@@ -263,7 +258,8 @@ func CreateLaptop(db *sql.DB, laptop *Laptop) error {
 		laptop.SKU,
 		laptop.Brand,
 		laptop.Model,
-		laptop.Specs,
+		laptop.RAMGB,
+		laptop.SSDGB,
 		laptop.Status,
 		laptop.ClientCompanyID,
 		laptop.SoftwareEngineerID,
@@ -294,9 +290,9 @@ func UpdateLaptop(db *sql.DB, laptop *Laptop) error {
 
 	query := `
 		UPDATE laptops
-		SET serial_number = $1, sku = $2, brand = $3, model = $4, specs = $5, status = $6, 
-		    client_company_id = $7, software_engineer_id = $8, updated_at = $9
-		WHERE id = $10
+		SET serial_number = $1, sku = $2, brand = $3, model = $4, ram_gb = $5, ssd_gb = $6, status = $7, 
+		    client_company_id = $8, software_engineer_id = $9, updated_at = $10
+		WHERE id = $11
 	`
 
 	result, err := db.Exec(
@@ -305,7 +301,8 @@ func UpdateLaptop(db *sql.DB, laptop *Laptop) error {
 		laptop.SKU,
 		laptop.Brand,
 		laptop.Model,
-		laptop.Specs,
+		laptop.RAMGB,
+		laptop.SSDGB,
 		laptop.Status,
 		laptop.ClientCompanyID,
 		laptop.SoftwareEngineerID,
@@ -353,7 +350,7 @@ func DeleteLaptop(db *sql.DB, id int64) error {
 // GetLaptopsByStatus retrieves all laptops with a specific status
 func GetLaptopsByStatus(db *sql.DB, status LaptopStatus) ([]Laptop, error) {
 	query := `
-		SELECT id, serial_number, brand, model, specs, status, created_at, updated_at
+		SELECT id, serial_number, brand, model, ram_gb, ssd_gb, status, created_at, updated_at
 		FROM laptops
 		WHERE status = $1
 		ORDER BY created_at DESC
@@ -373,7 +370,8 @@ func GetLaptopsByStatus(db *sql.DB, status LaptopStatus) ([]Laptop, error) {
 			&laptop.SerialNumber,
 			&laptop.Brand,
 			&laptop.Model,
-			&laptop.Specs,
+			&laptop.RAMGB,
+			&laptop.SSDGB,
 			&laptop.Status,
 			&laptop.CreatedAt,
 			&laptop.UpdatedAt,

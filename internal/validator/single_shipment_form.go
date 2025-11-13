@@ -23,7 +23,9 @@ type SingleFullJourneyFormInput struct {
 
 	// Laptop information (required)
 	LaptopSerialNumber string
-	LaptopSpecs        string
+	LaptopModel        string
+	LaptopRAMGB        string
+	LaptopSSDGB        string
 
 	// Engineer assignment (optional - can be assigned later)
 	EngineerName string
@@ -65,8 +67,29 @@ func ValidateSingleFullJourneyForm(input SingleFullJourneyFormInput) error {
 		return errors.New("laptop serial number is required")
 	}
 
-	// Laptop specifications (optional but recommended)
-	// No validation - can be empty
+	// Laptop model validation (REQUIRED)
+	if strings.TrimSpace(input.LaptopModel) == "" {
+		return errors.New("laptop model is required")
+	}
+	if len(input.LaptopModel) > 200 {
+		return errors.New("laptop model must be less than 200 characters")
+	}
+
+	// Laptop RAM validation (REQUIRED)
+	if strings.TrimSpace(input.LaptopRAMGB) == "" {
+		return errors.New("laptop RAM is required")
+	}
+	if len(input.LaptopRAMGB) > 50 {
+		return errors.New("laptop RAM must be less than 50 characters")
+	}
+
+	// Laptop SSD validation (REQUIRED)
+	if strings.TrimSpace(input.LaptopSSDGB) == "" {
+		return errors.New("laptop SSD is required")
+	}
+	if len(input.LaptopSSDGB) > 50 {
+		return errors.New("laptop SSD must be less than 50 characters")
+	}
 
 	// Engineer name (optional - can be assigned later)
 	// No validation - can be empty

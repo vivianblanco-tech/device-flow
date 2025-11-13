@@ -24,8 +24,9 @@ type Laptop struct {
 	SerialNumber       string       `json:"serial_number" db:"serial_number"`
 	SKU                string       `json:"sku,omitempty" db:"sku"`
 	Brand              string       `json:"brand,omitempty" db:"brand"`
-	Model              string       `json:"model,omitempty" db:"model"`
-	Specs              string       `json:"specs,omitempty" db:"specs"`
+	Model              string       `json:"model" db:"model"`
+	RAMGB              string       `json:"ram_gb" db:"ram_gb"`
+	SSDGB              string       `json:"ssd_gb" db:"ssd_gb"`
 	Status             LaptopStatus `json:"status" db:"status"`
 	ClientCompanyID    *int64       `json:"client_company_id,omitempty" db:"client_company_id"`
 	SoftwareEngineerID *int64       `json:"software_engineer_id,omitempty" db:"software_engineer_id"`
@@ -43,6 +44,21 @@ func (l *Laptop) Validate() error {
 	// Serial number validation
 	if l.SerialNumber == "" {
 		return errors.New("serial number is required")
+	}
+
+	// Model validation (required)
+	if l.Model == "" {
+		return errors.New("laptop model is required")
+	}
+
+	// RAM validation (required)
+	if l.RAMGB == "" {
+		return errors.New("laptop RAM is required")
+	}
+
+	// SSD validation (required)
+	if l.SSDGB == "" {
+		return errors.New("laptop SSD is required")
 	}
 
 	// Status validation
@@ -133,8 +149,21 @@ func (l *Laptop) GetFullDescription() string {
 		desc += l.Model
 	}
 
-	if l.Specs != "" {
-		desc += " (" + l.Specs + ")"
+	// Add RAM and SSD specs
+	if l.RAMGB != "" || l.SSDGB != "" {
+		specs := ""
+		if l.RAMGB != "" {
+			specs = l.RAMGB + " RAM"
+		}
+		if l.SSDGB != "" {
+			if specs != "" {
+				specs += ", "
+			}
+			specs += l.SSDGB + " SSD"
+		}
+		if specs != "" {
+			desc += " (" + specs + ")"
+		}
 	}
 
 	return desc

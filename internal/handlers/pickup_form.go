@@ -269,7 +269,7 @@ func (h *PickupFormHandler) WarehouseToEngineerFormPage(w http.ResponseWriter, r
 	// Get list of available laptops from inventory
 	laptops := []models.Laptop{}
 	rows, err := h.DB.QueryContext(r.Context(), `
-		SELECT DISTINCT l.id, l.serial_number, l.sku, l.brand, l.model, l.specs,
+		SELECT DISTINCT l.id, l.serial_number, l.sku, l.brand, l.model, l.ram_gb, l.ssd_gb,
 			   l.status, l.client_company_id, l.software_engineer_id,
 			   l.created_at, l.updated_at,
 			   cc.name as client_company_name
@@ -303,7 +303,7 @@ func (h *PickupFormHandler) WarehouseToEngineerFormPage(w http.ResponseWriter, r
 		var clientCompanyName sql.NullString
 		err := rows.Scan(
 			&laptop.ID, &laptop.SerialNumber, &laptop.SKU, &laptop.Brand,
-			&laptop.Model, &laptop.Specs, &laptop.Status, &laptop.ClientCompanyID,
+			&laptop.Model, &laptop.RAMGB, &laptop.SSDGB, &laptop.Status, &laptop.ClientCompanyID,
 			&laptop.SoftwareEngineerID, &laptop.CreatedAt, &laptop.UpdatedAt,
 			&clientCompanyName,
 		)
@@ -548,7 +548,9 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 		JiraTicketNumber:       r.FormValue("jira_ticket_number"),
 		SpecialInstructions:    r.FormValue("special_instructions"),
 		LaptopSerialNumber:     r.FormValue("laptop_serial_number"),
-		LaptopSpecs:            r.FormValue("laptop_specs"),
+		LaptopModel:            r.FormValue("laptop_model"),
+		LaptopRAMGB:            r.FormValue("laptop_ram_gb"),
+		LaptopSSDGB:            r.FormValue("laptop_ssd_gb"),
 		EngineerName:           r.FormValue("engineer_name"),
 		IncludeAccessories:     includeAccessories,
 		AccessoriesDescription: r.FormValue("accessories_description"),
@@ -594,7 +596,9 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 	// Auto-create laptop record
 	laptop := models.Laptop{
 		SerialNumber:    formInput.LaptopSerialNumber,
-		Specs:           formInput.LaptopSpecs,
+		Model:           formInput.LaptopModel,
+		RAMGB:           formInput.LaptopRAMGB,
+		SSDGB:           formInput.LaptopSSDGB,
 		Status:          models.LaptopStatusInTransitToWarehouse,
 		ClientCompanyID: &companyID,
 	}
@@ -602,10 +606,10 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 
 	var laptopID int64
 	err = tx.QueryRowContext(r.Context(),
-		`INSERT INTO laptops (serial_number, specs, status, client_company_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		`INSERT INTO laptops (serial_number, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id`,
-		laptop.SerialNumber, laptop.Specs, laptop.Status, laptop.ClientCompanyID,
+		laptop.SerialNumber, laptop.Model, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID,
 		laptop.CreatedAt, laptop.UpdatedAt,
 	).Scan(&laptopID)
 	if err != nil {
@@ -636,7 +640,9 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 		"jira_ticket_number":      formInput.JiraTicketNumber,
 		"special_instructions":    formInput.SpecialInstructions,
 		"laptop_serial_number":    formInput.LaptopSerialNumber,
-		"laptop_specs":            formInput.LaptopSpecs,
+		"laptop_model":            formInput.LaptopModel,
+		"laptop_ram_gb":           formInput.LaptopRAMGB,
+		"laptop_ssd_gb":           formInput.LaptopSSDGB,
 		"engineer_name":           formInput.EngineerName,
 		"include_accessories":     formInput.IncludeAccessories,
 		"accessories_description": formInput.AccessoriesDescription,
@@ -1441,7 +1447,9 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 		PickupTimeSlot:         r.FormValue("pickup_time_slot"),
 		SpecialInstructions:    r.FormValue("special_instructions"),
 		LaptopSerialNumber:     r.FormValue("laptop_serial_number"),
-		LaptopSpecs:            r.FormValue("laptop_specs"),
+		LaptopModel:            r.FormValue("laptop_model"),
+		LaptopRAMGB:            r.FormValue("laptop_ram_gb"),
+		LaptopSSDGB:            r.FormValue("laptop_ssd_gb"),
 		EngineerName:           r.FormValue("engineer_name"),
 		IncludeAccessories:     includeAccessories,
 		AccessoriesDescription: r.FormValue("accessories_description"),
@@ -1480,7 +1488,9 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 	// Create laptop record
 	laptop := models.Laptop{
 		SerialNumber:    formInput.LaptopSerialNumber,
-		Specs:           formInput.LaptopSpecs,
+		Model:           formInput.LaptopModel,
+		RAMGB:           formInput.LaptopRAMGB,
+		SSDGB:           formInput.LaptopSSDGB,
 		Status:          models.LaptopStatusInTransitToWarehouse,
 		ClientCompanyID: &companyID,
 	}
@@ -1488,16 +1498,16 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 
 	var laptopID int64
 	err = tx.QueryRowContext(r.Context(),
-		`INSERT INTO laptops (serial_number, specs, status, client_company_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		`INSERT INTO laptops (serial_number, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id`,
-		laptop.SerialNumber, laptop.Specs, laptop.Status, laptop.ClientCompanyID,
+		laptop.SerialNumber, laptop.Model, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID,
 		laptop.CreatedAt, laptop.UpdatedAt,
 	).Scan(&laptopID)
 	if err != nil {
 		// Log the actual database error for debugging
-		fmt.Printf("Failed to create laptop: %v (serial: %s, specs: %s, status: %s, company: %v)\n", 
-			err, laptop.SerialNumber, laptop.Specs, laptop.Status, laptop.ClientCompanyID)
+		fmt.Printf("Failed to create laptop: %v (serial: %s, model: %s, ram: %s, ssd: %s, status: %s, company: %v)\n", 
+			err, laptop.SerialNumber, laptop.Model, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID)
 		
 		// Check if it's a duplicate serial number error
 		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
@@ -1544,7 +1554,9 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 		"pickup_time_slot":        formInput.PickupTimeSlot,
 		"special_instructions":    formInput.SpecialInstructions,
 		"laptop_serial_number":    formInput.LaptopSerialNumber,
-		"laptop_specs":            formInput.LaptopSpecs,
+		"laptop_model":            formInput.LaptopModel,
+		"laptop_ram_gb":           formInput.LaptopRAMGB,
+		"laptop_ssd_gb":           formInput.LaptopSSDGB,
 		"engineer_name":           formInput.EngineerName,
 		"include_accessories":     formInput.IncludeAccessories,
 		"accessories_description": formInput.AccessoriesDescription,
@@ -1679,7 +1691,9 @@ func (h *PickupFormHandler) EditShipmentDetails(w http.ResponseWriter, r *http.R
 		PickupDate:             pickupDateStr,
 		PickupTimeSlot:         r.FormValue("pickup_time_slot"),
 		SpecialInstructions:    r.FormValue("special_instructions"),
-		LaptopSpecs:            r.FormValue("laptop_specs"),
+		LaptopModel:            r.FormValue("laptop_model"),
+		LaptopRAMGB:            r.FormValue("laptop_ram_gb"),
+		LaptopSSDGB:            r.FormValue("laptop_ssd_gb"),
 		EngineerName:           r.FormValue("engineer_name"),
 		IncludeAccessories:     includeAccessories,
 		AccessoriesDescription: r.FormValue("accessories_description"),
@@ -1745,15 +1759,37 @@ func (h *PickupFormHandler) EditShipmentDetails(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Update laptop specs if laptop exists
-	if laptopID > 0 && formInput.LaptopSpecs != "" {
-		_, err = tx.ExecContext(r.Context(),
-			`UPDATE laptops SET specs = $1, updated_at = $2 WHERE id = $3`,
-			formInput.LaptopSpecs, time.Now(), laptopID,
-		)
-		if err != nil {
-			http.Error(w, "Failed to update laptop", http.StatusInternalServerError)
-			return
+	// Update laptop details if laptop exists and new data provided
+	if laptopID > 0 {
+		updateQuery := `UPDATE laptops SET updated_at = $1`
+		args := []interface{}{time.Now()}
+		argIdx := 2
+		
+		if formInput.LaptopModel != "" {
+			updateQuery += fmt.Sprintf(", model = $%d", argIdx)
+			args = append(args, formInput.LaptopModel)
+			argIdx++
+		}
+		if formInput.LaptopRAMGB != "" {
+			updateQuery += fmt.Sprintf(", ram_gb = $%d", argIdx)
+			args = append(args, formInput.LaptopRAMGB)
+			argIdx++
+		}
+		if formInput.LaptopSSDGB != "" {
+			updateQuery += fmt.Sprintf(", ssd_gb = $%d", argIdx)
+			args = append(args, formInput.LaptopSSDGB)
+			argIdx++
+		}
+		
+		if argIdx > 2 { // Only execute if we have fields to update
+			updateQuery += fmt.Sprintf(" WHERE id = $%d", argIdx)
+			args = append(args, laptopID)
+			
+			_, err = tx.ExecContext(r.Context(), updateQuery, args...)
+			if err != nil {
+				http.Error(w, "Failed to update laptop", http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 
@@ -1779,7 +1815,9 @@ func (h *PickupFormHandler) EditShipmentDetails(w http.ResponseWriter, r *http.R
 		"pickup_date":             formInput.PickupDate,
 		"pickup_time_slot":        formInput.PickupTimeSlot,
 		"special_instructions":    formInput.SpecialInstructions,
-		"laptop_specs":            formInput.LaptopSpecs,
+		"laptop_model":            formInput.LaptopModel,
+		"laptop_ram_gb":           formInput.LaptopRAMGB,
+		"laptop_ssd_gb":           formInput.LaptopSSDGB,
 		"engineer_name":           formInput.EngineerName,
 		"include_accessories":     formInput.IncludeAccessories,
 		"accessories_description": formInput.AccessoriesDescription,

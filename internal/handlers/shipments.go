@@ -262,7 +262,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 
 	// Get associated laptops
 	laptopRows, err := h.DB.QueryContext(r.Context(),
-		`SELECT l.id, l.serial_number, l.brand, l.model, l.specs, l.status, l.created_at
+		`SELECT l.id, l.serial_number, l.brand, l.model, l.ram_gb, l.ssd_gb, l.status, l.created_at
 		FROM laptops l
 		JOIN shipment_laptops sl ON sl.laptop_id = l.id
 		WHERE sl.shipment_id = $1`,
@@ -279,7 +279,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		var laptop models.Laptop
 		err := laptopRows.Scan(
 			&laptop.ID, &laptop.SerialNumber, &laptop.Brand, &laptop.Model,
-			&laptop.Specs, &laptop.Status, &laptop.CreatedAt,
+			&laptop.RAMGB, &laptop.SSDGB, &laptop.Status, &laptop.CreatedAt,
 		)
 		if err != nil {
 			continue

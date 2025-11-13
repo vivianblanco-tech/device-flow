@@ -19,7 +19,9 @@ type CompleteShipmentDetailsInput struct {
 	PickupTimeSlot         string
 	SpecialInstructions    string
 	LaptopSerialNumber     string
-	LaptopSpecs            string
+	LaptopModel            string
+	LaptopRAMGB            string
+	LaptopSSDGB            string
 	EngineerName           string
 	IncludeAccessories     bool
 	AccessoriesDescription string
@@ -53,10 +55,28 @@ func ValidateCompleteShipmentDetails(input CompleteShipmentDetailsInput) error {
 		return errors.New("laptop serial number is required")
 	}
 
-	// Laptop specs validation (optional but validated if provided)
-	// No strict validation - just check length
-	if len(input.LaptopSpecs) > 500 {
-		return errors.New("laptop specs must be less than 500 characters")
+	// Laptop model validation (REQUIRED)
+	if strings.TrimSpace(input.LaptopModel) == "" {
+		return errors.New("laptop model is required")
+	}
+	if len(input.LaptopModel) > 200 {
+		return errors.New("laptop model must be less than 200 characters")
+	}
+
+	// Laptop RAM validation (REQUIRED)
+	if strings.TrimSpace(input.LaptopRAMGB) == "" {
+		return errors.New("laptop RAM is required")
+	}
+	if len(input.LaptopRAMGB) > 50 {
+		return errors.New("laptop RAM must be less than 50 characters")
+	}
+
+	// Laptop SSD validation (REQUIRED)
+	if strings.TrimSpace(input.LaptopSSDGB) == "" {
+		return errors.New("laptop SSD is required")
+	}
+	if len(input.LaptopSSDGB) > 50 {
+		return errors.New("laptop SSD must be less than 50 characters")
 	}
 
 	// Engineer name validation (optional)

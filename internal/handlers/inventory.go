@@ -171,7 +171,8 @@ func (h *InventoryHandler) AddLaptopSubmit(w http.ResponseWriter, r *http.Reques
 		SerialNumber: r.FormValue("serial_number"),
 		Brand:        r.FormValue("brand"),
 		Model:        r.FormValue("model"),
-		Specs:        r.FormValue("specs"),
+		RAMGB:        r.FormValue("ram_gb"),
+		SSDGB:        r.FormValue("ssd_gb"),
 		Status:       models.LaptopStatus(r.FormValue("status")),
 	}
 
@@ -276,7 +277,8 @@ func (h *InventoryHandler) UpdateLaptopSubmit(w http.ResponseWriter, r *http.Req
 	laptop.SerialNumber = r.FormValue("serial_number")
 	laptop.Brand = r.FormValue("brand")
 	laptop.Model = r.FormValue("model")
-	laptop.Specs = r.FormValue("specs")
+	laptop.RAMGB = r.FormValue("ram_gb")
+	laptop.SSDGB = r.FormValue("ssd_gb")
 	laptop.Status = models.LaptopStatus(r.FormValue("status"))
 
 	// Update laptop
