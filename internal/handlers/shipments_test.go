@@ -157,6 +157,207 @@ func TestShipmentsList(t *testing.T) {
 	})
 }
 
+// 🟥 RED: Test client users can only see their company's shipments
+func TestShipmentsListClientCompanyFiltering(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create two companies
+	var company1ID, company2ID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Company Alpha", json.RawMessage(`{"email":"alpha@company.com"}`), time.Now(),
+	).Scan(&company1ID)
+	if err != nil {
+		t.Fatalf("Failed to create company 1: %v", err)
+	}
+
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Company Beta", json.RawMessage(`{"email":"beta@company.com"}`), time.Now(),
+	).Scan(&company2ID)
+	if err != nil {
+		t.Fatalf("Failed to create company 2: %v", err)
+	}
+
+	// Create client users for each company
+	var clientUser1ID, clientUser2ID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		"client1@alpha.com", "hashedpassword", models.RoleClient, company1ID, time.Now(), time.Now(),
+	).Scan(&clientUser1ID)
+	if err != nil {
+		t.Fatalf("Failed to create client user 1: %v", err)
+	}
+
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		"client2@beta.com", "hashedpassword", models.RoleClient, company2ID, time.Now(), time.Now(),
+	).Scan(&clientUser2ID)
+	if err != nil {
+		t.Fatalf("Failed to create client user 2: %v", err)
+	}
+
+	// Create shipments for both companies
+	var shipment1ID, shipment2ID, shipment3ID int64
+	
+	// Shipment 1 for Company Alpha
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (client_company_id, status, shipment_type, laptop_count, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		company1ID, models.ShipmentStatusPendingPickup, models.ShipmentTypeSingleFullJourney, 1, "ALPHA-1", time.Now(), time.Now(),
+	).Scan(&shipment1ID)
+	if err != nil {
+		t.Fatalf("Failed to create shipment 1: %v", err)
+	}
+
+	// Shipment 2 for Company Alpha
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (client_company_id, status, shipment_type, laptop_count, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		company1ID, models.ShipmentStatusAtWarehouse, models.ShipmentTypeSingleFullJourney, 1, "ALPHA-2", time.Now(), time.Now(),
+	).Scan(&shipment2ID)
+	if err != nil {
+		t.Fatalf("Failed to create shipment 2: %v", err)
+	}
+
+	// Shipment 3 for Company Beta
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (client_company_id, status, shipment_type, laptop_count, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		company2ID, models.ShipmentStatusPendingPickup, models.ShipmentTypeSingleFullJourney, 1, "BETA-1", time.Now(), time.Now(),
+	).Scan(&shipment3ID)
+	if err != nil {
+		t.Fatalf("Failed to create shipment 3: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	t.Run("client user from Company Alpha sees only their company's shipments", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments", nil)
+
+		user := &models.User{
+			ID:              clientUser1ID,
+			Email:           "client1@alpha.com",
+			Role:            models.RoleClient,
+			ClientCompanyID: &company1ID,
+		}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentsList(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Should see Company Alpha's JIRA tickets
+		if !strings.Contains(body, "ALPHA-1") {
+			t.Error("Client from Company Alpha should see ALPHA-1 ticket")
+		}
+		if !strings.Contains(body, "ALPHA-2") {
+			t.Error("Client from Company Alpha should see ALPHA-2 ticket")
+		}
+
+		// Should NOT see Company Beta's JIRA tickets
+		if strings.Contains(body, "BETA-1") {
+			t.Error("Client from Company Alpha should NOT see BETA-1 ticket from Company Beta")
+		}
+	})
+
+	t.Run("client user from Company Beta sees only their company's shipments", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments", nil)
+
+		user := &models.User{
+			ID:              clientUser2ID,
+			Email:           "client2@beta.com",
+			Role:            models.RoleClient,
+			ClientCompanyID: &company2ID,
+		}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentsList(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Should see Company Beta's JIRA ticket
+		if !strings.Contains(body, "BETA-1") {
+			t.Error("Client from Company Beta should see BETA-1 ticket")
+		}
+
+		// Should NOT see Company Alpha's JIRA tickets
+		if strings.Contains(body, "ALPHA-1") {
+			t.Error("Client from Company Beta should NOT see ALPHA-1 ticket from Company Alpha")
+		}
+		if strings.Contains(body, "ALPHA-2") {
+			t.Error("Client from Company Beta should NOT see ALPHA-2 ticket from Company Alpha")
+		}
+	})
+
+	t.Run("logistics user sees all shipments from all companies", func(t *testing.T) {
+		// Create logistics user
+		var logisticsUserID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			"logistics@bairesdev.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+		).Scan(&logisticsUserID)
+		if err != nil {
+			t.Fatalf("Failed to create logistics user: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments", nil)
+
+		user := &models.User{
+			ID:    logisticsUserID,
+			Email: "logistics@bairesdev.com",
+			Role:  models.RoleLogistics,
+		}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentsList(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Logistics should see all shipments
+		if !strings.Contains(body, "ALPHA-1") {
+			t.Error("Logistics user should see ALPHA-1 ticket")
+		}
+		if !strings.Contains(body, "ALPHA-2") {
+			t.Error("Logistics user should see ALPHA-2 ticket")
+		}
+		if !strings.Contains(body, "BETA-1") {
+			t.Error("Logistics user should see BETA-1 ticket")
+		}
+	})
+}
+
 // 🟥 RED: Test shipment type filtering in list
 func TestShipmentsListWithTypeFilter(t *testing.T) {
 	if testing.Short() {
@@ -2768,6 +2969,189 @@ func TestSendMagicLinkVisibility(t *testing.T) {
 		responseBody := w.Body.String()
 		if strings.Contains(responseBody, "Send Magic Link") {
 			t.Errorf("Expected 'Send Magic Link' form to NOT be visible for status delivered")
+		}
+	})
+}
+
+// 🟥 RED: Test client users cannot see 'Confirm Delivery' link and see correct Quick Actions
+func TestShipmentDetailClientPermissions(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create company
+	var companyID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create company: %v", err)
+	}
+
+	// Create client user
+	var clientUserID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		"client@company.com", "hashedpassword", models.RoleClient, companyID, time.Now(), time.Now(),
+	).Scan(&clientUserID)
+	if err != nil {
+		t.Fatalf("Failed to create client user: %v", err)
+	}
+
+	// Create software engineer
+	var engineerID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO software_engineers (name, email, address, created_at)
+		VALUES ($1, $2, $3, $4) RETURNING id`,
+		"John Doe", "john@engineer.com", "New York, NY", time.Now(),
+	).Scan(&engineerID)
+	if err != nil {
+		t.Fatalf("Failed to create engineer: %v", err)
+	}
+
+	// Create shipment in transit to engineer status (when Confirm Delivery would be visible)
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (client_company_id, software_engineer_id, status, shipment_type, laptop_count, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		companyID, engineerID, models.ShipmentStatusInTransitToEngineer, models.ShipmentTypeSingleFullJourney, 1, "CLIENT-TEST-1", time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create shipment: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	t.Run("client user does NOT see Confirm Delivery link", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/shipments/%d", shipmentID), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", shipmentID)})
+
+		user := &models.User{
+			ID:              clientUserID,
+			Email:           "client@company.com",
+			Role:            models.RoleClient,
+			ClientCompanyID: &companyID,
+		}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Client should NOT see "Confirm Delivery" link
+		if strings.Contains(body, "Confirm Delivery") {
+			t.Error("Client user should NOT see 'Confirm Delivery' link")
+		}
+
+		// Client should NOT see delivery form link
+		if strings.Contains(body, "/delivery-form") {
+			t.Error("Client user should NOT see delivery form link")
+		}
+	})
+
+	t.Run("client user sees only 'See shipments for company' quick action", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/shipments/%d", shipmentID), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", shipmentID)})
+
+		user := &models.User{
+			ID:              clientUserID,
+			Email:           "client@company.com",
+			Role:            models.RoleClient,
+			ClientCompanyID: &companyID,
+		}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Client should see Quick Actions section
+		if !strings.Contains(body, "Quick Actions") {
+			t.Error("Client user should see 'Quick Actions' section")
+		}
+
+		// Client should see link to company shipments
+		if !strings.Contains(body, "/shipments") {
+			t.Error("Client user should see link to view their company's shipments")
+		}
+
+		// Client should NOT see status update form (logistics only)
+		if strings.Contains(body, "Update Status") && strings.Contains(body, `name="status"`) {
+			t.Error("Client user should NOT see status update form")
+		}
+
+		// Client should NOT see engineer assignment form (logistics only)
+		if strings.Contains(body, "Assign Engineer") {
+			t.Error("Client user should NOT see 'Assign Engineer' form")
+		}
+
+		// Client should NOT see magic link form (logistics only)
+		if strings.Contains(body, "Send Magic Link") && strings.Contains(body, `name="email"`) {
+			t.Error("Client user should NOT see 'Send Magic Link' form")
+		}
+
+		// Client should NOT see reception report link (warehouse only)
+		if strings.Contains(body, "Submit Reception Report") {
+			t.Error("Client user should NOT see 'Submit Reception Report' link")
+		}
+	})
+
+	t.Run("logistics user CAN see Confirm Delivery link for comparison", func(t *testing.T) {
+		// Create logistics user
+		var logisticsUserID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			"logistics@bairesdev.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+		).Scan(&logisticsUserID)
+		if err != nil {
+			t.Fatalf("Failed to create logistics user: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/shipments/%d", shipmentID), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", shipmentID)})
+
+		user := &models.User{
+			ID:    logisticsUserID,
+			Email: "logistics@bairesdev.com",
+			Role:  models.RoleLogistics,
+		}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Logistics user SHOULD see "Confirm Delivery" link for comparison
+		if !strings.Contains(body, "Confirm Delivery") {
+			t.Error("Logistics user SHOULD see 'Confirm Delivery' link")
 		}
 	})
 }

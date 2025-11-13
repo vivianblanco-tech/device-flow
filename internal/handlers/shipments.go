@@ -74,9 +74,14 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 	switch user.Role {
 	case models.RoleClient:
 		// Clients can only see their own company's shipments
-		// Note: In a real app, we'd link user to company via a relationship
-		// For now, we skip this filter and let clients see all shipments
-		// TODO: Add company_id to users table and filter properly
+		if user.ClientCompanyID != nil {
+			baseQuery += fmt.Sprintf(" AND s.client_company_id = $%d", argCount)
+			args = append(args, *user.ClientCompanyID)
+			argCount++
+		} else {
+			// Client user without company_id shouldn't see any shipments
+			baseQuery += " AND FALSE"
+		}
 	case models.RoleWarehouse:
 		// Warehouse users see shipments in transit or at warehouse
 		baseQuery += " AND s.status IN ('in_transit_to_warehouse', 'at_warehouse', 'released_from_warehouse')"

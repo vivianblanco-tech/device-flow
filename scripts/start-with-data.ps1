@@ -89,11 +89,17 @@ Write-Host "  Project Manager:  pm@bairesdev.com" -ForegroundColor White
 Write-Host "  Client Users:     client@techcorp.com, admin@innovate.io" -ForegroundColor White
 Write-Host ""
 Write-Host "Sample Data Features:" -ForegroundColor Cyan
-Write-Host "  * 15 shipments with all statuses" -ForegroundColor Green
-Write-Host "  * Multiple BULK shipments (3-6 laptops)" -ForegroundColor Green
+Write-Host "  * 15 shipments (all statuses and types)" -ForegroundColor Green
+Write-Host "  * 8 client companies with contacts" -ForegroundColor Green  
+Write-Host "  * 22 software engineers" -ForegroundColor Green
 Write-Host "  * 35+ laptops (Dell, HP, Lenovo, Apple, ASUS, Acer)" -ForegroundColor Green
-Write-Host "  * Realistic accessories and detailed notes" -ForegroundColor Green
-Write-Host "  * Complete forms and reports" -ForegroundColor Green
+Write-Host "  * Complete pickup, reception and delivery forms" -ForegroundColor Green
+Write-Host "  * Audit logs and magic links" -ForegroundColor Green
+Write-Host "  * Multiple bulk shipments (2-6 laptops each)" -ForegroundColor Green
+Write-Host ""
+Write-Host "Data Volume:" -ForegroundColor Cyan
+Write-Host "  Users: 14 | Companies: 8 | Engineers: 22" -ForegroundColor White
+Write-Host "  Laptops: 35 | Shipments: 15 | Forms: 15 each" -ForegroundColor White
 Write-Host ""
 Write-Host "Useful Commands:" -ForegroundColor Cyan
 Write-Host "  View logs:        docker compose logs -f" -ForegroundColor Yellow
