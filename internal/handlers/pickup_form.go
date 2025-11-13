@@ -320,15 +320,7 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Extract form values
-	companyIDStr := r.FormValue("client_company_id")
-	companyID, err := strconv.ParseInt(companyIDStr, 10, 64)
-	if err != nil {
-		http.Redirect(w, r, "/pickup-form?error=Invalid+company+ID", http.StatusSeeOther)
-		return
-	}
-
-	// Get shipment type
+	// Get shipment type first (needed to determine if we need client_company_id)
 	shipmentTypeStr := r.FormValue("shipment_type")
 	
 	// Detect legacy form format (no shipment_type and has old fields)
@@ -348,6 +340,41 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 	// Validate shipment type (skip for legacy)
 	if shipmentType != "legacy" && !models.IsValidShipmentType(shipmentType) {
 		http.Redirect(w, r, "/pickup-form?error=Invalid+shipment+type", http.StatusSeeOther)
+		return
+	}
+
+	// Extract company ID
+	var companyID int64
+	companyIDStr := r.FormValue("client_company_id")
+	
+	// For warehouse-to-engineer shipments, extract company ID from laptop if not provided
+	if shipmentType == models.ShipmentTypeWarehouseToEngineer && companyIDStr == "" {
+		laptopIDStr := r.FormValue("laptop_id")
+		if laptopIDStr != "" {
+			laptopID, err := strconv.ParseInt(laptopIDStr, 10, 64)
+			if err == nil {
+				// Query laptop to get associated company ID
+				err = h.DB.QueryRowContext(r.Context(),
+					`SELECT client_company_id FROM laptops WHERE id = $1`,
+					laptopID,
+				).Scan(&companyID)
+				if err != nil {
+					http.Redirect(w, r, "/pickup-form?error=Unable+to+find+laptop+company", http.StatusSeeOther)
+					return
+				}
+			}
+		}
+	} else if companyIDStr != "" {
+		// Parse company ID from form for other shipment types
+		var err error
+		companyID, err = strconv.ParseInt(companyIDStr, 10, 64)
+		if err != nil {
+			http.Redirect(w, r, "/pickup-form?error=Invalid+company+ID", http.StatusSeeOther)
+			return
+		}
+	} else {
+		// Company ID is required for non-warehouse-to-engineer shipments
+		http.Redirect(w, r, "/pickup-form?error=Company+ID+is+required", http.StatusSeeOther)
 		return
 	}
 

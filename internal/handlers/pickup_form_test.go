@@ -1812,3 +1812,137 @@ func TestLogisticsEditShipmentDetails(t *testing.T) {
 		}
 	})
 }
+
+// TestWarehouseToEngineerFormSubmitWithoutCompanyID tests that the handler can extract company ID from the laptop
+func TestWarehouseToEngineerFormSubmitWithoutCompanyID(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test client company
+	var companyID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create logistics user
+	var userID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@bairesdev.com", "$2a$12$test.hash", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create logistics user: %v", err)
+	}
+
+	// Create a bulk shipment that's completed and at warehouse
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at, shipment_type, laptop_count)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		companyID, models.ShipmentStatusAtWarehouse, "TEST-001", time.Now(), time.Now(), models.ShipmentTypeBulkToWarehouse, 1,
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	// Create laptop at warehouse (from bulk shipment)
+	var laptopID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO laptops (serial_number, brand, model, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		"WH-TEST-001", "Dell", "Latitude 5420", models.LaptopStatusAtWarehouse, companyID, time.Now(), time.Now(),
+	).Scan(&laptopID)
+	if err != nil {
+		t.Fatalf("Failed to create test laptop: %v", err)
+	}
+
+	// Link laptop to shipment
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at) VALUES ($1, $2, $3)`,
+		shipmentID, laptopID, time.Now(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to link laptop to shipment: %v", err)
+	}
+
+	// Create reception report for the laptop
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO reception_reports (shipment_id, warehouse_user_id, notes, received_at)
+		VALUES ($1, $2, $3, $4)`,
+		shipmentID, userID, "Test reception", time.Now(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create reception report: %v", err)
+	}
+
+	handler := NewPickupFormHandler(db, nil, nil)
+
+	t.Run("Submit warehouse-to-engineer form without client_company_id field", func(t *testing.T) {
+		// Prepare form data WITHOUT client_company_id field
+		formData := url.Values{}
+		formData.Set("shipment_type", string(models.ShipmentTypeWarehouseToEngineer))
+		formData.Set("laptop_id", strconv.FormatInt(laptopID, 10))
+		formData.Set("engineer_name", "John Doe")
+		formData.Set("engineer_email", "john.doe@bairesdev.com")
+		formData.Set("engineer_address", "123 Main St")
+		formData.Set("engineer_city", "San Francisco")
+		formData.Set("engineer_state", "CA")
+		formData.Set("engineer_zip", "94102")
+		formData.Set("jira_ticket_number", "SCOP-12345")
+		// NOTE: Intentionally NOT setting client_company_id
+
+		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		// Add user to context
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    userID,
+			Email: "logistics@bairesdev.com",
+			Role:  models.RoleLogistics,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.PickupFormSubmit(w, req)
+
+		// Should redirect to shipment detail with success message (not error)
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303 (See Other), got %d", w.Code)
+		}
+
+		location := w.Header().Get("Location")
+		if strings.Contains(location, "error=Invalid+company+ID") {
+			t.Error("Should not have 'Invalid company ID' error - handler should extract company ID from laptop")
+		}
+
+		if !strings.Contains(location, "/shipments/") {
+			t.Errorf("Expected redirect to /shipments/:id, got %s", location)
+		}
+
+		// Verify shipment was created with the correct company ID from the laptop
+		var createdShipmentCompanyID int64
+		err := db.QueryRowContext(ctx,
+			`SELECT client_company_id FROM shipments WHERE shipment_type = $1 ORDER BY id DESC LIMIT 1`,
+			models.ShipmentTypeWarehouseToEngineer,
+		).Scan(&createdShipmentCompanyID)
+		if err != nil {
+			t.Fatalf("Failed to query created shipment: %v", err)
+		}
+
+		if createdShipmentCompanyID != companyID {
+			t.Errorf("Expected shipment to have company ID %d (from laptop), got %d", companyID, createdShipmentCompanyID)
+		}
+	})
+}
