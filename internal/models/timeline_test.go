@@ -265,4 +265,3 @@ func TestBuildTimeline(t *testing.T) {
 		}
 	})
 }
-

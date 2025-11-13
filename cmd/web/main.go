@@ -290,7 +290,10 @@ func main() {
 	protected.HandleFunc("/api/charts/status-distribution", chartsHandler.StatusDistributionAPI).Methods("GET")
 	protected.HandleFunc("/api/charts/delivery-time-trends", chartsHandler.DeliveryTimeTrendsAPI).Methods("GET")
 
-	// Pickup form routes
+	// Pickup forms landing page
+	protected.HandleFunc("/pickup-forms", pickupFormHandler.PickupFormsLandingPage).Methods("GET")
+	
+	// Pickup form routes (legacy)
 	protected.HandleFunc("/pickup-form", pickupFormHandler.PickupFormPage).Methods("GET")
 	protected.HandleFunc("/pickup-form", pickupFormHandler.PickupFormSubmit).Methods("POST")
 	

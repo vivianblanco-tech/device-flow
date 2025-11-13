@@ -25,6 +25,102 @@ func min(a, b int) int {
 	return b
 }
 
+func TestPickupFormsLandingPage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	tests := []struct {
+		name           string
+		userRole       models.UserRole
+		expectOptions  []string // Expected form options to be shown
+	}{
+		{
+			name:     "logistics user sees all three form options",
+			userRole: models.RoleLogistics,
+			expectOptions: []string{
+				"/shipments/create/single",
+				"/shipments/create/bulk",
+				"/shipments/create/warehouse-to-engineer",
+			},
+		},
+		{
+			name:     "client user sees single and bulk form options only",
+			userRole: models.RoleClient,
+			expectOptions: []string{
+				"/shipments/create/single",
+				"/shipments/create/bulk",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test user with specific role
+			ctx := context.Background()
+			var userID int64
+			err := db.QueryRowContext(ctx,
+				`INSERT INTO users (email, password_hash, role, created_at)
+				VALUES ($1, $2, $3, $4) RETURNING id`,
+				"test@example.com", "dummy_hash", tt.userRole, time.Now(),
+			).Scan(&userID)
+			if err != nil {
+				t.Fatalf("Failed to create test user: %v", err)
+			}
+
+			// Create handler
+			handler := NewPickupFormHandler(db, nil, nil)
+
+			// Create request
+			req := httptest.NewRequest("GET", "/pickup-forms", nil)
+			
+			// Add user to context
+			user := &models.User{
+				ID:    userID,
+				Email: "test@example.com",
+				Role:  tt.userRole,
+			}
+			ctx = context.WithValue(req.Context(), middleware.UserContextKey, user)
+			req = req.WithContext(ctx)
+
+			// Record response
+			rr := httptest.NewRecorder()
+
+			// Call handler
+			handler.PickupFormsLandingPage(rr, req)
+
+			// Check status code
+			if status := rr.Code; status != http.StatusOK {
+				t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+			}
+
+			// Check that expected options are present in response
+			body := rr.Body.String()
+			for _, option := range tt.expectOptions {
+				if !strings.Contains(body, option) {
+					t.Errorf("response body missing expected option: %s", option)
+				}
+			}
+
+			// For client users, verify warehouse-to-engineer is NOT shown
+			if tt.userRole == models.RoleClient {
+				if strings.Contains(body, "/shipments/create/warehouse-to-engineer") {
+					t.Error("client user should not see warehouse-to-engineer option")
+				}
+			}
+
+			// Clean up
+			_, err = db.ExecContext(ctx, "DELETE FROM users WHERE id = $1", userID)
+			if err != nil {
+				t.Fatalf("Failed to clean up test user: %v", err)
+			}
+		})
+	}
+}
+
 func TestPickupFormPage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")

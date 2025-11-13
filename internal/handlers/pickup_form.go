@@ -14,6 +14,7 @@ import (
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 	"github.com/yourusername/laptop-tracking-system/internal/validator"
+	"github.com/yourusername/laptop-tracking-system/internal/views"
 )
 
 // PickupFormHandler handles pickup form requests
@@ -29,6 +30,43 @@ func NewPickupFormHandler(db *sql.DB, templates *template.Template, notifier *em
 		DB:        db,
 		Templates: templates,
 		Notifier:  notifier,
+	}
+}
+
+// PickupFormsLandingPage displays the pickup forms landing page with options for different form types
+func (h *PickupFormHandler) PickupFormsLandingPage(w http.ResponseWriter, r *http.Request) {
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Determine which form options to show based on user role
+	showWarehouseToEngineer := user.Role == models.RoleLogistics
+
+	data := map[string]interface{}{
+		"User":                     user,
+		"Nav":                      views.GetNavigationLinks(user.Role),
+		"CurrentPage":              "pickup-forms",
+		"ShowWarehouseToEngineer": showWarehouseToEngineer,
+	}
+
+	if h.Templates != nil {
+		err := h.Templates.ExecuteTemplate(w, "pickup-forms-landing.html", data)
+		if err != nil {
+			http.Error(w, "Failed to render template", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// For testing without templates
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Pickup Forms Landing Page")
+		fmt.Fprintf(w, "/shipments/create/single")
+		fmt.Fprintf(w, "/shipments/create/bulk")
+		if showWarehouseToEngineer {
+			fmt.Fprintf(w, "/shipments/create/warehouse-to-engineer")
+		}
 	}
 }
 
