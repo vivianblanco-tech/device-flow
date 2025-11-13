@@ -94,12 +94,12 @@ func FindOrCreateGoogleUser(ctx context.Context, db *sql.DB, userInfo *GoogleUse
 	var user models.User
 	err := db.QueryRowContext(
 		ctx,
-		`SELECT id, email, password_hash, role, google_id, created_at, updated_at
+		`SELECT id, email, password_hash, role, client_company_id, google_id, created_at, updated_at
 		FROM users
 		WHERE google_id = $1`,
 		userInfo.ID,
 	).Scan(
-		&user.ID, &user.Email, &user.PasswordHash, &user.Role,
+		&user.ID, &user.Email, &user.PasswordHash, &user.Role, &user.ClientCompanyID,
 		&user.GoogleID, &user.CreatedAt, &user.UpdatedAt,
 	)
 
@@ -126,12 +126,12 @@ func FindOrCreateGoogleUser(ctx context.Context, db *sql.DB, userInfo *GoogleUse
 	// User not found, try to find by email
 	err = db.QueryRowContext(
 		ctx,
-		`SELECT id, email, password_hash, role, google_id, created_at, updated_at
+		`SELECT id, email, password_hash, role, client_company_id, google_id, created_at, updated_at
 		FROM users
 		WHERE email = $1`,
 		userInfo.Email,
 	).Scan(
-		&user.ID, &user.Email, &user.PasswordHash, &user.Role,
+		&user.ID, &user.Email, &user.PasswordHash, &user.Role, &user.ClientCompanyID,
 		&user.GoogleID, &user.CreatedAt, &user.UpdatedAt,
 	)
 

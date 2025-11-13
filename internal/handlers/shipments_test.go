@@ -210,7 +210,7 @@ func TestShipmentsListClientCompanyFiltering(t *testing.T) {
 
 	// Create shipments for both companies
 	var shipment1ID, shipment2ID, shipment3ID int64
-	
+
 	// Shipment 1 for Company Alpha
 	err = db.QueryRowContext(ctx,
 		`INSERT INTO shipments (client_company_id, status, shipment_type, laptop_count, jira_ticket_number, created_at, updated_at)
@@ -1353,7 +1353,7 @@ func TestShipmentDetailTimelineData(t *testing.T) {
 		err := db.QueryRowContext(ctx,
 			`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, created_at, updated_at, laptop_count)
 			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-			models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPendingPickup, 
+			models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPendingPickup,
 			"TEST-SINGLE", time.Now(), time.Now(), 1,
 		).Scan(&shipmentID)
 		if err != nil {
@@ -1403,7 +1403,7 @@ func TestShipmentDetailTimelineData(t *testing.T) {
 		err := db.QueryRowContext(ctx,
 			`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, created_at, updated_at, laptop_count)
 			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-			models.ShipmentTypeBulkToWarehouse, companyID, models.ShipmentStatusPendingPickup, 
+			models.ShipmentTypeBulkToWarehouse, companyID, models.ShipmentStatusPendingPickup,
 			"TEST-BULK", time.Now(), time.Now(), 10,
 		).Scan(&shipmentID)
 		if err != nil {
@@ -1463,7 +1463,7 @@ func TestShipmentDetailTimelineData(t *testing.T) {
 		err := db.QueryRowContext(ctx,
 			`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, created_at, updated_at, laptop_count)
 			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-			models.ShipmentTypeWarehouseToEngineer, companyID, models.ShipmentStatusReleasedFromWarehouse, 
+			models.ShipmentTypeWarehouseToEngineer, companyID, models.ShipmentStatusReleasedFromWarehouse,
 			"TEST-WH2ENG", time.Now(), time.Now(), 1,
 		).Scan(&shipmentID)
 		if err != nil {

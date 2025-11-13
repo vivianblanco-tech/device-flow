@@ -83,14 +83,14 @@ func ValidateSession(ctx context.Context, db *sql.DB, token string) (*models.Ses
 		ctx,
 		`SELECT 
 			s.id, s.user_id, s.token, s.expires_at, s.created_at,
-			u.id, u.email, u.password_hash, u.role, u.google_id, u.created_at, u.updated_at
+			u.id, u.email, u.password_hash, u.role, u.client_company_id, u.google_id, u.created_at, u.updated_at
 		FROM sessions s
 		INNER JOIN users u ON s.user_id = u.id
 		WHERE s.token = $1`,
 		token,
 	).Scan(
 		&session.ID, &session.UserID, &session.Token, &session.ExpiresAt, &session.CreatedAt,
-		&user.ID, &user.Email, &user.PasswordHash, &user.Role, &user.GoogleID, &user.CreatedAt, &user.UpdatedAt,
+		&user.ID, &user.Email, &user.PasswordHash, &user.Role, &user.ClientCompanyID, &user.GoogleID, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
