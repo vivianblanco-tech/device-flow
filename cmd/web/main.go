@@ -305,6 +305,16 @@ func main() {
 
 	// Reception report routes
 	protected.HandleFunc("/reception-reports", receptionReportHandler.ReceptionReportsList).Methods("GET")
+	protected.HandleFunc("/reception-reports/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		idStr := vars["id"]
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid report ID", http.StatusBadRequest)
+			return
+		}
+		receptionReportHandler.ReceptionReportDetail(w, r, id)
+	}).Methods("GET")
 	protected.HandleFunc("/reception-report", receptionReportHandler.ReceptionReportPage).Methods("GET")
 	protected.HandleFunc("/reception-report", receptionReportHandler.ReceptionReportSubmit).Methods("POST")
 

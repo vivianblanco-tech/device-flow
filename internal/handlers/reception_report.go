@@ -434,3 +434,119 @@ func (h *ReceptionReportHandler) ReceptionReportsList(w http.ResponseWriter, r *
 	}
 }
 
+// ReceptionReportDetail displays the details of a specific reception report
+func (h *ReceptionReportHandler) ReceptionReportDetail(w http.ResponseWriter, r *http.Request, reportID int64) {
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Only warehouse and logistics users can view reception reports
+	if user.Role != models.RoleWarehouse && user.Role != models.RoleLogistics {
+		http.Error(w, "Forbidden: Only warehouse and logistics users can access this page", http.StatusForbidden)
+		return
+	}
+
+	// Fetch reception report with related data
+	query := `
+		SELECT 
+			rr.id,
+			rr.shipment_id,
+			rr.warehouse_user_id,
+			rr.received_at,
+			rr.notes,
+			rr.photo_urls,
+			rr.expected_serial_number,
+			rr.actual_serial_number,
+			rr.serial_number_corrected,
+			rr.correction_note,
+			rr.correction_approved_by,
+			s.jira_ticket_number,
+			s.shipment_type,
+			s.status as shipment_status,
+			s.laptop_count,
+			c.name as company_name,
+			u.email as warehouse_user_email
+		FROM reception_reports rr
+		JOIN shipments s ON s.id = rr.shipment_id
+		JOIN client_companies c ON c.id = s.client_company_id
+		JOIN users u ON u.id = rr.warehouse_user_id
+		WHERE rr.id = $1
+	`
+
+	type ReceptionReportDetail struct {
+		ID                     int64
+		ShipmentID             int64
+		WarehouseUserID        int64
+		ReceivedAt             time.Time
+		Notes                  string
+		PhotoURLs              []string
+		ExpectedSerialNumber   sql.NullString
+		ActualSerialNumber     sql.NullString
+		SerialNumberCorrected  bool
+		CorrectionNote         sql.NullString
+		CorrectionApprovedBy   sql.NullInt64
+		JiraTicketNumber       string
+		ShipmentType           string
+		ShipmentStatus         string
+		LaptopCount            int
+		CompanyName            string
+		WarehouseUserEmail     string
+	}
+
+	var report ReceptionReportDetail
+	err := h.DB.QueryRowContext(r.Context(), query, reportID).Scan(
+		&report.ID,
+		&report.ShipmentID,
+		&report.WarehouseUserID,
+		&report.ReceivedAt,
+		&report.Notes,
+		(*pq.StringArray)(&report.PhotoURLs),
+		&report.ExpectedSerialNumber,
+		&report.ActualSerialNumber,
+		&report.SerialNumberCorrected,
+		&report.CorrectionNote,
+		&report.CorrectionApprovedBy,
+		&report.JiraTicketNumber,
+		&report.ShipmentType,
+		&report.ShipmentStatus,
+		&report.LaptopCount,
+		&report.CompanyName,
+		&report.WarehouseUserEmail,
+	)
+
+	if err == sql.ErrNoRows {
+		http.Error(w, "Reception report not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Failed to load reception report", http.StatusInternalServerError)
+		return
+	}
+
+	// If templates are available, render the template
+	if h.Templates != nil {
+		data := map[string]interface{}{
+			"User":        user,
+			"Nav":         views.GetNavigationLinks(user.Role),
+			"CurrentPage": "reception-reports",
+			"Report":      report,
+		}
+
+		err := h.Templates.ExecuteTemplate(w, "reception-report-detail.html", data)
+		if err != nil {
+			http.Error(w, "Failed to render template", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// For testing without templates - output plain text with the data
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Reception Report Detail\n")
+		fmt.Fprintf(w, "Company: %s\n", report.CompanyName)
+		fmt.Fprintf(w, "Notes: %s\n", report.Notes)
+		fmt.Fprintf(w, "Warehouse User: %s\n", report.WarehouseUserEmail)
+	}
+}
+
