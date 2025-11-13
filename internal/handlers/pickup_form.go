@@ -353,14 +353,37 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 		if laptopIDStr != "" {
 			laptopID, err := strconv.ParseInt(laptopIDStr, 10, 64)
 			if err == nil {
-				// Query laptop to get associated company ID
+				// Try to get company ID from laptop first
+				var nullableCompanyID sql.NullInt64
 				err = h.DB.QueryRowContext(r.Context(),
 					`SELECT client_company_id FROM laptops WHERE id = $1`,
 					laptopID,
-				).Scan(&companyID)
+				).Scan(&nullableCompanyID)
+				
 				if err != nil {
-					http.Redirect(w, r, "/pickup-form?error=Unable+to+find+laptop+company", http.StatusSeeOther)
+					http.Redirect(w, r, "/shipments/create/warehouse-to-engineer?error=Laptop+not+found", http.StatusSeeOther)
 					return
+				}
+				
+				if nullableCompanyID.Valid {
+					// Laptop has a company ID
+					companyID = nullableCompanyID.Int64
+				} else {
+					// Laptop has NULL company_id, get it from the shipment it came from
+					err = h.DB.QueryRowContext(r.Context(),
+						`SELECT s.client_company_id
+						 FROM shipments s
+						 JOIN shipment_laptops sl ON sl.shipment_id = s.id
+						 WHERE sl.laptop_id = $1
+						 ORDER BY s.created_at DESC
+						 LIMIT 1`,
+						laptopID,
+					).Scan(&companyID)
+					
+					if err != nil {
+						http.Redirect(w, r, "/shipments/create/warehouse-to-engineer?error=Unable+to+find+laptop+company", http.StatusSeeOther)
+						return
+					}
 				}
 			}
 		}
@@ -432,8 +455,8 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 		// Warehouse-to-engineer does not require pickup date
 		shipmentID, err = h.handleWarehouseToEngineerForm(r, user, companyID, includeAccessories)
 		if err != nil {
-			redirectURL := fmt.Sprintf("/pickup-form?error=%s&company_id=%d",
-				err.Error(), companyID)
+			redirectURL := fmt.Sprintf("/shipments/create/warehouse-to-engineer?error=%s",
+				err.Error())
 			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 			return
 		}

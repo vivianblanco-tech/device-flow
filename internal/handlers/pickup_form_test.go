@@ -1945,4 +1945,112 @@ func TestWarehouseToEngineerFormSubmitWithoutCompanyID(t *testing.T) {
 			t.Errorf("Expected shipment to have company ID %d (from laptop), got %d", companyID, createdShipmentCompanyID)
 		}
 	})
+
+	t.Run("Submit warehouse-to-engineer form with laptop that has NULL client_company_id", func(t *testing.T) {
+		// Create another company for the bulk shipment
+		var shipmentCompanyID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO client_companies (name, contact_info, created_at)
+			VALUES ($1, $2, $3) RETURNING id`,
+			"Bulk Shipment Company", json.RawMessage(`{"email":"bulk@company.com"}`), time.Now(),
+		).Scan(&shipmentCompanyID)
+		if err != nil {
+			t.Fatalf("Failed to create shipment company: %v", err)
+		}
+
+		// Create a bulk shipment
+		var bulkShipmentID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at, shipment_type, laptop_count)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			shipmentCompanyID, models.ShipmentStatusAtWarehouse, "BULK-001", time.Now(), time.Now(), models.ShipmentTypeBulkToWarehouse, 1,
+		).Scan(&bulkShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create bulk shipment: %v", err)
+		}
+
+		// Create laptop with NULL client_company_id (typical for bulk shipments)
+		var nullCompanyLaptopID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO laptops (serial_number, brand, model, status, client_company_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, NULL, $5, $6) RETURNING id`,
+			"NULL-COMPANY-001", "HP", "EliteBook 840", models.LaptopStatusAtWarehouse, time.Now(), time.Now(),
+		).Scan(&nullCompanyLaptopID)
+		if err != nil {
+			t.Fatalf("Failed to create laptop with NULL company: %v", err)
+		}
+
+		// Link laptop to shipment
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at) VALUES ($1, $2, $3)`,
+			bulkShipmentID, nullCompanyLaptopID, time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to link laptop to bulk shipment: %v", err)
+		}
+
+		// Create reception report
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO reception_reports (shipment_id, warehouse_user_id, notes, received_at)
+			VALUES ($1, $2, $3, $4)`,
+			bulkShipmentID, userID, "Bulk reception", time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to create reception report: %v", err)
+		}
+
+		// Prepare form data WITHOUT client_company_id field
+		formData := url.Values{}
+		formData.Set("shipment_type", string(models.ShipmentTypeWarehouseToEngineer))
+		formData.Set("laptop_id", strconv.FormatInt(nullCompanyLaptopID, 10))
+		formData.Set("engineer_name", "Jane Smith")
+		formData.Set("engineer_email", "jane.smith@bairesdev.com")
+		formData.Set("engineer_address", "456 Tech St")
+		formData.Set("engineer_city", "Austin")
+		formData.Set("engineer_state", "TX")
+		formData.Set("engineer_zip", "78701")
+		formData.Set("jira_ticket_number", "SCOP-67890")
+
+		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		// Add user to context
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    userID,
+			Email: "logistics@bairesdev.com",
+			Role:  models.RoleLogistics,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.PickupFormSubmit(w, req)
+
+		// Should succeed by extracting company from the shipment
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303 (See Other), got %d", w.Code)
+		}
+
+		location := w.Header().Get("Location")
+		if strings.Contains(location, "error=Unable+to+find+laptop+company") {
+			t.Error("Should not have 'Unable to find laptop company' error - handler should extract company from shipment")
+		}
+
+		if !strings.Contains(location, "/shipments/") {
+			t.Errorf("Expected redirect to /shipments/:id, got %s", location)
+		}
+
+		// Verify shipment was created with the correct company ID from the bulk shipment
+		var createdShipmentCompanyID int64
+		err = db.QueryRowContext(ctx,
+			`SELECT client_company_id FROM shipments WHERE shipment_type = $1 ORDER BY id DESC LIMIT 1`,
+			models.ShipmentTypeWarehouseToEngineer,
+		).Scan(&createdShipmentCompanyID)
+		if err != nil {
+			t.Fatalf("Failed to query created shipment: %v", err)
+		}
+
+		if createdShipmentCompanyID != shipmentCompanyID {
+			t.Errorf("Expected shipment to have company ID %d (from bulk shipment), got %d", shipmentCompanyID, createdShipmentCompanyID)
+		}
+	})
 }
