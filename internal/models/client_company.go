@@ -1,7 +1,9 @@
 package models
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -51,5 +53,42 @@ func (c *ClientCompany) BeforeUpdate() {
 // This is a placeholder that will be properly implemented with database queries
 func (c *ClientCompany) GetActiveUsersCount() int {
 	return len(c.Users)
+}
+
+// GetAllClientCompanies retrieves all client companies from the database
+func GetAllClientCompanies(db interface{ Query(query string, args ...interface{}) (*sql.Rows, error) }) ([]ClientCompany, error) {
+	query := `
+		SELECT id, name, contact_info, created_at, updated_at
+		FROM client_companies
+		ORDER BY name ASC
+	`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query client companies: %w", err)
+	}
+	defer rows.Close()
+
+	var companies []ClientCompany
+	for rows.Next() {
+		var company ClientCompany
+		err := rows.Scan(
+			&company.ID,
+			&company.Name,
+			&company.ContactInfo,
+			&company.CreatedAt,
+			&company.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan client company: %w", err)
+		}
+		companies = append(companies, company)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating client companies: %w", err)
+	}
+
+	return companies, nil
 }
 

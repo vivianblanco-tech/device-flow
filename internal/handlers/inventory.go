@@ -131,10 +131,19 @@ func (h *InventoryHandler) AddLaptopPage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Get all client companies
+	companies, err := models.GetAllClientCompanies(h.DB)
+	if err != nil {
+		log.Printf("Error getting client companies: %v", err)
+		http.Error(w, "Failed to load client companies", http.StatusInternalServerError)
+		return
+	}
+
 	// Prepare template data
 	data := map[string]interface{}{
-		"User":     user,
-		"Statuses": models.GetLaptopStatusesForNewLaptop(),
+		"User":      user,
+		"Statuses":  models.GetLaptopStatusesForNewLaptop(),
+		"Companies": companies,
 	}
 
 	// Execute template using pre-parsed global templates
@@ -174,6 +183,17 @@ func (h *InventoryHandler) AddLaptopSubmit(w http.ResponseWriter, r *http.Reques
 		RAMGB:        r.FormValue("ram_gb"),
 		SSDGB:        r.FormValue("ssd_gb"),
 		Status:       models.LaptopStatus(r.FormValue("status")),
+	}
+
+	// Parse client company ID (required field)
+	clientCompanyIDStr := r.FormValue("client_company_id")
+	if clientCompanyIDStr != "" {
+		clientCompanyID, err := strconv.ParseInt(clientCompanyIDStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid client company ID", http.StatusBadRequest)
+			return
+		}
+		laptop.ClientCompanyID = &clientCompanyID
 	}
 
 	// Create laptop
@@ -219,12 +239,21 @@ func (h *InventoryHandler) EditLaptopPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Get all client companies
+	companies, err := models.GetAllClientCompanies(h.DB)
+	if err != nil {
+		log.Printf("Error getting client companies: %v", err)
+		http.Error(w, "Failed to load client companies", http.StatusInternalServerError)
+		return
+	}
+
 	// Prepare template data
 	data := map[string]interface{}{
-		"User":     user,
-		"Laptop":   laptop,
-		"Statuses": models.GetLaptopStatusesInOrder(),
-		"IsEdit":   true,
+		"User":      user,
+		"Laptop":    laptop,
+		"Statuses":  models.GetLaptopStatusesInOrder(),
+		"Companies": companies,
+		"IsEdit":    true,
 	}
 
 	// Execute template using pre-parsed global templates
@@ -280,6 +309,19 @@ func (h *InventoryHandler) UpdateLaptopSubmit(w http.ResponseWriter, r *http.Req
 	laptop.RAMGB = r.FormValue("ram_gb")
 	laptop.SSDGB = r.FormValue("ssd_gb")
 	laptop.Status = models.LaptopStatus(r.FormValue("status"))
+
+	// Parse client company ID
+	clientCompanyIDStr := r.FormValue("client_company_id")
+	if clientCompanyIDStr != "" {
+		clientCompanyID, err := strconv.ParseInt(clientCompanyIDStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid client company ID", http.StatusBadRequest)
+			return
+		}
+		laptop.ClientCompanyID = &clientCompanyID
+	} else {
+		laptop.ClientCompanyID = nil
+	}
 
 	// Update laptop
 	if err := models.UpdateLaptop(h.DB, laptop); err != nil {

@@ -37,6 +37,31 @@
                     <p class="mt-1 text-sm text-gray-500">Unique identifier for the laptop</p>
                 </div>
 
+                <!-- Client Company -->
+                <div class="mb-6">
+                    <label for="client_company_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        Client Company <span class="text-red-500">*</span>
+                    </label>
+                    <select 
+                        id="client_company_id" 
+                        name="client_company_id"
+                        required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="">Select a company...</option>
+                        {{$currentCompanyID := ""}}
+                        {{if and .Laptop .Laptop.ClientCompanyID}}
+                            {{$currentCompanyID = printf "%d" (index .Laptop.ClientCompanyID)}}
+                        {{end}}
+                        {{range .Companies}}
+                        <option value="{{.ID}}" {{if eq $currentCompanyID (printf "%d" .ID)}}selected{{end}}>
+                            {{.Name}}
+                        </option>
+                        {{end}}
+                    </select>
+                    <p class="mt-1 text-sm text-gray-500">The company that owns this laptop</p>
+                </div>
+
                 <!-- Brand -->
                 <div class="mb-6">
                     <label for="brand" class="block text-sm font-medium text-gray-700 mb-2">
