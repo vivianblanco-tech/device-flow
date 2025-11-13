@@ -304,6 +304,7 @@ func main() {
 	protected.HandleFunc("/shipments/create/warehouse-to-engineer", pickupFormHandler.WarehouseToEngineerFormPage).Methods("GET")
 
 	// Reception report routes
+	protected.HandleFunc("/reception-reports", receptionReportHandler.ReceptionReportsList).Methods("GET")
 	protected.HandleFunc("/reception-report", receptionReportHandler.ReceptionReportPage).Methods("GET")
 	protected.HandleFunc("/reception-report", receptionReportHandler.ReceptionReportSubmit).Methods("POST")
 

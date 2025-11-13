@@ -34,9 +34,9 @@ func TestPickupFormsLandingPage(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name           string
-		userRole       models.UserRole
-		expectOptions  []string // Expected form options to be shown
+		name          string
+		userRole      models.UserRole
+		expectOptions []string // Expected form options to be shown
 	}{
 		{
 			name:     "logistics user sees all three form options",
@@ -76,7 +76,7 @@ func TestPickupFormsLandingPage(t *testing.T) {
 
 			// Create request
 			req := httptest.NewRequest("GET", "/pickup-forms", nil)
-			
+
 			// Add user to context
 			user := &models.User{
 				ID:    userID,

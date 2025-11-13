@@ -19,6 +19,7 @@ import (
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 	"github.com/yourusername/laptop-tracking-system/internal/validator"
+	"github.com/yourusername/laptop-tracking-system/internal/views"
 )
 
 const (
@@ -306,5 +307,130 @@ func (h *ReceptionReportHandler) ReceptionReportSubmit(w http.ResponseWriter, r 
 	// Redirect to success page or shipment detail
 	redirectURL := fmt.Sprintf("/shipments/%d?success=Reception+report+submitted+successfully", shipmentID)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// ReceptionReportsList displays a list of all reception reports
+func (h *ReceptionReportHandler) ReceptionReportsList(w http.ResponseWriter, r *http.Request) {
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Only warehouse and logistics users can view reception reports list
+	if user.Role != models.RoleWarehouse && user.Role != models.RoleLogistics {
+		http.Error(w, "Forbidden: Only warehouse and logistics users can access this page", http.StatusForbidden)
+		return
+	}
+
+	// Build query to fetch reception reports with related data
+	query := `
+		SELECT 
+			rr.id,
+			rr.shipment_id,
+			rr.warehouse_user_id,
+			rr.received_at,
+			rr.notes,
+			rr.photo_urls,
+			rr.expected_serial_number,
+			rr.actual_serial_number,
+			rr.serial_number_corrected,
+			rr.correction_note,
+			rr.correction_approved_by,
+			s.jira_ticket_number,
+			s.shipment_type,
+			s.status as shipment_status,
+			c.name as company_name,
+			u.email as warehouse_user_email
+		FROM reception_reports rr
+		JOIN shipments s ON s.id = rr.shipment_id
+		JOIN client_companies c ON c.id = s.client_company_id
+		JOIN users u ON u.id = rr.warehouse_user_id
+		ORDER BY rr.received_at DESC
+	`
+
+	rows, err := h.DB.QueryContext(r.Context(), query)
+	if err != nil {
+		http.Error(w, "Failed to load reception reports", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type ReceptionReportRow struct {
+		ID                     int64
+		ShipmentID             int64
+		WarehouseUserID        int64
+		ReceivedAt             time.Time
+		Notes                  string
+		PhotoURLs              []string
+		ExpectedSerialNumber   sql.NullString
+		ActualSerialNumber     sql.NullString
+		SerialNumberCorrected  bool
+		CorrectionNote         sql.NullString
+		CorrectionApprovedBy   sql.NullInt64
+		JiraTicketNumber       string
+		ShipmentType           string
+		ShipmentStatus         string
+		CompanyName            string
+		WarehouseUserEmail     string
+	}
+
+	var receptionReports []ReceptionReportRow
+	for rows.Next() {
+		var row ReceptionReportRow
+		err := rows.Scan(
+			&row.ID,
+			&row.ShipmentID,
+			&row.WarehouseUserID,
+			&row.ReceivedAt,
+			&row.Notes,
+			(*pq.StringArray)(&row.PhotoURLs),
+			&row.ExpectedSerialNumber,
+			&row.ActualSerialNumber,
+			&row.SerialNumberCorrected,
+			&row.CorrectionNote,
+			&row.CorrectionApprovedBy,
+			&row.JiraTicketNumber,
+			&row.ShipmentType,
+			&row.ShipmentStatus,
+			&row.CompanyName,
+			&row.WarehouseUserEmail,
+		)
+		if err != nil {
+			http.Error(w, "Failed to parse reception reports", http.StatusInternalServerError)
+			return
+		}
+		receptionReports = append(receptionReports, row)
+	}
+
+	if err = rows.Err(); err != nil {
+		http.Error(w, "Failed to load reception reports", http.StatusInternalServerError)
+		return
+	}
+
+	// If templates are available, render the template
+	if h.Templates != nil {
+		data := map[string]interface{}{
+			"User":             user,
+			"Nav":              views.GetNavigationLinks(user.Role),
+			"CurrentPage":      "reception-reports",
+			"ReceptionReports": receptionReports,
+		}
+		
+		err := h.Templates.ExecuteTemplate(w, "reception-reports-list.html", data)
+		if err != nil {
+			http.Error(w, "Failed to render template", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// For testing without templates - output plain text with the data
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Reception Reports List\n")
+		for _, rr := range receptionReports {
+			fmt.Fprintf(w, "Company: %s, User: %s, Notes: %s\n", 
+				rr.CompanyName, rr.WarehouseUserEmail, rr.Notes)
+		}
+	}
 }
 
