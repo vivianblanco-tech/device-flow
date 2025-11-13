@@ -219,20 +219,32 @@
                         {{end}}
 
                         <!-- Laptop Information -->
-                        {{if or (index .PickupFormData "laptop_serial_number") (index .PickupFormData "laptop_specs") (index .PickupFormData "engineer_name")}}
+                        {{if or (index .PickupFormData "laptop_serial_number") (index .PickupFormData "laptop_model") (index .PickupFormData "laptop_ram_gb") (index .PickupFormData "laptop_ssd_gb") (index .PickupFormData "engineer_name")}}
                         <div class="mb-4">
                             <h5 class="text-sm font-semibold text-gray-700 mb-3">Laptop Information</h5>
                             <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {{if index .PickupFormData "laptop_serial_number"}}
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Serial Number</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "laptop_serial_number"}}</dd>
+                                    <dd class="mt-1 text-sm text-gray-900 font-mono">{{index .PickupFormData "laptop_serial_number"}}</dd>
                                 </div>
                                 {{end}}
-                                {{if index .PickupFormData "laptop_specs"}}
+                                {{if index .PickupFormData "laptop_model"}}
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Specifications</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "laptop_specs"}}</dd>
+                                    <dt class="text-sm font-medium text-gray-500">Model</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "laptop_model"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "laptop_ram_gb"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">RAM</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "laptop_ram_gb"}}</dd>
+                                </div>
+                                {{end}}
+                                {{if index .PickupFormData "laptop_ssd_gb"}}
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">SSD Storage</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{index .PickupFormData "laptop_ssd_gb"}}</dd>
                                 </div>
                                 {{end}}
                                 {{if index .PickupFormData "engineer_name"}}
@@ -489,10 +501,26 @@
                         <div class="border border-gray-200 rounded-lg p-4">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <p class="font-medium text-gray-900">{{.Brand}} {{.Model}}</p>
+                                    <p class="font-medium text-gray-900">{{if .Brand}}{{.Brand}} {{end}}{{.Model}}</p>
                                     <p class="text-sm text-gray-500 font-mono">SN: {{.SerialNumber}}</p>
-                                    {{if .Specs}}
-                                    <p class="text-sm text-gray-600 mt-1">{{.Specs}}</p>
+                                    {{if or .RAMGB .SSDGB}}
+                                    <p class="text-sm text-gray-600 mt-1">
+                                        {{if .RAMGB}}<span class="inline-flex items-center">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                                            </svg>
+                                            {{.RAMGB}} RAM
+                                        </span>{{end}}
+                                        {{if and .RAMGB .SSDGB}} • {{end}}
+                                        {{if .SSDGB}}<span class="inline-flex items-center">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z"/>
+                                                <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z"/>
+                                                <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z"/>
+                                            </svg>
+                                            {{.SSDGB}} SSD
+                                        </span>{{end}}
+                                    </p>
                                     {{end}}
                                 </div>
                                 <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
