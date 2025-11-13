@@ -61,6 +61,34 @@
                         <dt class="text-sm font-medium text-gray-500">Model</dt>
                         <dd class="mt-1 text-lg text-gray-900">{{if .Laptop.Model}}{{.Laptop.Model}}{{else}}-{{end}}</dd>
                     </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">RAM</dt>
+                        <dd class="mt-1 text-lg text-gray-900">
+                            {{if .Laptop.RAMGB}}
+                            <span class="inline-flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                                </svg>
+                                {{.Laptop.RAMGB}}
+                            </span>
+                            {{else}}-{{end}}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">SSD Storage</dt>
+                        <dd class="mt-1 text-lg text-gray-900">
+                            {{if .Laptop.SSDGB}}
+                            <span class="inline-flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z"/>
+                                    <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z"/>
+                                    <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z"/>
+                                </svg>
+                                {{.Laptop.SSDGB}}
+                            </span>
+                            {{else}}-{{end}}
+                        </dd>
+                    </div>
                     <div class="md:col-span-2">
                         <dt class="text-sm font-medium text-gray-500">Assigned to Software Engineer</dt>
                         <dd class="mt-1 text-base text-gray-900">
@@ -69,10 +97,6 @@
                                 {{if .Laptop.SoftwareEngineerID}}<span class="text-sm text-gray-600">(Employee ID: {{.Laptop.SoftwareEngineerID}})</span>{{end}}
                             {{else}}-{{end}}
                         </dd>
-                    </div>
-                    <div class="md:col-span-2">
-                        <dt class="text-sm font-medium text-gray-500">Specifications</dt>
-                        <dd class="mt-1 text-base text-gray-900">{{if .Laptop.Specs}}{{.Laptop.Specs}}{{else}}-{{end}}</dd>
                     </div>
                 </dl>
             </div>
