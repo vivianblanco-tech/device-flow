@@ -172,5 +172,97 @@ func TestBuildTimeline(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("timeline for single_full_journey shipment shows full timeline", func(t *testing.T) {
+		now := time.Now()
+		shipment := Shipment{
+			ShipmentType:        ShipmentTypeSingleFullJourney,
+			Status:              ShipmentStatusPendingPickup,
+			PickupScheduledDate: &now,
+		}
+
+		timeline := BuildTimeline(&shipment)
+
+		// Should have all 8 statuses from Pending Pickup to Delivered
+		if len(timeline) != 8 {
+			t.Errorf("Single full journey should have 8 timeline items, got %d", len(timeline))
+		}
+
+		// Verify first and last statuses
+		if timeline[0].Status != ShipmentStatusPendingPickup {
+			t.Errorf("First status should be Pending Pickup, got %s", timeline[0].Status)
+		}
+		if timeline[len(timeline)-1].Status != ShipmentStatusDelivered {
+			t.Errorf("Last status should be Delivered, got %s", timeline[len(timeline)-1].Status)
+		}
+	})
+
+	t.Run("timeline for bulk_to_warehouse shipment shows only pickup to warehouse", func(t *testing.T) {
+		now := time.Now()
+		shipment := Shipment{
+			ShipmentType:        ShipmentTypeBulkToWarehouse,
+			Status:              ShipmentStatusPendingPickup,
+			PickupScheduledDate: &now,
+		}
+
+		timeline := BuildTimeline(&shipment)
+
+		// Should have only 5 statuses from Pending Pickup to At Warehouse
+		if len(timeline) != 5 {
+			t.Errorf("Bulk to warehouse should have 5 timeline items, got %d", len(timeline))
+		}
+
+		// Verify first and last statuses
+		if timeline[0].Status != ShipmentStatusPendingPickup {
+			t.Errorf("First status should be Pending Pickup, got %s", timeline[0].Status)
+		}
+		if timeline[len(timeline)-1].Status != ShipmentStatusAtWarehouse {
+			t.Errorf("Last status should be At Warehouse, got %s", timeline[len(timeline)-1].Status)
+		}
+
+		// Verify it doesn't include warehouse release or delivery statuses
+		for _, item := range timeline {
+			if item.Status == ShipmentStatusReleasedFromWarehouse ||
+				item.Status == ShipmentStatusInTransitToEngineer ||
+				item.Status == ShipmentStatusDelivered {
+				t.Errorf("Bulk to warehouse timeline should not include status %s", item.Status)
+			}
+		}
+	})
+
+	t.Run("timeline for warehouse_to_engineer shipment shows only warehouse to delivery", func(t *testing.T) {
+		now := time.Now()
+		shipment := Shipment{
+			ShipmentType:        ShipmentTypeWarehouseToEngineer,
+			Status:              ShipmentStatusReleasedFromWarehouse,
+			ReleasedWarehouseAt: &now,
+		}
+
+		timeline := BuildTimeline(&shipment)
+
+		// Should have only 3 statuses from Released from Warehouse to Delivered
+		if len(timeline) != 3 {
+			t.Errorf("Warehouse to engineer should have 3 timeline items, got %d", len(timeline))
+		}
+
+		// Verify first and last statuses
+		if timeline[0].Status != ShipmentStatusReleasedFromWarehouse {
+			t.Errorf("First status should be Released from Warehouse, got %s", timeline[0].Status)
+		}
+		if timeline[len(timeline)-1].Status != ShipmentStatusDelivered {
+			t.Errorf("Last status should be Delivered, got %s", timeline[len(timeline)-1].Status)
+		}
+
+		// Verify it doesn't include client pickup statuses
+		for _, item := range timeline {
+			if item.Status == ShipmentStatusPendingPickup ||
+				item.Status == ShipmentStatusPickupScheduled ||
+				item.Status == ShipmentStatusPickedUpFromClient ||
+				item.Status == ShipmentStatusInTransitToWarehouse ||
+				item.Status == ShipmentStatusAtWarehouse {
+				t.Errorf("Warehouse to engineer timeline should not include status %s", item.Status)
+			}
+		}
+	})
 }
 

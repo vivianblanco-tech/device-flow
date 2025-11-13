@@ -16,6 +16,10 @@ type TimelineItem struct {
 }
 
 // BuildTimeline creates a complete timeline from the shipment's current state
+// The timeline is filtered based on shipment type:
+// - single_full_journey: Full timeline from pickup to delivery
+// - bulk_to_warehouse: Only pickup to warehouse arrival
+// - warehouse_to_engineer: Only warehouse release to delivery
 func BuildTimeline(s *Shipment) []TimelineItem {
 	// All possible statuses in order
 	allStatuses := []struct {
@@ -77,9 +81,30 @@ func BuildTimeline(s *Shipment) []TimelineItem {
 		},
 	}
 
-	// Find the index of the current status
+	// Filter statuses based on shipment type
+	var filteredStatuses []struct {
+		Status    ShipmentStatus
+		Label     string
+		Icon      string
+		IsTransit bool
+		GetTime   func(*Shipment) *time.Time
+	}
+
+	switch s.ShipmentType {
+	case ShipmentTypeBulkToWarehouse:
+		// Only show pickup to warehouse arrival (first 5 statuses)
+		filteredStatuses = allStatuses[:5]
+	case ShipmentTypeWarehouseToEngineer:
+		// Only show warehouse release to delivery (last 3 statuses)
+		filteredStatuses = allStatuses[5:]
+	default:
+		// Single full journey or unspecified: show all statuses
+		filteredStatuses = allStatuses
+	}
+
+	// Find the index of the current status in the filtered list
 	currentStatusIndex := -1
-	for i, statusInfo := range allStatuses {
+	for i, statusInfo := range filteredStatuses {
 		if statusInfo.Status == s.Status {
 			currentStatusIndex = i
 			break
@@ -87,8 +112,8 @@ func BuildTimeline(s *Shipment) []TimelineItem {
 	}
 
 	// Build timeline items
-	timeline := make([]TimelineItem, 0, len(allStatuses))
-	for i, statusInfo := range allStatuses {
+	timeline := make([]TimelineItem, 0, len(filteredStatuses))
+	for i, statusInfo := range filteredStatuses {
 		timestamp := statusInfo.GetTime(s)
 		
 		item := TimelineItem{

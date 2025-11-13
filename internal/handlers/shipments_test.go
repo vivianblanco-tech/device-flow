@@ -1146,6 +1146,176 @@ func TestShipmentDetailTimelineData(t *testing.T) {
 			t.Error("Timeline should use distinct color (orange/yellow) for 'In Transit' statuses")
 		}
 	})
+
+	t.Run("single_full_journey timeline shows all statuses", func(t *testing.T) {
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, created_at, updated_at, laptop_count)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPendingPickup, 
+			"TEST-SINGLE", time.Now(), time.Now(), 1,
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		templates := loadTestTemplates(t)
+		handler := NewShipmentsHandler(db, templates, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Should include all 8 statuses
+		allStatuses := []string{
+			"Pending Pickup",
+			"Pickup Scheduled",
+			"Picked Up from Client",
+			"In Transit to Warehouse",
+			"Arrived at Warehouse",
+			"Released from Warehouse",
+			"In Transit to Engineer",
+			"Delivered Successfully",
+		}
+
+		for _, status := range allStatuses {
+			if !strings.Contains(body, status) {
+				t.Errorf("Single full journey timeline should include '%s'", status)
+			}
+		}
+	})
+
+	t.Run("bulk_to_warehouse timeline shows only pickup to warehouse", func(t *testing.T) {
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, created_at, updated_at, laptop_count)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			models.ShipmentTypeBulkToWarehouse, companyID, models.ShipmentStatusPendingPickup, 
+			"TEST-BULK", time.Now(), time.Now(), 10,
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		templates := loadTestTemplates(t)
+		handler := NewShipmentsHandler(db, templates, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Should include only pickup to warehouse statuses
+		includedStatuses := []string{
+			"Pending Pickup",
+			"Pickup Scheduled",
+			"Picked Up from Client",
+			"In Transit to Warehouse",
+			"Arrived at Warehouse",
+		}
+
+		for _, status := range includedStatuses {
+			if !strings.Contains(body, status) {
+				t.Errorf("Bulk to warehouse timeline should include '%s'", status)
+			}
+		}
+
+		// Should NOT include warehouse release and delivery statuses
+		excludedStatuses := []string{
+			"Released from Warehouse",
+			"In Transit to Engineer",
+			"Delivered Successfully",
+		}
+
+		for _, status := range excludedStatuses {
+			if strings.Contains(body, status) {
+				t.Errorf("Bulk to warehouse timeline should NOT include '%s'", status)
+			}
+		}
+	})
+
+	t.Run("warehouse_to_engineer timeline shows only warehouse to delivery", func(t *testing.T) {
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, created_at, updated_at, laptop_count)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			models.ShipmentTypeWarehouseToEngineer, companyID, models.ShipmentStatusReleasedFromWarehouse, 
+			"TEST-WH2ENG", time.Now(), time.Now(), 1,
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		templates := loadTestTemplates(t)
+		handler := NewShipmentsHandler(db, templates, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Should include only warehouse to delivery statuses
+		includedStatuses := []string{
+			"Released from Warehouse",
+			"In Transit to Engineer",
+			"Delivered Successfully",
+		}
+
+		for _, status := range includedStatuses {
+			if !strings.Contains(body, status) {
+				t.Errorf("Warehouse to engineer timeline should include '%s'", status)
+			}
+		}
+
+		// Should NOT include client pickup and warehouse arrival statuses
+		excludedStatuses := []string{
+			"Pending Pickup",
+			"Pickup Scheduled",
+			"Picked Up from Client",
+			"In Transit to Warehouse",
+			"Arrived at Warehouse",
+		}
+
+		for _, status := range excludedStatuses {
+			if strings.Contains(body, status) {
+				t.Errorf("Warehouse to engineer timeline should NOT include '%s'", status)
+			}
+		}
+	})
 }
 
 func TestUpdateShipmentStatus(t *testing.T) {
