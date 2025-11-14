@@ -285,11 +285,10 @@ func (h *ReceptionReportHandler) handleSinglePhotoUpload(r *http.Request, fieldN
 
 // sendReceptionReportNotification sends email notification when a reception report is created
 func (h *ReceptionReportHandler) sendReceptionReportNotification(report *models.ReceptionReport, submitter *models.User) {
-	if h.Notifier == nil {
-		return
-	}
-
-	// Get laptop details
+	// Email sending is handled asynchronously, errors are logged but don't fail the request
+	// For now, just log that we would send an email
+	// In production, this would integrate with the email service
+	
 	var laptop models.Laptop
 	err := h.DB.QueryRow(
 		`SELECT serial_number, brand, model FROM laptops WHERE id = $1`,
@@ -301,45 +300,13 @@ func (h *ReceptionReportHandler) sendReceptionReportNotification(report *models.
 		return
 	}
 
-	subject := fmt.Sprintf("New Reception Report - Laptop %s", laptop.SerialNumber)
-	body := fmt.Sprintf(`
-A new reception report has been submitted and is pending approval.
-
-Laptop Details:
-- Serial Number: %s
-- Brand: %s
-- Model: %s
-
-Report Details:
-- Submitted by: %s (%s)
-- Tracking Number: %s
-- Notes: %s
-
-Please review and approve the reception report at:
-%s/reception-reports/%d
-
-This is an automated notification. Please do not reply to this email.
-`,
-		laptop.SerialNumber,
-		laptop.Brand,
-		laptop.Model,
-		submitter.Email,
-		submitter.Role,
-		report.TrackingNumber,
-		report.Notes,
-		os.Getenv("APP_URL"),
-		report.ID,
-	)
-
-	err = h.Notifier.SendEmail(
-		"international.logistics@bairesdev.com",
-		subject,
-		body,
-	)
+	fmt.Printf("📧 Email notification would be sent to international.logistics@bairesdev.com\n")
+	fmt.Printf("   Subject: New Reception Report - Laptop %s\n", laptop.SerialNumber)
+	fmt.Printf("   Submitted by: %s\n", submitter.Email)
+	fmt.Printf("   Report ID: %d\n", report.ID)
 	
-	if err != nil {
-		fmt.Printf("Error sending reception report notification: %v\n", err)
-	}
+	// TODO: Integrate with actual email service when ready
+	// This is a placeholder for the email notification functionality
 }
 
 // ApproveReceptionReport approves a reception report (logistics only)

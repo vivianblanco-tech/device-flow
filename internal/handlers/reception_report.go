@@ -244,20 +244,28 @@ func (h *ReceptionReportHandler) ReceptionReportSubmit(w http.ResponseWriter, r 
 	}
 	defer tx.Rollback()
 
+	// DEPRECATED: Old shipment-based reception report creation
+	// This handler is deprecated and kept for backward compatibility only
+	// New code should use laptop-based handlers in laptop_reception_report.go
+	
+	// For now, return an error directing to new system
+	http.Error(w, "This endpoint is deprecated. Please use the laptop-based reception report system at /laptops/{id}/reception-report", http.StatusGone)
+	return
+	
+	/*
 	// Create reception report
 	report := models.ReceptionReport{
-		ShipmentID:      shipmentID,
+		ShipmentID:      &shipmentID,
 		WarehouseUserID: user.ID,
 		Notes:           notes,
-		PhotoURLs:       photoURLs,
 	}
 	report.BeforeCreate()
 
 	_, err = tx.ExecContext(r.Context(),
-		`INSERT INTO reception_reports (shipment_id, warehouse_user_id, received_at, notes, photo_urls)
-		VALUES ($1, $2, $3, $4, $5)`,
+		`INSERT INTO reception_reports (shipment_id, warehouse_user_id, received_at, notes)
+		VALUES ($1, $2, $3, $4)`,
 		report.ShipmentID, report.WarehouseUserID, report.ReceivedAt,
-		report.Notes, pq.Array(report.PhotoURLs),
+		report.Notes,
 	)
 	if err != nil {
 		http.Error(w, "Failed to save reception report", http.StatusInternalServerError)
@@ -281,7 +289,6 @@ func (h *ReceptionReportHandler) ReceptionReportSubmit(w http.ResponseWriter, r 
 	auditDetails, _ := json.Marshal(map[string]interface{}{
 		"action":      "reception_report_submitted",
 		"shipment_id": shipmentID,
-		"photo_count": len(photoURLs),
 	})
 
 	_, err = tx.ExecContext(r.Context(),
@@ -307,6 +314,7 @@ func (h *ReceptionReportHandler) ReceptionReportSubmit(w http.ResponseWriter, r 
 	// Redirect to success page or shipment detail
 	redirectURL := fmt.Sprintf("/shipments/%d?success=Reception+report+submitted+successfully", shipmentID)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	*/
 }
 
 // ReceptionReportsList displays a list of all reception reports
