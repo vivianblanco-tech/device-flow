@@ -19,6 +19,7 @@ type CompleteShipmentDetailsInput struct {
 	PickupTimeSlot         string
 	SpecialInstructions    string
 	LaptopSerialNumber     string
+	LaptopBrand            string
 	LaptopModel            string
 	LaptopRAMGB            string
 	LaptopSSDGB            string
@@ -53,6 +54,14 @@ func ValidateCompleteShipmentDetails(input CompleteShipmentDetailsInput) error {
 	// Laptop serial number validation (REQUIRED for completing shipment details)
 	if strings.TrimSpace(input.LaptopSerialNumber) == "" {
 		return errors.New("laptop serial number is required")
+	}
+
+	// Laptop brand validation (REQUIRED)
+	if strings.TrimSpace(input.LaptopBrand) == "" {
+		return errors.New("laptop brand is required")
+	}
+	if len(input.LaptopBrand) > 100 {
+		return errors.New("laptop brand must be less than 100 characters")
 	}
 
 	// Laptop model validation (REQUIRED)

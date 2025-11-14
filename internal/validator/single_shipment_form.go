@@ -23,6 +23,7 @@ type SingleFullJourneyFormInput struct {
 
 	// Laptop information (required)
 	LaptopSerialNumber string
+	LaptopBrand        string
 	LaptopModel        string
 	LaptopRAMGB        string
 	LaptopSSDGB        string
@@ -65,6 +66,14 @@ func ValidateSingleFullJourneyForm(input SingleFullJourneyFormInput) error {
 	// Laptop serial number validation (REQUIRED)
 	if strings.TrimSpace(input.LaptopSerialNumber) == "" {
 		return errors.New("laptop serial number is required")
+	}
+
+	// Laptop brand validation (REQUIRED)
+	if strings.TrimSpace(input.LaptopBrand) == "" {
+		return errors.New("laptop brand is required")
+	}
+	if len(input.LaptopBrand) > 100 {
+		return errors.New("laptop brand must be less than 100 characters")
 	}
 
 	// Laptop model validation (REQUIRED)

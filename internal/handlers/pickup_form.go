@@ -548,6 +548,7 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 		JiraTicketNumber:       r.FormValue("jira_ticket_number"),
 		SpecialInstructions:    r.FormValue("special_instructions"),
 		LaptopSerialNumber:     r.FormValue("laptop_serial_number"),
+		LaptopBrand:            r.FormValue("laptop_brand"),
 		LaptopModel:            r.FormValue("laptop_model"),
 		LaptopRAMGB:            r.FormValue("laptop_ram_gb"),
 		LaptopSSDGB:            r.FormValue("laptop_ssd_gb"),
@@ -596,6 +597,7 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 	// Auto-create laptop record
 	laptop := models.Laptop{
 		SerialNumber:    formInput.LaptopSerialNumber,
+		Brand:           formInput.LaptopBrand,
 		Model:           formInput.LaptopModel,
 		RAMGB:           formInput.LaptopRAMGB,
 		SSDGB:           formInput.LaptopSSDGB,
@@ -606,10 +608,10 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 
 	var laptopID int64
 	err = tx.QueryRowContext(r.Context(),
-		`INSERT INTO laptops (serial_number, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id`,
-		laptop.SerialNumber, laptop.Model, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID,
+		laptop.SerialNumber, laptop.Brand, laptop.Model, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID,
 		laptop.CreatedAt, laptop.UpdatedAt,
 	).Scan(&laptopID)
 	if err != nil {
@@ -640,6 +642,7 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 		"jira_ticket_number":      formInput.JiraTicketNumber,
 		"special_instructions":    formInput.SpecialInstructions,
 		"laptop_serial_number":    formInput.LaptopSerialNumber,
+		"laptop_brand":            formInput.LaptopBrand,
 		"laptop_model":            formInput.LaptopModel,
 		"laptop_ram_gb":           formInput.LaptopRAMGB,
 		"laptop_ssd_gb":           formInput.LaptopSSDGB,
@@ -1447,6 +1450,7 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 		PickupTimeSlot:         r.FormValue("pickup_time_slot"),
 		SpecialInstructions:    r.FormValue("special_instructions"),
 		LaptopSerialNumber:     r.FormValue("laptop_serial_number"),
+		LaptopBrand:            r.FormValue("laptop_brand"),
 		LaptopModel:            r.FormValue("laptop_model"),
 		LaptopRAMGB:            r.FormValue("laptop_ram_gb"),
 		LaptopSSDGB:            r.FormValue("laptop_ssd_gb"),
@@ -1488,6 +1492,7 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 	// Create laptop record
 	laptop := models.Laptop{
 		SerialNumber:    formInput.LaptopSerialNumber,
+		Brand:           formInput.LaptopBrand,
 		Model:           formInput.LaptopModel,
 		RAMGB:           formInput.LaptopRAMGB,
 		SSDGB:           formInput.LaptopSSDGB,
@@ -1498,10 +1503,10 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 
 	var laptopID int64
 	err = tx.QueryRowContext(r.Context(),
-		`INSERT INTO laptops (serial_number, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id`,
-		laptop.SerialNumber, laptop.Model, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID,
+		laptop.SerialNumber, laptop.Brand, laptop.Model, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID,
 		laptop.CreatedAt, laptop.UpdatedAt,
 	).Scan(&laptopID)
 	if err != nil {
@@ -1554,6 +1559,7 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 		"pickup_time_slot":        formInput.PickupTimeSlot,
 		"special_instructions":    formInput.SpecialInstructions,
 		"laptop_serial_number":    formInput.LaptopSerialNumber,
+		"laptop_brand":            formInput.LaptopBrand,
 		"laptop_model":            formInput.LaptopModel,
 		"laptop_ram_gb":           formInput.LaptopRAMGB,
 		"laptop_ssd_gb":           formInput.LaptopSSDGB,
