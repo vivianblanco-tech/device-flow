@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Reception Report - Laptop Tracking System</title>
+    <link rel="stylesheet" href="/static/css/output.css" />
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900">Create Reception Report</h2>
+                    <p class="mt-2 text-gray-600">Document the receipt of laptop at warehouse</p>
+                </div>
+                <a href="/inventory/{{.Laptop.ID}}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                    ← Back to Laptop
+                </a>
+            </div>
+        </div>
+
+        <!-- Error/Success Messages -->
+        {{if .Error}}
+        <div class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800">Error</h3>
+                    <p class="text-sm text-red-700 mt-1">{{.Error}}</p>
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        {{if .Success}}
+        <div class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-green-800">Success</h3>
+                    <p class="text-sm text-green-700 mt-1">{{.Success}}</p>
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Laptop Information Card -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Laptop Information</h3>
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Serial Number</dt>
+                    <dd class="mt-1 text-sm text-gray-900 font-semibold">{{.Laptop.SerialNumber}}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Brand & Model</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{.Laptop.Brand}} {{.Laptop.Model}}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Specifications</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{.Laptop.RAMGB}} RAM, {{.Laptop.SSDGB}} SSD</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Status</dt>
+                    <dd class="mt-1">
+                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            Received at Warehouse
+                        </span>
+                    </dd>
+                </div>
+                {{if .ClientCompanyName}}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Client Company</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{.ClientCompanyName}}</dd>
+                </div>
+                {{end}}
+                {{if .TrackingNumber}}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Tracking Number</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{.TrackingNumber}}</dd>
+                </div>
+                {{end}}
+            </dl>
+        </div>
+
+        <!-- Reception Report Form -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Reception Report Details</h3>
+            
+            <form action="/laptops/{{.Laptop.ID}}/reception-report" method="POST" enctype="multipart/form-data" class="space-y-6">
+                <!-- Notes -->
+                <div>
+                    <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">
+                        Notes
+                    </label>
+                    <textarea id="notes" name="notes" rows="4"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Document any observations, condition notes, or issues..."></textarea>
+                    <p class="mt-1 text-sm text-gray-500">Optional: Add any relevant notes about the laptop condition or receipt process.</p>
+                </div>
+
+                <!-- Required Photos Section -->
+                <div class="border-t border-gray-200 pt-6">
+                    <h4 class="text-md font-semibold text-gray-900 mb-4">Required Photos <span class="text-red-500">*</span></h4>
+                    <p class="text-sm text-gray-600 mb-4">All three photos are required to create the reception report.</p>
+                    
+                    <div class="space-y-4">
+                        <!-- Photo 1: Serial Number -->
+                        <div>
+                            <label for="photo_serial_number" class="block text-sm font-medium text-gray-700 mb-2">
+                                1. Serial Number Verification <span class="text-red-500">*</span>
+                            </label>
+                            <input type="file" id="photo_serial_number" name="photo_serial_number" accept="image/*" required
+                                class="block w-full text-sm text-gray-500
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-md file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-blue-50 file:text-blue-700
+                                    hover:file:bg-blue-100" />
+                            <p class="mt-1 text-sm text-gray-500">Clear photo of the laptop's serial number sticker</p>
+                        </div>
+
+                        <!-- Photo 2: External Condition -->
+                        <div>
+                            <label for="photo_external_condition" class="block text-sm font-medium text-gray-700 mb-2">
+                                2. External Condition <span class="text-red-500">*</span>
+                            </label>
+                            <input type="file" id="photo_external_condition" name="photo_external_condition" accept="image/*" required
+                                class="block w-full text-sm text-gray-500
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-md file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-blue-50 file:text-blue-700
+                                    hover:file:bg-blue-100" />
+                            <p class="mt-1 text-sm text-gray-500">Photo showing the overall external condition of the laptop</p>
+                        </div>
+
+                        <!-- Photo 3: Working Condition -->
+                        <div>
+                            <label for="photo_working_condition" class="block text-sm font-medium text-gray-700 mb-2">
+                                3. Working Condition (Powered On) <span class="text-red-500">*</span>
+                            </label>
+                            <input type="file" id="photo_working_condition" name="photo_working_condition" accept="image/*" required
+                                class="block w-full text-sm text-gray-500
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-md file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-blue-50 file:text-blue-700
+                                    hover:file:bg-blue-100" />
+                            <p class="mt-1 text-sm text-gray-500">Photo of the laptop powered on and displaying the operating system</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                    <a href="/inventory/{{.Laptop.ID}}"
+                        class="px-6 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                        class="px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Create Reception Report
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Info Box -->
+        <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-blue-800">About Reception Reports</h3>
+                    <div class="mt-2 text-sm text-blue-700">
+                        <p>Reception reports document the receipt of individual laptops at the warehouse. After submission:</p>
+                        <ul class="list-disc list-inside mt-2 space-y-1">
+                            <li>A notification will be sent to international.logistics@bairesdev.com</li>
+                            <li>The report will be pending approval from logistics</li>
+                            <li>Once approved, the laptop status will change to "Available at Warehouse"</li>
+                            <li>The laptop can then be assigned to software engineers</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

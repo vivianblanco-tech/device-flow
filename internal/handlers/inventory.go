@@ -102,10 +102,21 @@ func (h *InventoryHandler) LaptopDetail(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Get reception report if laptop is at warehouse
+	var receptionReport *models.ReceptionReport
+	if laptop.Status == models.LaptopStatusAtWarehouse {
+		receptionReport, err = models.GetLaptopReceptionReport(r.Context(), h.DB, id)
+		if err != nil {
+			log.Printf("Error getting reception report: %v", err)
+			// Don't fail the request, just log the error
+		}
+	}
+
 	// Prepare template data
 	data := map[string]interface{}{
-		"User":   user,
-		"Laptop": laptop,
+		"User":            user,
+		"Laptop":          laptop,
+		"ReceptionReport": receptionReport,
 	}
 
 	// Execute template using pre-parsed global templates

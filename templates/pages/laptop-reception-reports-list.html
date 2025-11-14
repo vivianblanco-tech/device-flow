@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reception Reports - Laptop Tracking System</title>
+    <link rel="stylesheet" href="/static/css/output.css" />
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">Reception Reports</h2>
+            <p class="mt-2 text-gray-600">View all warehouse reception reports for individual laptops</p>
+        </div>
+
+        <!-- Reception Reports Table -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            {{if .ReceptionReports}}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Report ID
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Laptop
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Company
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Tracking #
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Received At
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Warehouse User
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {{range .ReceptionReports}}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                #{{.ID}}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-blue-600">
+                                    <a href="/inventory/{{.LaptopID}}" class="hover:underline">
+                                        {{.LaptopSerialNumber}}
+                                    </a>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    {{.LaptopBrand}} {{.LaptopModel}}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{if .CompanyName.Valid}}
+                                    {{.CompanyName.String}}
+                                {{else}}
+                                    <span class="text-gray-400">-</span>
+                                {{end}}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{if .TrackingNumber.Valid}}
+                                    {{.TrackingNumber.String}}
+                                {{else}}
+                                    <span class="text-gray-400">-</span>
+                                {{end}}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{.ReceivedAt.Format "Jan 2, 2006 3:04 PM"}}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{.WarehouseUserEmail}}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                {{if eq .Status "approved"}}
+                                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        ✓ Approved
+                                    </span>
+                                    {{if .ApprovedAt.Valid}}
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        {{.ApprovedAt.Time.Format "Jan 2, 15:04"}}
+                                    </div>
+                                    {{end}}
+                                {{else if eq .Status "pending_approval"}}
+                                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        ⏳ Pending Approval
+                                    </span>
+                                {{end}}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <a href="/reception-reports/{{.ID}}" class="text-blue-600 hover:text-blue-900 mr-3">
+                                    View Details
+                                </a>
+                                <a href="/inventory/{{.LaptopID}}" class="text-gray-600 hover:text-gray-900">
+                                    View Laptop
+                                </a>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No reception reports</h3>
+                <p class="mt-1 text-sm text-gray-500">No warehouse reception reports have been created yet.</p>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Summary Stats -->
+        {{if .ReceptionReports}}
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Total Reports</p>
+                        <p class="text-2xl font-semibold text-gray-900">{{len .ReceptionReports}}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Pending Approval</p>
+                        <p class="text-2xl font-semibold text-gray-900">
+                            {{$pendingCount := 0}}
+                            {{range .ReceptionReports}}
+                                {{if eq .Status "pending_approval"}}
+                                    {{$pendingCount = add $pendingCount 1}}
+                                {{end}}
+                            {{end}}
+                            {{$pendingCount}}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Approved</p>
+                        <p class="text-2xl font-semibold text-gray-900">
+                            {{$approvedCount := 0}}
+                            {{range .ReceptionReports}}
+                                {{if eq .Status "approved"}}
+                                    {{$approvedCount = add $approvedCount 1}}
+                                {{end}}
+                            {{end}}
+                            {{$approvedCount}}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Info Box -->
+        <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-blue-800">About Reception Reports</h3>
+                    <div class="mt-2 text-sm text-blue-700">
+                        <p>Reception reports are created by warehouse users when they receive individual laptops. Each report documents:</p>
+                        <ul class="list-disc list-inside mt-2 space-y-1">
+                            <li>Receipt date and time</li>
+                            <li>Three required photos: serial number, external condition, and working condition</li>
+                            <li>Condition notes and observations</li>
+                            <li>Approval status - must be approved by logistics before laptop becomes available</li>
+                        </ul>
+                        <p class="mt-2">Reports with "Pending Approval" status need to be reviewed and approved by logistics users.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

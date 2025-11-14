@@ -284,6 +284,22 @@ func main() {
 	protected.HandleFunc("/inventory/{id:[0-9]+}/edit", inventoryHandler.EditLaptopPage).Methods("GET")
 	protected.HandleFunc("/inventory/{id:[0-9]+}/update", inventoryHandler.UpdateLaptopSubmit).Methods("POST")
 	protected.HandleFunc("/inventory/{id:[0-9]+}/delete", inventoryHandler.DeleteLaptop).Methods("POST")
+	
+	// Laptop reception report routes (laptop-based)
+	protected.HandleFunc("/laptops/{id:[0-9]+}/reception-report", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		idStr := vars["id"]
+		laptopID, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid laptop ID", http.StatusBadRequest)
+			return
+		}
+		if r.Method == "GET" {
+			receptionReportHandler.LaptopReceptionReportPage(w, r, laptopID)
+		} else {
+			receptionReportHandler.LaptopReceptionReportSubmit(w, r, laptopID)
+		}
+	}).Methods("GET", "POST")
 
 	// Chart API endpoints
 	protected.HandleFunc("/api/charts/shipments-over-time", chartsHandler.ShipmentsOverTimeAPI).Methods("GET")
@@ -303,8 +319,8 @@ func main() {
 	protected.HandleFunc("/shipments/create/bulk", pickupFormHandler.BulkShipmentFormPage).Methods("GET")
 	protected.HandleFunc("/shipments/create/warehouse-to-engineer", pickupFormHandler.WarehouseToEngineerFormPage).Methods("GET")
 
-	// Reception report routes
-	protected.HandleFunc("/reception-reports", receptionReportHandler.ReceptionReportsList).Methods("GET")
+	// Reception report routes (laptop-based)
+	protected.HandleFunc("/reception-reports", receptionReportHandler.LaptopBasedReceptionReportsList).Methods("GET")
 	protected.HandleFunc("/reception-reports/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		idStr := vars["id"]
@@ -315,6 +331,18 @@ func main() {
 		}
 		receptionReportHandler.ReceptionReportDetail(w, r, id)
 	}).Methods("GET")
+	protected.HandleFunc("/reception-reports/{id:[0-9]+}/approve", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		idStr := vars["id"]
+		reportID, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid report ID", http.StatusBadRequest)
+			return
+		}
+		receptionReportHandler.ApproveReceptionReport(w, r, reportID)
+	}).Methods("POST")
+	
+	// Legacy reception report routes (shipment-based - deprecated)
 	protected.HandleFunc("/reception-report", receptionReportHandler.ReceptionReportPage).Methods("GET")
 	protected.HandleFunc("/reception-report", receptionReportHandler.ReceptionReportSubmit).Methods("POST")
 

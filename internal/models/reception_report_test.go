@@ -8,7 +8,7 @@ import (
 func TestReceptionReport_LaptopBasedStructure(t *testing.T) {
 	shipmentID := int64(100)
 	clientCompanyID := int64(5)
-	
+
 	report := &ReceptionReport{
 		LaptopID:               1,
 		ShipmentID:             &shipmentID, // Reference only
