@@ -11,6 +11,7 @@ import (
 
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
+	"github.com/yourusername/laptop-tracking-system/internal/views"
 )
 
 // LaptopReceptionReportPage displays the reception report form for a specific laptop
