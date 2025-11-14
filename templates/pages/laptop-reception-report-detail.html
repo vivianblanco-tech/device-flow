@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reception Report #{{.Report.ID}} - Laptop Tracking System</title>
+    <link rel="stylesheet" href="/static/css/output.css" />
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <div class="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Back Button -->
+        <div class="mb-4">
+            <a href="/reception-reports" class="text-sm text-blue-600 hover:text-blue-800">
+                ← Back to Reception Reports
+            </a>
+        </div>
+
+        <!-- Header with Status -->
+        <div class="mb-8 flex items-center justify-between">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-900">Reception Report #{{.Report.ID}}</h2>
+                <p class="mt-2 text-gray-600">
+                    Laptop: <a href="/inventory/{{.Report.LaptopID}}" class="text-blue-600 hover:text-blue-800 font-medium">
+                        {{.Report.LaptopSerial}}
+                    </a>
+                </p>
+            </div>
+            <div>
+                {{if eq .Report.Status "approved"}}
+                <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    ✓ Approved
+                </span>
+                {{else if eq .Report.Status "pending_approval"}}
+                <span class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                    ⏳ Pending Approval
+                </span>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Success/Error Messages -->
+        {{if .Success}}
+        <div class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+            <div class="flex">
+                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                <p class="ml-3 text-sm text-green-700">{{.Success}}</p>
+            </div>
+        </div>
+        {{end}}
+
+        {{if .Error}}
+        <div class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div class="flex">
+                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+                <p class="ml-3 text-sm text-red-700">{{.Error}}</p>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Laptop Information -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Laptop Information</h3>
+                    <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Serial Number</dt>
+                            <dd class="mt-1 text-sm text-gray-900 font-mono">{{.Report.LaptopSerial}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Brand & Model</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{.Report.LaptopBrand}} {{.Report.LaptopModel}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Current Status</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{.Report.LaptopStatus}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">View Laptop</dt>
+                            <dd class="mt-1">
+                                <a href="/inventory/{{.Report.LaptopID}}" class="text-sm text-blue-600 hover:text-blue-800">
+                                    View Full Details →
+                                </a>
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <!-- Report Information -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Report Information</h3>
+                    <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Report ID</dt>
+                            <dd class="mt-1 text-sm text-gray-900 font-medium">#{{.Report.ID}}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Received At</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                {{.Report.ReceivedAt.Format "January 2, 2006 at 3:04 PM"}}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Warehouse User</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{.Report.WarehouseUserEmail}}</dd>
+                        </div>
+                        {{if .Report.CompanyName.Valid}}
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Client Company</dt>
+                            <dd class="mt-1 text-sm text-gray-900 font-medium">{{.Report.CompanyName.String}}</dd>
+                        </div>
+                        {{end}}
+                        {{if .Report.TrackingNumber.Valid}}
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Tracking Number</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{.Report.TrackingNumber.String}}</dd>
+                        </div>
+                        {{end}}
+                    </dl>
+                </div>
+
+                <!-- Photos -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Documentation Photos</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 mb-2">Serial Number</p>
+                            <a href="{{.Report.PhotoSerialNumber}}" target="_blank">
+                                <img src="{{.Report.PhotoSerialNumber}}" alt="Serial Number" class="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500 transition-colors cursor-pointer">
+                            </a>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 mb-2">External Condition</p>
+                            <a href="{{.Report.PhotoExternalCondition}}" target="_blank">
+                                <img src="{{.Report.PhotoExternalCondition}}" alt="External Condition" class="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500 transition-colors cursor-pointer">
+                            </a>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 mb-2">Working Condition</p>
+                            <a href="{{.Report.PhotoWorkingCondition}}" target="_blank">
+                                <img src="{{.Report.PhotoWorkingCondition}}" alt="Working Condition" class="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500 transition-colors cursor-pointer">
+                            </a>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-3">Click on any photo to view full size</p>
+                </div>
+
+                <!-- Notes -->
+                {{if .Report.Notes}}
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
+                    <p class="text-sm text-gray-700 whitespace-pre-wrap">{{.Report.Notes}}</p>
+                </div>
+                {{end}}
+            </div>
+
+            <!-- Right Column -->
+            <div class="space-y-6">
+                <!-- Approval Status -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Approval Status</h3>
+                    
+                    {{if eq .Report.Status "pending_approval"}}
+                    <div class="mb-4">
+                        <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            ⏳ Pending Approval
+                        </span>
+                        <p class="text-sm text-gray-600 mt-3">
+                            This report is awaiting approval from a logistics user.
+                        </p>
+                    </div>
+                    
+                    {{if eq .User.Role "logistics"}}
+                    <form action="/reception-reports/{{.Report.ID}}/approve" method="POST" class="mt-4">
+                        <button type="submit" 
+                            class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Approve Report
+                        </button>
+                    </form>
+                    <p class="text-xs text-gray-500 mt-2">
+                        Approving will change the laptop status to "Available at Warehouse"
+                    </p>
+                    {{end}}
+                    
+                    {{else if eq .Report.Status "approved"}}
+                    <div class="mb-4">
+                        <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            ✓ Approved
+                        </span>
+                    </div>
+                    
+                    <dl class="mt-4 space-y-3">
+                        {{if .Report.ApproverEmail.Valid}}
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Approved By</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{.Report.ApproverEmail.String}}</dd>
+                        </div>
+                        {{end}}
+                        {{if .Report.ApprovedAt.Valid}}
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Approved At</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                {{.Report.ApprovedAt.Time.Format "Jan 2, 2006 3:04 PM"}}
+                            </dd>
+                        </div>
+                        {{end}}
+                    </dl>
+                    {{end}}
+                </div>
+
+                <!-- Timeline -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Timeline</h3>
+                    <div class="space-y-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <svg class="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-900">Created</p>
+                                <p class="text-xs text-gray-500">{{.Report.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}</p>
+                            </div>
+                        </div>
+                        
+                        {{if eq .Report.Status "approved"}}
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <div class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                                    <svg class="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-gray-900">Approved</p>
+                                <p class="text-xs text-gray-500">{{.Report.ApprovedAt.Time.Format "Jan 2, 2006 3:04 PM"}}</p>
+                            </div>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

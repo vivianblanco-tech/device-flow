@@ -442,7 +442,7 @@ func (h *ReceptionReportHandler) ReceptionReportsList(w http.ResponseWriter, r *
 	}
 }
 
-// ReceptionReportDetail displays the details of a specific reception report
+// ReceptionReportDetail displays the details of a specific reception report (laptop-based)
 func (h *ReceptionReportHandler) ReceptionReportDetail(w http.ResponseWriter, r *http.Request, reportID int64) {
 	// Get user from context
 	user := middleware.GetUserFromContext(r.Context())
@@ -457,72 +457,91 @@ func (h *ReceptionReportHandler) ReceptionReportDetail(w http.ResponseWriter, r 
 		return
 	}
 
-	// Fetch reception report with related data
+	// Fetch reception report with related data using new laptop-based schema
 	query := `
 		SELECT 
 			rr.id,
+			rr.laptop_id,
 			rr.shipment_id,
+			rr.client_company_id,
+			rr.tracking_number,
 			rr.warehouse_user_id,
 			rr.received_at,
 			rr.notes,
-			rr.photo_urls,
-			rr.expected_serial_number,
-			rr.actual_serial_number,
-			rr.serial_number_corrected,
-			rr.correction_note,
-			rr.correction_approved_by,
-			s.jira_ticket_number,
-			s.shipment_type,
-			s.status as shipment_status,
-			s.laptop_count,
-			c.name as company_name,
-			u.email as warehouse_user_email
+			rr.photo_serial_number,
+			rr.photo_external_condition,
+			rr.photo_working_condition,
+			rr.status,
+			rr.approved_by,
+			rr.approved_at,
+			rr.created_at,
+			rr.updated_at,
+			l.serial_number as laptop_serial,
+			l.brand as laptop_brand,
+			l.model as laptop_model,
+			l.status as laptop_status,
+			cc.name as company_name,
+			u.email as warehouse_user_email,
+			approver.email as approver_email
 		FROM reception_reports rr
-		JOIN shipments s ON s.id = rr.shipment_id
-		JOIN client_companies c ON c.id = s.client_company_id
+		JOIN laptops l ON l.id = rr.laptop_id
+		LEFT JOIN client_companies cc ON cc.id = rr.client_company_id
 		JOIN users u ON u.id = rr.warehouse_user_id
+		LEFT JOIN users approver ON approver.id = rr.approved_by
 		WHERE rr.id = $1
 	`
 
 	type ReceptionReportDetail struct {
 		ID                     int64
-		ShipmentID             int64
+		LaptopID               int64
+		ShipmentID             sql.NullInt64
+		ClientCompanyID        sql.NullInt64
+		TrackingNumber         sql.NullString
 		WarehouseUserID        int64
 		ReceivedAt             time.Time
 		Notes                  string
-		PhotoURLs              []string
-		ExpectedSerialNumber   sql.NullString
-		ActualSerialNumber     sql.NullString
-		SerialNumberCorrected  bool
-		CorrectionNote         sql.NullString
-		CorrectionApprovedBy   sql.NullInt64
-		JiraTicketNumber       string
-		ShipmentType           string
-		ShipmentStatus         string
-		LaptopCount            int
-		CompanyName            string
+		PhotoSerialNumber      string
+		PhotoExternalCondition string
+		PhotoWorkingCondition  string
+		Status                 string
+		ApprovedBy             sql.NullInt64
+		ApprovedAt             sql.NullTime
+		CreatedAt              time.Time
+		UpdatedAt              time.Time
+		LaptopSerial           string
+		LaptopBrand            string
+		LaptopModel            string
+		LaptopStatus           string
+		CompanyName            sql.NullString
 		WarehouseUserEmail     string
+		ApproverEmail          sql.NullString
 	}
 
 	var report ReceptionReportDetail
 	err := h.DB.QueryRowContext(r.Context(), query, reportID).Scan(
 		&report.ID,
+		&report.LaptopID,
 		&report.ShipmentID,
+		&report.ClientCompanyID,
+		&report.TrackingNumber,
 		&report.WarehouseUserID,
 		&report.ReceivedAt,
 		&report.Notes,
-		(*pq.StringArray)(&report.PhotoURLs),
-		&report.ExpectedSerialNumber,
-		&report.ActualSerialNumber,
-		&report.SerialNumberCorrected,
-		&report.CorrectionNote,
-		&report.CorrectionApprovedBy,
-		&report.JiraTicketNumber,
-		&report.ShipmentType,
-		&report.ShipmentStatus,
-		&report.LaptopCount,
+		&report.PhotoSerialNumber,
+		&report.PhotoExternalCondition,
+		&report.PhotoWorkingCondition,
+		&report.Status,
+		&report.ApprovedBy,
+		&report.ApprovedAt,
+		&report.CreatedAt,
+		&report.UpdatedAt,
+		&report.LaptopSerial,
+		&report.LaptopBrand,
+		&report.LaptopModel,
+		&report.LaptopStatus,
 		&report.CompanyName,
 		&report.WarehouseUserEmail,
+		&report.ApproverEmail,
 	)
 
 	if err == sql.ErrNoRows {
@@ -543,7 +562,7 @@ func (h *ReceptionReportHandler) ReceptionReportDetail(w http.ResponseWriter, r 
 			"Report":      report,
 		}
 
-		err := h.Templates.ExecuteTemplate(w, "reception-report-detail.html", data)
+		err := h.Templates.ExecuteTemplate(w, "laptop-reception-report-detail.html", data)
 		if err != nil {
 			http.Error(w, "Failed to render template", http.StatusInternalServerError)
 			return
