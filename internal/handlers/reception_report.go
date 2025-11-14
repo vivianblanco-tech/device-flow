@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
+	// "encoding/json" // Not used in laptop-based reception reports
 	"fmt"
 	"html/template"
 	"io"
