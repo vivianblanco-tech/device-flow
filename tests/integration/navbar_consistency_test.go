@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/yourusername/laptop-tracking-system/internal/database"
+	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/handlers"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
@@ -27,6 +28,17 @@ func TestNavbarConsistencyAcrossPages(t *testing.T) {
 
 	// Load templates with navigation helper function
 	templates := loadTemplatesWithNavigation(t)
+
+	// Setup email client and notifier for ShipmentsHandler
+	emailClient, err := email.NewClient(email.Config{
+		Host: "localhost",
+		Port: 1025,
+		From: "test@example.com",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create email client: %v", err)
+	}
+	emailNotifier := email.NewNotifier(emailClient, db)
 
 	tests := []struct {
 		name              string
@@ -75,7 +87,7 @@ func TestNavbarConsistencyAcrossPages(t *testing.T) {
 		},
 		{
 			name:             "Shipments page for warehouse user",
-			handler:          handlers.NewShipmentsHandler(db, templates).ShipmentsList,
+			handler:          handlers.NewShipmentsHandler(db, templates, emailNotifier).ShipmentsList,
 			path:             "/shipments",
 			userRole:         models.RoleWarehouse,
 			expectedStatus:   http.StatusOK,
@@ -93,7 +105,7 @@ func TestNavbarConsistencyAcrossPages(t *testing.T) {
 		},
 		{
 			name:             "Shipments page for client user",
-			handler:          handlers.NewShipmentsHandler(db, templates).ShipmentsList,
+			handler:          handlers.NewShipmentsHandler(db, templates, emailNotifier).ShipmentsList,
 			path:             "/shipments",
 			userRole:         models.RoleClient,
 			expectedStatus:   http.StatusOK,
@@ -287,6 +299,9 @@ func loadTemplatesWithNavigation(t *testing.T) *template.Template {
 		},
 		"inventoryStatusColor": func(status models.LaptopStatus) string {
 			return "bg-gray-100 text-gray-800"
+		},
+		"laptopStatusDisplayName": func(status models.LaptopStatus) string {
+			return models.GetLaptopStatusDisplayName(status)
 		},
 	}
 

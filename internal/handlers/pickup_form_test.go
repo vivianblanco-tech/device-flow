@@ -333,7 +333,9 @@ func TestPickupFormHandler_SubmitSingleFullJourney(t *testing.T) {
 			"pickup_time_slot":     {"morning"},
 			"jira_ticket_number":   {"SCOP-12345"},
 			"laptop_serial_number": {"ABC123456"},
-			"laptop_specs":         {"Dell XPS 15, 16GB RAM"},
+			"laptop_model":         {"Dell XPS 15"},
+			"laptop_ram_gb":        {"16"},
+			"laptop_ssd_gb":        {"512"},
 			"engineer_name":        {"Jane Smith"},
 			"include_accessories":  {"false"},
 		}
@@ -414,7 +416,9 @@ func TestPickupFormHandler_SubmitSingleFullJourney(t *testing.T) {
 			"pickup_time_slot":     {"morning"},
 			"jira_ticket_number":   {"SCOP-12346"},
 			"laptop_serial_number": {"DEF789012"},
-			"laptop_specs":         {"Lenovo ThinkPad"},
+			"laptop_model":         {"Lenovo ThinkPad"},
+			"laptop_ram_gb":        {"16"},
+			"laptop_ssd_gb":        {"512"},
 			// engineer_name is optional
 			"include_accessories": {"false"},
 		}
@@ -766,9 +770,9 @@ func TestPickupFormHandler_SubmitWarehouseToEngineer(t *testing.T) {
 	// Create available laptop with reception report (simulating it came from a bulk shipment)
 	var laptopID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO laptops (serial_number, status, client_company_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		"WAREHOUSE-LAPTOP-001", models.LaptopStatusAvailable, &companyID, time.Now(), time.Now(),
+		`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+		"WAREHOUSE-LAPTOP-001", "Dell", "Latitude 5420", "16", "512", models.LaptopStatusAvailable, &companyID, time.Now(), time.Now(),
 	).Scan(&laptopID)
 	if err != nil {
 		t.Fatalf("Failed to create laptop: %v", err)
@@ -1013,20 +1017,18 @@ func TestSingleShipmentFormPage(t *testing.T) {
 			t.Errorf("Expected status 200, got %d", w.Code)
 		}
 
-		// Verify template contains required fields for single shipment
+		// Verify template contains required fields for minimal single shipment creation
 		body := w.Body.String()
-		if !strings.Contains(body, "laptop_serial_number") {
-			t.Error("Expected form to contain laptop_serial_number field")
-		}
-		if !strings.Contains(body, "laptop_specs") {
-			t.Error("Expected form to contain laptop_specs field")
-		}
-		if !strings.Contains(body, "engineer_name") {
-			t.Error("Expected form to contain engineer_name field")
-		}
 		if !strings.Contains(body, "single_full_journey") {
 			t.Error("Expected form to have shipment_type set to single_full_journey")
 		}
+		if !strings.Contains(body, "jira_ticket_number") {
+			t.Error("Expected form to contain jira_ticket_number field")
+		}
+		if !strings.Contains(body, "client_company_id") {
+			t.Error("Expected form to contain client_company_id field")
+		}
+		// Note: Detailed fields like laptop info are now filled via magic link after creation
 	})
 }
 
@@ -1066,26 +1068,18 @@ func TestBulkShipmentFormPage(t *testing.T) {
 			t.Errorf("Expected status 200, got %d", w.Code)
 		}
 
-		// Verify template contains required fields for bulk shipment
+		// Verify template contains required fields for minimal bulk shipment creation
 		body := w.Body.String()
-		if !strings.Contains(body, "number_of_laptops") {
-			t.Error("Expected form to contain number_of_laptops field")
-		}
-		if !strings.Contains(body, "bulk_length") {
-			t.Error("Expected form to contain bulk_length field")
-		}
-		if !strings.Contains(body, "bulk_width") {
-			t.Error("Expected form to contain bulk_width field")
-		}
-		if !strings.Contains(body, "bulk_height") {
-			t.Error("Expected form to contain bulk_height field")
-		}
-		if !strings.Contains(body, "bulk_weight") {
-			t.Error("Expected form to contain bulk_weight field")
-		}
 		if !strings.Contains(body, "bulk_to_warehouse") {
 			t.Error("Expected form to have shipment_type set to bulk_to_warehouse")
 		}
+		if !strings.Contains(body, "jira_ticket_number") {
+			t.Error("Expected form to contain jira_ticket_number field")
+		}
+		if !strings.Contains(body, "client_company_id") {
+			t.Error("Expected form to contain client_company_id field")
+		}
+		// Note: Detailed fields like dimensions and laptop count are now filled via magic link after creation
 	})
 }
 
@@ -1132,9 +1126,9 @@ func TestWarehouseToEngineerFormPage(t *testing.T) {
 	// Create laptop at warehouse (from bulk shipment)
 	var laptopID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO laptops (serial_number, brand, model, status, client_company_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-		"TEST123", "Dell", "Latitude 5420", models.LaptopStatusAtWarehouse, 1, time.Now(), time.Now(),
+		`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+		"TEST123", "Dell", "Latitude 5420", "16", "512", models.LaptopStatusAtWarehouse, 1, time.Now(), time.Now(),
 	).Scan(&laptopID)
 	if err != nil {
 		t.Fatalf("Failed to create test laptop: %v", err)
@@ -1993,9 +1987,9 @@ func TestLogisticsEditShipmentDetails(t *testing.T) {
 	// Create laptop
 	var laptopID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO laptops (serial_number, specs, status, client_company_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-		"ABC123456789", "Dell XPS 15", models.LaptopStatusInTransitToWarehouse, companyID, time.Now(), time.Now(),
+		`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+		"ABC123456789", "Dell", "XPS 15", "16", "512", models.LaptopStatusInTransitToWarehouse, companyID, time.Now(), time.Now(),
 	).Scan(&laptopID)
 	if err != nil {
 		t.Fatalf("Failed to create laptop: %v", err)
@@ -2050,7 +2044,9 @@ func TestLogisticsEditShipmentDetails(t *testing.T) {
 		formData.Set("pickup_zip", "02101")
 		formData.Set("pickup_date", "2025-12-20")
 		formData.Set("pickup_time_slot", "afternoon")
-		formData.Set("laptop_specs", "Dell XPS 15, 32GB RAM, 1TB SSD")
+		formData.Set("laptop_model", "Dell XPS 15")
+		formData.Set("laptop_ram_gb", "32")
+		formData.Set("laptop_ssd_gb", "1024")
 		formData.Set("engineer_name", "John Engineer")
 		formData.Set("special_instructions", "Updated instructions")
 
@@ -2116,16 +2112,22 @@ func TestLogisticsEditShipmentDetails(t *testing.T) {
 		}
 
 		// Verify laptop specs were updated
-		var updatedSpecs string
+		var updatedModel, updatedRAM, updatedSSD string
 		err = db.QueryRowContext(ctx,
-			`SELECT specs FROM laptops WHERE id = $1`,
+			`SELECT model, ram_gb, ssd_gb FROM laptops WHERE id = $1`,
 			laptopID,
-		).Scan(&updatedSpecs)
+		).Scan(&updatedModel, &updatedRAM, &updatedSSD)
 		if err != nil {
 			t.Fatalf("Failed to query laptop: %v", err)
 		}
-		if updatedSpecs != "Dell XPS 15, 32GB RAM, 1TB SSD" {
-			t.Errorf("Expected updated specs, got %s", updatedSpecs)
+		if updatedModel != "Dell XPS 15" {
+			t.Errorf("Expected model 'Dell XPS 15', got %s", updatedModel)
+		}
+		if updatedRAM != "32" {
+			t.Errorf("Expected RAM '32', got %s", updatedRAM)
+		}
+		if updatedSSD != "1024" {
+			t.Errorf("Expected SSD '1024', got %s", updatedSSD)
 		}
 	})
 
@@ -2234,9 +2236,9 @@ func TestWarehouseToEngineerFormSubmitWithoutCompanyID(t *testing.T) {
 	// Create laptop at warehouse (from bulk shipment)
 	var laptopID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO laptops (serial_number, brand, model, status, client_company_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-		"WH-TEST-001", "Dell", "Latitude 5420", models.LaptopStatusAtWarehouse, companyID, time.Now(), time.Now(),
+		`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+		"WH-TEST-001", "Dell", "Latitude 5420", "16", "512", models.LaptopStatusAtWarehouse, companyID, time.Now(), time.Now(),
 	).Scan(&laptopID)
 	if err != nil {
 		t.Fatalf("Failed to create test laptop: %v", err)
@@ -2346,9 +2348,9 @@ func TestWarehouseToEngineerFormSubmitWithoutCompanyID(t *testing.T) {
 		// Create laptop with NULL client_company_id (typical for bulk shipments)
 		var nullCompanyLaptopID int64
 		err = db.QueryRowContext(ctx,
-			`INSERT INTO laptops (serial_number, brand, model, status, client_company_id, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, NULL, $5, $6) RETURNING id`,
-			"NULL-COMPANY-001", "HP", "EliteBook 840", models.LaptopStatusAtWarehouse, time.Now(), time.Now(),
+			`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8) RETURNING id`,
+			"NULL-COMPANY-001", "HP", "EliteBook 840", "16", "512", models.LaptopStatusAtWarehouse, time.Now(), time.Now(),
 		).Scan(&nullCompanyLaptopID)
 		if err != nil {
 			t.Fatalf("Failed to create laptop with NULL company: %v", err)

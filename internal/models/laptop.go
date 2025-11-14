@@ -135,6 +135,32 @@ func (l *Laptop) UpdateStatus(status LaptopStatus) {
 	l.BeforeUpdate()
 }
 
+// CanChangeToAvailable checks if a laptop can be changed to available status
+// Requirements: must be at_warehouse and have an approved reception report
+func (l *Laptop) CanChangeToAvailable(receptionReport *ReceptionReport) bool {
+	// Must currently be at warehouse
+	if l.Status != LaptopStatusAtWarehouse {
+		return false
+	}
+	
+	// Must have a reception report
+	if receptionReport == nil {
+		return false
+	}
+	
+	// Reception report must be approved
+	if !receptionReport.IsApproved() {
+		return false
+	}
+	
+	// Reception report must be for this laptop
+	if receptionReport.LaptopID != l.ID {
+		return false
+	}
+	
+	return true
+}
+
 // GetFullDescription returns a full description of the laptop
 func (l *Laptop) GetFullDescription() string {
 	if l.Brand == "" && l.Model == "" {

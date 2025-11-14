@@ -16,7 +16,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "valid shipment with all fields",
 			shipment: Shipment{
+				ShipmentType:        ShipmentTypeSingleFullJourney,
 				ClientCompanyID:     1,
+				LaptopCount:         1,
 				SoftwareEngineerID:  int64Ptr(10),
 				Status:              ShipmentStatusPendingPickup,
 				JiraTicketNumber:    "SCOP-67702",
@@ -29,7 +31,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "valid shipment with minimal fields and JIRA ticket",
 			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
 				ClientCompanyID:  2,
+				LaptopCount:      1,
 				Status:           ShipmentStatusPendingPickup,
 				JiraTicketNumber: "PROJECT-12345",
 			},
@@ -38,7 +42,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - missing JIRA ticket number",
 			shipment: Shipment{
+				ShipmentType:    ShipmentTypeSingleFullJourney,
 				ClientCompanyID: 1,
+				LaptopCount:     1,
 				Status:          ShipmentStatusPendingPickup,
 			},
 			wantErr: true,
@@ -47,7 +53,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - empty JIRA ticket number",
 			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
 				ClientCompanyID:  1,
+				LaptopCount:      1,
 				Status:           ShipmentStatusPendingPickup,
 				JiraTicketNumber: "",
 			},
@@ -57,7 +65,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - malformed JIRA ticket (missing dash)",
 			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
 				ClientCompanyID:  1,
+				LaptopCount:      1,
 				Status:           ShipmentStatusPendingPickup,
 				JiraTicketNumber: "SCOP67702",
 			},
@@ -67,7 +77,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - malformed JIRA ticket (no project key)",
 			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
 				ClientCompanyID:  1,
+				LaptopCount:      1,
 				Status:           ShipmentStatusPendingPickup,
 				JiraTicketNumber: "-67702",
 			},
@@ -77,7 +89,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - malformed JIRA ticket (no number)",
 			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
 				ClientCompanyID:  1,
+				LaptopCount:      1,
 				Status:           ShipmentStatusPendingPickup,
 				JiraTicketNumber: "SCOP-",
 			},
@@ -87,7 +101,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - malformed JIRA ticket (lowercase)",
 			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
 				ClientCompanyID:  1,
+				LaptopCount:      1,
 				Status:           ShipmentStatusPendingPickup,
 				JiraTicketNumber: "scop-67702",
 			},
@@ -97,7 +113,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - malformed JIRA ticket (special characters)",
 			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
 				ClientCompanyID:  1,
+				LaptopCount:      1,
 				Status:           ShipmentStatusPendingPickup,
 				JiraTicketNumber: "SC@P-67702",
 			},
@@ -107,6 +125,8 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - missing client company ID",
 			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
+				LaptopCount:      1,
 				Status:           ShipmentStatusPendingPickup,
 				JiraTicketNumber: "SCOP-67702",
 			},
@@ -116,7 +136,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - missing status",
 			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
 				ClientCompanyID:  1,
+				LaptopCount:      1,
 				JiraTicketNumber: "SCOP-67702",
 			},
 			wantErr: true,
@@ -125,7 +147,9 @@ func TestShipment_Validate(t *testing.T) {
 		{
 			name: "invalid - invalid status",
 			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
 				ClientCompanyID:  1,
+				LaptopCount:      1,
 				Status:           "invalid_status",
 				JiraTicketNumber: "SCOP-67702",
 			},
@@ -537,7 +561,8 @@ func TestShipment_GetNextAllowedStatuses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			shipment := &Shipment{
-				Status: tt.currentStatus,
+				ShipmentType: ShipmentTypeSingleFullJourney, // Full journey through all statuses
+				Status:       tt.currentStatus,
 			}
 			got := shipment.GetNextAllowedStatuses()
 
@@ -682,7 +707,8 @@ func TestShipment_IsValidStatusTransition(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			shipment := &Shipment{
-				Status: tt.currentStatus,
+				ShipmentType: ShipmentTypeSingleFullJourney, // Full journey through all statuses
+				Status:       tt.currentStatus,
 			}
 			got := shipment.IsValidStatusTransition(tt.newStatus)
 			if got != tt.expected {

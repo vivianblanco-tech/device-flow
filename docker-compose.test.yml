@@ -1,0 +1,68 @@
+# Docker Compose configuration for running email notification tests
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.test.yml run --rm email-test
+
+services:
+  # Email notification test service
+  email-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: laptop-tracking-email-test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    environment:
+      # Use Docker service names for networking
+      DATABASE_URL: postgres://postgres:password@postgres:5432/laptop_tracking_dev?sslmode=disable
+      MAILHOG_URL: http://mailhog:8025
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      # Ensure we're in test mode
+      APP_ENV: test
+    networks:
+      - default
+    profiles:
+      - test
+
+  # Alternative: Create a test database for isolated testing
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: laptop-tracking-db-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: laptop_tracking_test
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    profiles:
+      - test
+
+  # Run tests with isolated test database
+  email-test-isolated:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: laptop-tracking-email-test-isolated
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://postgres:password@postgres-test:5432/laptop_tracking_test?sslmode=disable
+      MAILHOG_URL: http://mailhog:8025
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      APP_ENV: test
+    networks:
+      - default
+    profiles:
+      - test-isolated
+

@@ -77,36 +77,69 @@ func TestReceptionReport_Validate(t *testing.T) {
 		{
 			name: "valid reception report",
 			report: ReceptionReport{
-				ShipmentID:    1,
-				WarehouseUserID: 10,
-				Notes:         "All items received in good condition",
-				PhotoURLs:     []string{"photo1.jpg", "photo2.jpg"},
+				LaptopID:               1,
+				WarehouseUserID:        10,
+				PhotoSerialNumber:      "/uploads/serial.jpg",
+				PhotoExternalCondition: "/uploads/external.jpg",
+				PhotoWorkingCondition:  "/uploads/working.jpg",
+				Notes:                  "All items received in good condition",
 			},
 			wantErr: false,
 		},
 		{
-			name: "valid - minimal fields",
+			name: "invalid - missing laptop ID",
 			report: ReceptionReport{
-				ShipmentID:    1,
-				WarehouseUserID: 10,
-			},
-			wantErr: false,
-		},
-		{
-			name: "invalid - missing shipment ID",
-			report: ReceptionReport{
-				WarehouseUserID: 10,
+				WarehouseUserID:        10,
+				PhotoSerialNumber:      "/uploads/serial.jpg",
+				PhotoExternalCondition: "/uploads/external.jpg",
+				PhotoWorkingCondition:  "/uploads/working.jpg",
 			},
 			wantErr: true,
-			errMsg:  "shipment ID is required",
+			errMsg:  "laptop ID is required",
 		},
 		{
 			name: "invalid - missing warehouse user ID",
 			report: ReceptionReport{
-				ShipmentID: 1,
+				LaptopID:               1,
+				PhotoSerialNumber:      "/uploads/serial.jpg",
+				PhotoExternalCondition: "/uploads/external.jpg",
+				PhotoWorkingCondition:  "/uploads/working.jpg",
 			},
 			wantErr: true,
 			errMsg:  "warehouse user ID is required",
+		},
+		{
+			name: "invalid - missing photo serial number",
+			report: ReceptionReport{
+				LaptopID:               1,
+				WarehouseUserID:        10,
+				PhotoExternalCondition: "/uploads/external.jpg",
+				PhotoWorkingCondition:  "/uploads/working.jpg",
+			},
+			wantErr: true,
+			errMsg:  "photo of serial number is required",
+		},
+		{
+			name: "invalid - missing photo external condition",
+			report: ReceptionReport{
+				LaptopID:              1,
+				WarehouseUserID:       10,
+				PhotoSerialNumber:     "/uploads/serial.jpg",
+				PhotoWorkingCondition: "/uploads/working.jpg",
+			},
+			wantErr: true,
+			errMsg:  "photo of external condition is required",
+		},
+		{
+			name: "invalid - missing photo working condition",
+			report: ReceptionReport{
+				LaptopID:               1,
+				WarehouseUserID:        10,
+				PhotoSerialNumber:      "/uploads/serial.jpg",
+				PhotoExternalCondition: "/uploads/external.jpg",
+			},
+			wantErr: true,
+			errMsg:  "photo of working condition is required",
 		},
 	}
 
@@ -132,43 +165,6 @@ func TestReceptionReport_TableName(t *testing.T) {
 	}
 }
 
-func TestReceptionReport_HasPhotos(t *testing.T) {
-	tests := []struct {
-		name     string
-		report   ReceptionReport
-		expected bool
-	}{
-		{
-			name: "report with photos",
-			report: ReceptionReport{
-				PhotoURLs: []string{"photo1.jpg", "photo2.jpg"},
-			},
-			expected: true,
-		},
-		{
-			name: "report without photos",
-			report: ReceptionReport{
-				PhotoURLs: []string{},
-			},
-			expected: false,
-		},
-		{
-			name: "report with nil photos",
-			report: ReceptionReport{
-				PhotoURLs: nil,
-			},
-			expected: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.report.HasPhotos(); got != tt.expected {
-				t.Errorf("ReceptionReport.HasPhotos() = %v, want %v", got, tt.expected)
-			}
-		})
-	}
-}
 
 // DeliveryForm tests
 
@@ -277,46 +273,6 @@ func TestDeliveryForm_HasPhotos(t *testing.T) {
 
 // Test BeforeCreate and BeforeUpdate for all forms
 
-func TestReceptionReport_SerialNumberCorrection(t *testing.T) {
-	approvedBy := int64(2)
-	
-	report := &ReceptionReport{
-		ShipmentID:              1,
-		WarehouseUserID:         1,
-		ExpectedSerialNumber:    "ABC123",
-		ActualSerialNumber:      "ABC456",
-		SerialNumberCorrected:   true,
-		CorrectionNote:          "Serial number mismatch - updated to match physical device",
-		CorrectionApprovedBy:    &approvedBy,
-	}
-	
-	if !report.HasSerialNumberCorrection() {
-		t.Error("Expected serial number correction to be detected")
-	}
-	
-	if report.SerialNumberCorrectionNote() == "" {
-		t.Error("Expected correction note to be present")
-	}
-	
-	if report.SerialNumberCorrectionNote() != "Serial number mismatch - updated to match physical device" {
-		t.Errorf("Expected correction note to match, got: %s", report.SerialNumberCorrectionNote())
-	}
-}
-
-func TestReceptionReport_NoCorrection(t *testing.T) {
-	report := &ReceptionReport{
-		ShipmentID:            1,
-		WarehouseUserID:       1,
-		ExpectedSerialNumber:  "ABC123",
-		ActualSerialNumber:    "ABC123",
-		SerialNumberCorrected: false,
-	}
-	
-	if report.HasSerialNumberCorrection() {
-		t.Error("Expected no serial number correction")
-	}
-}
-
 func TestForms_BeforeCreate(t *testing.T) {
 	t.Run("PickupForm", func(t *testing.T) {
 		form := &PickupForm{ShipmentID: 1, SubmittedByUserID: 5}
@@ -327,10 +283,25 @@ func TestForms_BeforeCreate(t *testing.T) {
 	})
 
 	t.Run("ReceptionReport", func(t *testing.T) {
-		report := &ReceptionReport{ShipmentID: 1, WarehouseUserID: 10}
+		report := &ReceptionReport{
+			LaptopID:               1,
+			WarehouseUserID:        10,
+			PhotoSerialNumber:      "/uploads/serial.jpg",
+			PhotoExternalCondition: "/uploads/external.jpg",
+			PhotoWorkingCondition:  "/uploads/working.jpg",
+		}
 		report.BeforeCreate()
 		if report.ReceivedAt.IsZero() {
 			t.Error("ReceptionReport.BeforeCreate() did not set ReceivedAt")
+		}
+		if report.CreatedAt.IsZero() {
+			t.Error("ReceptionReport.BeforeCreate() did not set CreatedAt")
+		}
+		if report.UpdatedAt.IsZero() {
+			t.Error("ReceptionReport.BeforeCreate() did not set UpdatedAt")
+		}
+		if report.Status != ReceptionReportStatusPendingApproval {
+			t.Error("ReceptionReport.BeforeCreate() did not set default status to pending_approval")
 		}
 	})
 

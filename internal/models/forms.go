@@ -40,34 +40,64 @@ func (p *PickupForm) BeforeCreate() {
 	p.SubmittedAt = time.Now()
 }
 
+// ReceptionReportStatus represents the approval status of a reception report
+type ReceptionReportStatus string
+
+// Reception report status constants
+const (
+	ReceptionReportStatusPendingApproval ReceptionReportStatus = "pending_approval"
+	ReceptionReportStatusApproved        ReceptionReportStatus = "approved"
+)
+
 // ReceptionReport represents a report submitted by warehouse staff when receiving laptops
+// Each reception report is linked to a single laptop
 type ReceptionReport struct {
-	ID              int64     `json:"id" db:"id"`
-	ShipmentID      int64     `json:"shipment_id" db:"shipment_id"`
-	WarehouseUserID int64     `json:"warehouse_user_id" db:"warehouse_user_id"`
-	ReceivedAt      time.Time `json:"received_at" db:"received_at"`
-	Notes           string    `json:"notes,omitempty" db:"notes"`
-	PhotoURLs       []string  `json:"photo_urls,omitempty" db:"photo_urls"`
+	ID                     int64                 `json:"id" db:"id"`
+	LaptopID               int64                 `json:"laptop_id" db:"laptop_id"`
+	ShipmentID             *int64                `json:"shipment_id,omitempty" db:"shipment_id"`           // Reference to original shipment
+	ClientCompanyID        *int64                `json:"client_company_id,omitempty" db:"client_company_id"` // Reference for tracking
+	TrackingNumber         string                `json:"tracking_number,omitempty" db:"tracking_number"`   // Reference for tracking
+	WarehouseUserID        int64                 `json:"warehouse_user_id" db:"warehouse_user_id"`
+	ReceivedAt             time.Time             `json:"received_at" db:"received_at"`
+	Notes                  string                `json:"notes,omitempty" db:"notes"`
 	
-	// Serial number correction tracking
-	ExpectedSerialNumber  string  `json:"expected_serial_number,omitempty" db:"expected_serial_number"`
-	ActualSerialNumber    string  `json:"actual_serial_number,omitempty" db:"actual_serial_number"`
-	SerialNumberCorrected bool    `json:"serial_number_corrected" db:"serial_number_corrected"`
-	CorrectionNote        string  `json:"correction_note,omitempty" db:"correction_note"`
-	CorrectionApprovedBy  *int64  `json:"correction_approved_by,omitempty" db:"correction_approved_by"`
+	// Required photo uploads
+	PhotoSerialNumber      string                `json:"photo_serial_number" db:"photo_serial_number"`
+	PhotoExternalCondition string                `json:"photo_external_condition" db:"photo_external_condition"`
+	PhotoWorkingCondition  string                `json:"photo_working_condition" db:"photo_working_condition"`
+	
+	// Approval tracking
+	Status                 ReceptionReportStatus `json:"status" db:"status"`
+	ApprovedBy             *int64                `json:"approved_by,omitempty" db:"approved_by"`
+	ApprovedAt             *time.Time            `json:"approved_at,omitempty" db:"approved_at"`
+	
+	CreatedAt              time.Time             `json:"created_at" db:"created_at"`
+	UpdatedAt              time.Time             `json:"updated_at" db:"updated_at"`
 
 	// Relations
-	Shipment *Shipment `json:"shipment,omitempty" db:"-"`
-	User     *User     `json:"user,omitempty" db:"-"`
+	Laptop        *Laptop        `json:"laptop,omitempty" db:"-"`
+	Shipment      *Shipment      `json:"shipment,omitempty" db:"-"`
+	ClientCompany *ClientCompany `json:"client_company,omitempty" db:"-"`
+	User          *User          `json:"user,omitempty" db:"-"`
+	Approver      *User          `json:"approver,omitempty" db:"-"`
 }
 
 // Validate validates the ReceptionReport model
 func (r *ReceptionReport) Validate() error {
-	if r.ShipmentID == 0 {
-		return errors.New("shipment ID is required")
+	if r.LaptopID == 0 {
+		return errors.New("laptop ID is required")
 	}
 	if r.WarehouseUserID == 0 {
 		return errors.New("warehouse user ID is required")
+	}
+	if r.PhotoSerialNumber == "" {
+		return errors.New("photo of serial number is required")
+	}
+	if r.PhotoExternalCondition == "" {
+		return errors.New("photo of external condition is required")
+	}
+	if r.PhotoWorkingCondition == "" {
+		return errors.New("photo of working condition is required")
 	}
 	return nil
 }
@@ -77,24 +107,39 @@ func (r *ReceptionReport) TableName() string {
 	return "reception_reports"
 }
 
-// BeforeCreate sets the timestamp before creating a reception report
+// BeforeCreate sets the timestamps and default status before creating a reception report
 func (r *ReceptionReport) BeforeCreate() {
-	r.ReceivedAt = time.Now()
+	now := time.Now()
+	r.ReceivedAt = now
+	r.CreatedAt = now
+	r.UpdatedAt = now
+	if r.Status == "" {
+		r.Status = ReceptionReportStatusPendingApproval
+	}
 }
 
-// HasPhotos returns true if the reception report has photos
-func (r *ReceptionReport) HasPhotos() bool {
-	return len(r.PhotoURLs) > 0
+// BeforeUpdate sets the updated_at timestamp before updating a reception report
+func (r *ReceptionReport) BeforeUpdate() {
+	r.UpdatedAt = time.Now()
 }
 
-// HasSerialNumberCorrection returns true if serial number was corrected
-func (r *ReceptionReport) HasSerialNumberCorrection() bool {
-	return r.SerialNumberCorrected
+// IsPendingApproval returns true if the reception report is pending approval
+func (r *ReceptionReport) IsPendingApproval() bool {
+	return r.Status == ReceptionReportStatusPendingApproval
 }
 
-// SerialNumberCorrectionNote returns the correction note
-func (r *ReceptionReport) SerialNumberCorrectionNote() string {
-	return r.CorrectionNote
+// IsApproved returns true if the reception report is approved
+func (r *ReceptionReport) IsApproved() bool {
+	return r.Status == ReceptionReportStatusApproved
+}
+
+// Approve marks the reception report as approved by a logistics user
+func (r *ReceptionReport) Approve(logisticsUserID int64) {
+	r.Status = ReceptionReportStatusApproved
+	r.ApprovedBy = &logisticsUserID
+	now := time.Now()
+	r.ApprovedAt = &now
+	r.BeforeUpdate()
 }
 
 // DeliveryForm represents a form submitted when a laptop is delivered to an engineer

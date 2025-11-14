@@ -169,7 +169,8 @@ func TestCreateLaptop(t *testing.T) {
 		SerialNumber: "SN001",
 		Brand:        "Dell",
 		Model:        "Latitude 5520",
-		Specs:        "i7, 16GB RAM, 512GB SSD",
+		RAMGB:        "16GB",
+		SSDGB:        "512GB",
 		Status:       LaptopStatusAvailable,
 	}
 
@@ -202,6 +203,9 @@ func TestCreateLaptopDuplicateSerial(t *testing.T) {
 
 	laptop1 := &Laptop{
 		SerialNumber: "DUPLICATE001",
+		Model:        "Dell Latitude 5520",
+		RAMGB:        "16",
+		SSDGB:        "512",
 		Status:       LaptopStatusAvailable,
 	}
 
@@ -213,6 +217,9 @@ func TestCreateLaptopDuplicateSerial(t *testing.T) {
 	// Test: Try to create laptop with same serial number
 	laptop2 := &Laptop{
 		SerialNumber: "DUPLICATE001",
+		Model:        "Dell Latitude 5520",
+		RAMGB:        "16",
+		SSDGB:        "512",
 		Status:       LaptopStatusAvailable,
 	}
 
@@ -241,7 +248,8 @@ func TestUpdateLaptop(t *testing.T) {
 
 	// Test: Update laptop
 	laptop.Model = "Latitude 5520"
-	laptop.Specs = "i7, 16GB RAM"
+	laptop.RAMGB = "16GB"
+	laptop.SSDGB = "256GB"
 	laptop.Status = LaptopStatusDelivered
 
 	err = UpdateLaptop(db, laptop)
@@ -368,6 +376,8 @@ func TestGetAllLaptopsWithJoins(t *testing.T) {
 		SKU:                "SKU-DELL-LAT-001",
 		Brand:              "Dell",
 		Model:              "Latitude 5520",
+		RAMGB:              "16",
+		SSDGB:              "512",
 		Status:             LaptopStatusDelivered,
 		ClientCompanyID:    &clientCompany.ID,
 		SoftwareEngineerID: &engineer.ID,
@@ -446,6 +456,8 @@ func TestGetLaptopByIDWithJoins(t *testing.T) {
 		SKU:                "SKU-HP-ELITE-002",
 		Brand:              "HP",
 		Model:              "EliteBook 840",
+		RAMGB:              "32",
+		SSDGB:              "1024",
 		Status:             LaptopStatusDelivered,
 		ClientCompanyID:    &clientCompany.ID,
 		SoftwareEngineerID: &engineer.ID,
@@ -520,23 +532,24 @@ func CreateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
 	).Scan(&engineer.ID)
 }
 
-// TestGetAllLaptopsHandlesNullFields tests that GetAllLaptops can handle NULL values in brand, model, and specs
+// TestGetAllLaptopsHandlesNullFields tests that GetAllLaptops can handle NULL values in optional fields like brand and sku
 func TestGetAllLaptopsHandlesNullFields(t *testing.T) {
 	db, cleanup := database.SetupTestDB(t)
 	defer cleanup()
 
-	// Create a laptop with NULL brand, model, and specs by inserting directly
+	// Create a laptop with NULL brand and sku by inserting directly
 	// (bypassing validation to simulate existing data in the database)
+	// Note: model, ram_gb, ssd_gb are NOT NULL fields in the current schema
 	query := `
-		INSERT INTO laptops (serial_number, brand, model, specs, status, created_at, updated_at)
-		VALUES ($1, NULL, NULL, NULL, $2, NOW(), NOW())
+		INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, created_at, updated_at)
+		VALUES ($1, NULL, $2, $3, $4, $5, NOW(), NOW())
 		RETURNING id
 	`
-	
+
 	var laptopID int64
-	err := db.QueryRow(query, "NULL_TEST_001", LaptopStatusAvailable).Scan(&laptopID)
+	err := db.QueryRow(query, "NULL_TEST_001", "Generic Model", "16", "512", LaptopStatusAvailable).Scan(&laptopID)
 	if err != nil {
-		t.Fatalf("Failed to create laptop with NULL fields: %v", err)
+		t.Fatalf("Failed to create laptop with NULL optional fields: %v", err)
 	}
 
 	// Test: Get all laptops should not fail when encountering NULL values
@@ -554,12 +567,8 @@ func TestGetAllLaptopsHandlesNullFields(t *testing.T) {
 			if laptop.Brand != "" {
 				t.Errorf("Expected empty brand for NULL value, got %s", laptop.Brand)
 			}
-			if laptop.Model != "" {
-				t.Errorf("Expected empty model for NULL value, got %s", laptop.Model)
-			}
-			if laptop.Specs != "" {
-				t.Errorf("Expected empty specs for NULL value, got %s", laptop.Specs)
-			}
+			// Note: Model, RAMGB, SSDGB are now required fields, so they should have values
+			// This test case should be updated if we're actually inserting NULL values
 		}
 	}
 
@@ -567,4 +576,3 @@ func TestGetAllLaptopsHandlesNullFields(t *testing.T) {
 		t.Error("Test laptop with NULL fields not found in results")
 	}
 }
-

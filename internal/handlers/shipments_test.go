@@ -690,9 +690,9 @@ func TestShipmentDetail(t *testing.T) {
 	// Create test laptop
 	var laptopID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO laptops (serial_number, brand, model, specs, status, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-		"SN-12345", "Dell", "XPS 15", json.RawMessage(`{"ram":"16GB","cpu":"i7"}`), "available", time.Now(),
+		`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		"SN-12345", "Dell", "XPS 15", "16", "512", "available", time.Now(), time.Now(),
 	).Scan(&laptopID)
 	if err != nil {
 		t.Fatalf("Failed to create test laptop: %v", err)

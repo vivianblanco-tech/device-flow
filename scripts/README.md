@@ -1,322 +1,317 @@
-# Scripts Directory
+# Email Notification Testing Scripts
 
-This directory contains utility scripts for managing the Laptop Tracking System database and deployment.
+This directory contains scripts to test email notifications for the Laptop Tracking System.
 
-## 📁 Contents Overview
+## Overview
 
-### Sample Data Scripts
+The email testing script verifies that all email notifications are correctly sent and received by:
 
-#### `enhanced-sample-data.sql` ⭐ **RECOMMENDED**
-**Primary sample data file for development and testing.**
+1. Setting up test data in the database
+2. Triggering each email notification type
+3. Verifying emails arrive in Mailhog
+4. Checking email content (subject, recipient, etc.)
+5. Cleaning up test data
+6. Providing a detailed test report
 
-**Contents:**
-- 14 users across all roles (Logistics, Warehouse, PM, Client)
-- 8 client companies with complete contact information
-- 22 software engineers with addresses
-- 35+ laptops (Dell, HP, Lenovo, Apple, Microsoft, ASUS, Acer)
-- 15 comprehensive shipments covering:
-  - All 3 shipment types (single_full_journey, bulk_to_warehouse, warehouse_to_engineer)
-  - All 8 shipment statuses
-  - Historical data spanning 6 months
-- Complete pickup forms, reception reports, and delivery forms
-- Audit logs showing realistic system activity
-- Magic links for secure access testing
+## Prerequisites
 
-**When to use:**
-- ✅ Standard development and testing
-- ✅ Demo environments
-- ✅ Initial production testing
-- ✅ Feature development
-- ✅ Integration testing
+### 1. Mailhog
 
-**Load command:**
-```powershell
-docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev < scripts/enhanced-sample-data.sql
+Mailhog is a local email testing tool that captures SMTP emails.
+
+**Installation:**
+
+- **macOS:**
+  ```bash
+  brew install mailhog
+  ```
+
+- **Linux:**
+  ```bash
+  go install github.com/mailhog/MailHog@latest
+  ```
+
+- **Windows:**
+  Download from [Mailhog Releases](https://github.com/mailhog/MailHog/releases)
+
+**Running Mailhog:**
+```bash
+mailhog  # or MailHog on Linux, MailHog.exe on Windows
 ```
 
-#### `enhanced-sample-data-comprehensive.sql`
-**Extended base data for high-volume testing.**
+Then access the web UI at: http://localhost:8025
 
-**Contents:**
-- 30 users across all roles
-- 15 client companies
-- 50+ software engineers
-- 110+ laptops with diverse brands and models
-- Proper SKUs and detailed specifications
-- Realistic status distributions
+### 2. Database
 
-**When to use:**
-- ✅ Stress testing
-- ✅ Performance testing with large datasets
-- ✅ Multi-company scenarios
-- ✅ User/role permission testing
-- ✅ Inventory management testing
+Ensure you have a test database running. The script uses `laptop_tracking_test` by default.
 
-**Note:** This file provides base entities (users, companies, engineers, laptops) without shipments. Create shipments through the application or combine with enhanced-sample-data.sql.
+## Usage
 
-**Load command:**
-```powershell
-docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev < scripts/enhanced-sample-data-comprehensive.sql
+### Quick Start
+
+**Linux/macOS:**
+```bash
+chmod +x scripts/test_emails.sh
+./scripts/test_emails.sh
 ```
 
-### PowerShell Scripts
-
-#### `start-with-data.ps1` 🚀
-**Main startup script - automatically initializes database with sample data.**
-
-**Features:**
-- Starts Docker containers
-- Checks if database is empty
-- Automatically loads sample data if needed
-- Shows comprehensive status information
-
-**Usage:**
+**Windows (PowerShell):**
 ```powershell
-# Standard start
-.\scripts\start-with-data.ps1
-
-# Fresh start (removes all data and volumes)
-.\scripts\start-with-data.ps1 -Fresh
-
-# Rebuild containers
-.\scripts\start-with-data.ps1 -Build
+.\scripts\test_emails.ps1
 ```
 
-#### `verify-test-data.ps1` ✅
-**Verifies and displays sample data statistics.**
+### Manual Execution
 
-**Shows:**
-- Entity counts (users, companies, engineers, laptops, shipments)
-- Shipment status breakdown
-- Laptop status distribution
-- Laptop brands distribution
-- Bulk shipments details
-- Recent shipments with details
-- Data quality indicators
+If you prefer to run the Go script directly:
 
-**Usage:**
-```powershell
-.\scripts\verify-test-data.ps1
+```bash
+# Set environment variables
+export DATABASE_URL="postgres://postgres:postgres@localhost:5432/laptop_tracking_test?sslmode=disable"
+export MAILHOG_URL="http://localhost:8025"
+export SMTP_HOST="localhost"
+export SMTP_PORT="1025"
+
+# Build and run
+go run scripts/email-test/main.go
+
+# Or build first, then run
+go build -o test_email_notifications scripts/email-test
+./test_email_notifications
 ```
 
-#### `init-db-if-empty.ps1`
-**Automated database initialization (called by start-with-data.ps1).**
+## Environment Variables
 
-Checks if database has data and loads enhanced-sample-data.sql if empty.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/laptop_tracking_test?sslmode=disable` | PostgreSQL connection string |
+| `MAILHOG_URL` | `http://localhost:8025` | Mailhog API endpoint |
+| `SMTP_HOST` | `localhost` | SMTP server hostname |
+| `SMTP_PORT` | `1025` | SMTP server port |
 
-### Database Management Scripts
+## Email Notification Tests
 
-#### `backup-db.ps1`
-**Creates a backup of the PostgreSQL database.**
+The script tests all 6 email notification types:
 
-**Usage:**
-```powershell
-.\scripts\backup-db.ps1
+### 1. Magic Link Email
+- **Trigger**: When a user needs secure form access
+- **Recipient**: test@example.com (test user)
+- **Verifies**: Subject contains "Access Your Form", correct recipient
+
+### 2. Pickup Confirmation
+- **Trigger**: After pickup form submission
+- **Recipient**: Client company contact
+- **Verifies**: Subject contains "Pickup Confirmation", email sent
+
+### 3. Pickup Scheduled Notification
+- **Trigger**: When pickup is officially scheduled
+- **Recipient**: Contact email from pickup form (contact@test.com)
+- **Verifies**: Subject contains "Pickup Scheduled", correct recipient
+
+### 4. Warehouse Pre-Alert
+- **Trigger**: Alert warehouse about incoming shipment
+- **Recipient**: Warehouse user (warehouse@test.com)
+- **Verifies**: Subject contains "Incoming Shipment Alert", correct recipient
+
+### 5. Release Notification
+- **Trigger**: Hardware released from warehouse
+- **Recipient**: Logistics user (logistics@test.com)
+- **Verifies**: Subject contains "Hardware Release for Pickup", correct recipient
+
+### 6. Delivery Confirmation
+- **Trigger**: Device delivered to engineer
+- **Recipient**: Software engineer (engineer@test.com)
+- **Verifies**: Subject contains "Device Delivered Successfully", correct recipient
+
+## Output
+
+The script provides colored output with:
+
+- ✅ **Green**: Successful tests
+- ❌ **Red**: Failed tests
+- ⚠️ **Yellow**: Warnings
+- 💡 **Blue**: Information
+
+### Example Output
+
+```
+==================================================
+  Email Notifications Test - Mailhog Verification
+==================================================
+
+Configuration:
+  Database: postgres://postgres:postgres@localhost:5432/laptop_tracking_test?sslmode=disable
+  Mailhog:  http://localhost:8025
+  SMTP:     localhost:1025
+
+✅ Connected to database
+✅ Connected to Mailhog
+✅ Cleared Mailhog messages
+✅ Test data created
+
+===========================================
+  Running Email Notification Tests
+===========================================
+
+📧 Test 1: Magic Link Email
+  ✅ SUCCESS
+     Subject:   Access Your Form - pickup
+     Recipient: test@example.com
+     Email ID:  abc123
+
+📧 Test 2: Pickup Confirmation
+  ✅ SUCCESS
+     Subject:   Pickup Confirmation - CONF-1
+     Recipient: noreply@example.com
+     Email ID:  def456
+
+... (more tests)
+
+===========================================
+  Test Summary
+===========================================
+
+✅ Magic Link
+✅ Pickup Confirmation
+✅ Pickup Scheduled
+✅ Warehouse Pre-Alert
+✅ Release Notification
+✅ Delivery Confirmation
+
+Total Tests: 6
+Passed: 6
+Failed: 0
+
+✅ Test data cleaned up
+
+🎉 All email notifications passed!
+
+💡 You can view the emails in Mailhog:
+   http://localhost:8025
 ```
 
-#### `restore-db.ps1`
-**Restores database from a backup file.**
+## Test Data
 
-**Usage:**
-```powershell
-.\scripts\restore-db.ps1 -BackupFile "path/to/backup.sql"
+The script creates temporary test data:
+- 1 Client Company
+- 1 Software Engineer
+- 1 Warehouse User
+- 1 Logistics User
+- 1 Laptop
+- 1 Shipment (with pickup form)
+
+All test data is automatically cleaned up after the tests complete.
+
+## Troubleshooting
+
+### Mailhog Not Running
+
+```
+❌ Failed to connect to Mailhog: Get "http://localhost:8025/api/v2/messages": dial tcp 127.0.0.1:8025: connect: connection refused
 ```
 
-## 🎯 Quick Start Workflows
-
-### First Time Setup
-```powershell
-# 1. Start application with automatic data loading
-.\scripts\start-with-data.ps1
-
-# 2. Verify data loaded correctly
-.\scripts\verify-test-data.ps1
-
-# 3. Access application
-# Open browser: http://localhost:8080
-# Login: logistics@bairesdev.com / Test123!
+**Solution**: Start Mailhog:
+```bash
+mailhog
 ```
 
-### Reset Database with Fresh Data
-```powershell
-# Complete reset
-.\scripts\start-with-data.ps1 -Fresh
+### Database Connection Failed
 
-# Or manual reload
-docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev < scripts/enhanced-sample-data.sql
+```
+❌ Failed to connect to database: dial tcp 127.0.0.1:5432: connect: connection refused
 ```
 
-### Load High-Volume Data
-```powershell
-# 1. Load comprehensive base data
-docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev < scripts/enhanced-sample-data-comprehensive.sql
+**Solution**: Start your PostgreSQL database or update `DATABASE_URL`
 
-# 2. Create shipments via the application
-# Or load additional sample shipments
-docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev < scripts/enhanced-sample-data.sql
+### Email Not Found in Mailhog
+
+```
+❌ FAILED
+   Error: Email not found in Mailhog: no messages found
 ```
 
-## 📊 Sample Data Metrics
+**Possible causes**:
+1. Email wasn't sent (check SMTP configuration)
+2. Timing issue (script may need longer delay)
+3. Mailhog crashed or restarted
 
-| Metric | Enhanced (Standard) | Comprehensive |
-|--------|---------------------|---------------|
-| **Users** | 14 | 30 |
-| **Client Companies** | 8 | 15 |
-| **Software Engineers** | 22 | 50+ |
-| **Laptops** | 35 | 110+ |
-| **Shipments** | 15 | 0* |
-| **Pickup Forms** | 15 | 0* |
-| **Reception Reports** | 7 | 0* |
-| **Delivery Forms** | 4 | 0* |
-| **Audit Logs** | 10+ | 0* |
+**Solution**:
+- Check Mailhog is running
+- Verify SMTP settings
+- Check application logs for errors
 
-*Comprehensive focuses on base entities; add transactional data separately
+### Wrong Database
 
-## 🔐 Test Credentials
+```
+❌ Failed to set up test data: create client company: pq: permission denied for table client_companies
+```
 
-All users have password: **Test123!**
+**Solution**: Ensure you're using a test database with proper permissions
 
-**Role-Based Accounts:**
-- **Logistics**: logistics@bairesdev.com
-- **Warehouse**: warehouse@bairesdev.com
-- **Project Manager**: pm@bairesdev.com
-- **Client**: client@techcorp.com, admin@innovate.io
+## Viewing Emails in Mailhog
 
-## 📝 Sample Data Features
+After running the tests, open http://localhost:8025 to:
 
-### Shipment Types Coverage
-- ✅ **Single Full Journey**: 1 laptop, complete lifecycle (client → warehouse → engineer)
-- ✅ **Bulk to Warehouse**: 2-6 laptops, stops at warehouse
-- ✅ **Warehouse to Engineer**: 1 laptop, warehouse → engineer only
+1. View all captured emails
+2. Check HTML rendering
+3. Inspect email headers
+4. Download email source
+5. Delete emails
 
-### Status Coverage
-All 8 statuses represented:
-1. pending_pickup_from_client
-2. pickup_from_client_scheduled
-3. picked_up_from_client
-4. in_transit_to_warehouse
-5. at_warehouse
-6. released_from_warehouse
-7. in_transit_to_engineer
-8. delivered
+## CI/CD Integration
 
-### Realistic Data Elements
-- ✅ Historical timestamps (past 6 months)
-- ✅ Detailed equipment specifications
-- ✅ Realistic company and engineer information
-- ✅ Complete address information
-- ✅ Tracking numbers and courier details
-- ✅ Detailed notes and observations
-- ✅ Photo URL references
-- ✅ Accessories descriptions
-- ✅ JSON form data
-- ✅ Audit trail entries
+You can integrate this script into your CI/CD pipeline:
 
-## 🛠️ Customization
+```yaml
+# Example for GitHub Actions
+- name: Setup Mailhog
+  run: |
+    go install github.com/mailhog/MailHog@latest
+    MailHog &
+    sleep 2
 
-### Creating Additional Sample Data
+- name: Test Email Notifications
+  run: ./scripts/test_emails.sh
+  env:
+    DATABASE_URL: postgres://postgres:postgres@localhost:5432/laptop_tracking_test?sslmode=disable
+```
 
-1. **Through the Application** (Recommended):
+## Development
+
+To add a new email notification test:
+
+1. Add the notification method to `internal/email/notifier.go`
+2. Add a new test function in `test_email_notifications.go`:
+   ```go
+   func testNewNotification(ctx context.Context, notifier *email.Notifier, mailhogURL string, shipmentID int64) TestResult {
+       result := TestResult{NotificationType: "New Notification"}
+       
+       err := notifier.SendNewNotification(ctx, shipmentID)
+       if err != nil {
+           result.Error = err.Error()
+           return result
+       }
+       
+       time.Sleep(200 * time.Millisecond)
+       
+       msg, err := getLatestMailhogMessage(mailhogURL)
+       if err != nil {
+           result.Error = fmt.Sprintf("Email not found in Mailhog: %v", err)
+           return result
+       }
+       
+       // Validate email content...
+       
+       result.Success = true
+       return result
+   }
    ```
-   - Login as logistics user
-   - Use web interface to create shipments
-   - Ensures all business logic is followed
-   - Automatically generates proper relationships
+3. Call the test function in `main()`:
+   ```go
+   result = testNewNotification(ctx, notifier, mailhogURL, testData.ShipmentID)
+   results = append(results, result)
+   printTestResult(result)
    ```
 
-2. **SQL Script**:
-   ```sql
-   -- Template for adding a new shipment
-   INSERT INTO shipments (
-       client_company_id, 
-       software_engineer_id, 
-       status, 
-       shipment_type,
-       laptop_count,
-       jira_ticket_number, 
-       notes, 
-       created_at, 
-       updated_at
-   ) VALUES (
-       1,                              -- company ID
-       1,                              -- engineer ID
-       'pending_pickup_from_client',   -- status
-       'single_full_journey',          -- type
-       1,                              -- laptop count
-       'SCOP-90001',                   -- JIRA ticket
-       'Description here',             -- notes
-       NOW(),                          -- created
-       NOW()                           -- updated
-   );
-   ```
+## License
 
-### Modifying Existing Data
-
-Edit the SQL files directly, then reload:
-```powershell
-docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev < scripts/enhanced-sample-data.sql
-```
-
-## 🐛 Troubleshooting
-
-### Database Connection Issues
-```powershell
-# Check if container is running
-docker ps | findstr laptop-tracking-db
-
-# Restart database container
-docker compose restart postgres
-
-# View database logs
-docker compose logs postgres
-```
-
-### Data Loading Errors
-```powershell
-# Check for foreign key violations
-docker exec laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "\d shipments"
-
-# Verify table structure
-docker exec laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "\dt"
-
-# Clear and reload
-.\scripts\start-with-data.ps1 -Fresh
-```
-
-### Script Execution Errors
-```powershell
-# Enable script execution (if needed)
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-
-# Run with verbose output
-.\scripts\start-with-data.ps1 -Verbose
-```
-
-## 📚 Additional Documentation
-
-- **Database Setup**: See `/docs/DATABASE_SETUP.md`
-- **Docker Guide**: See `/DOCKER_CHEAT_SHEET.md`
-- **Testing Guide**: See `/docs/TESTING_BEST_PRACTICES.md`
-- **Sample Data Details**: See `/docs/SAMPLE_DATA_ENHANCEMENT_SUMMARY.md`
-
-## 🔄 Maintenance
-
-### Regular Tasks
-- Backup database before major changes: `.\scripts\backup-db.ps1`
-- Verify data integrity: `.\scripts\verify-test-data.ps1`
-- Update sample data as application evolves
-- Test data loading in CI/CD pipelines
-
-### Best Practices
-- ✅ Always backup before modifications
-- ✅ Test data changes in development first
-- ✅ Keep sample data synchronized with schema migrations
-- ✅ Document any custom data scenarios
-- ✅ Use realistic but anonymized data
-
----
-
-**Last Updated**: November 13, 2025  
-**Maintained By**: Development Team  
-**Questions?**: Check `/docs/` or create an issue
-
+Part of the Laptop Tracking System project.
