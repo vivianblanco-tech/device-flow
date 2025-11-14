@@ -8,11 +8,12 @@ import (
 
 // LaptopFilter represents filtering options for laptop queries
 type LaptopFilter struct {
-	Status LaptopStatus
-	Brand  string
-	Search string
-	Limit  int
-	Offset int
+	Status   LaptopStatus
+	Brand    string
+	Search   string
+	Limit    int
+	Offset   int
+	UserRole UserRole // Filter laptops based on user role permissions
 }
 
 // GetAllLaptops retrieves all laptops with optional filtering
@@ -34,6 +35,12 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 
 	// Apply filters if provided
 	if filter != nil {
+		// Role-based filtering: Warehouse users only see specific statuses
+		if filter.UserRole == RoleWarehouse {
+			// Warehouse users can only see: in_transit_to_warehouse, at_warehouse, available
+			conditions = append(conditions, "l.status IN ('in_transit_to_warehouse', 'at_warehouse', 'available')")
+		}
+
 		if filter.Status != "" {
 			argCount++
 			conditions = append(conditions, fmt.Sprintf("l.status = $%d", argCount))

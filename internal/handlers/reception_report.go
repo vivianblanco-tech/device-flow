@@ -571,7 +571,9 @@ func (h *ReceptionReportHandler) ReceptionReportDetail(w http.ResponseWriter, r 
 		// For testing without templates - output plain text with the data
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "Reception Report Detail\n")
-		fmt.Fprintf(w, "Company: %s\n", report.CompanyName)
+		if report.CompanyName.Valid {
+			fmt.Fprintf(w, "Company: %s\n", report.CompanyName.String)
+		}
 		fmt.Fprintf(w, "Notes: %s\n", report.Notes)
 		fmt.Fprintf(w, "Warehouse User: %s\n", report.WarehouseUserEmail)
 	}
