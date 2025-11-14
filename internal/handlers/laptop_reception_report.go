@@ -91,6 +91,8 @@ func (h *ReceptionReportHandler) LaptopReceptionReportPage(w http.ResponseWriter
 		"Error":             errorMsg,
 		"Success":           successMsg,
 		"User":              user,
+		"Nav":               views.GetNavigationLinks(user.Role),
+		"CurrentPage":       "reception-reports",
 		"Laptop":            laptop,
 		"ClientCompanyName": clientCompanyName.String,
 		"ShipmentID":        shipmentID,
@@ -453,6 +455,7 @@ func (h *ReceptionReportHandler) LaptopBasedReceptionReportsList(w http.Response
 	if h.Templates != nil {
 		data := map[string]interface{}{
 			"User":             user,
+			"Nav":              views.GetNavigationLinks(user.Role),
 			"CurrentPage":      "reception-reports",
 			"ReceptionReports": receptionReports,
 		}
