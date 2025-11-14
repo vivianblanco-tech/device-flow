@@ -234,3 +234,18 @@ func GetLaptopStatusesForNewLaptop() []LaptopStatus {
 		LaptopStatusAvailable,   // "Available at Warehouse"
 	}
 }
+
+// GetAllowedStatusesForRole returns laptop statuses that a user role is allowed to see
+func GetAllowedStatusesForRole(role UserRole) []LaptopStatus {
+	// Warehouse users only see warehouse-relevant statuses
+	if role == RoleWarehouse {
+		return []LaptopStatus{
+			LaptopStatusInTransitToWarehouse,
+			LaptopStatusAtWarehouse,
+			LaptopStatusAvailable,
+		}
+	}
+
+	// All other roles see all statuses
+	return GetLaptopStatusesInOrder()
+}

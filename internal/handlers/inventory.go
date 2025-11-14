@@ -66,7 +66,7 @@ func (h *InventoryHandler) InventoryList(w http.ResponseWriter, r *http.Request)
 		"Laptops":      laptops,
 		"SearchQuery":  searchQuery,
 		"StatusFilter": statusFilter,
-		"Statuses":     models.GetLaptopStatusesInOrder(),
+		"Statuses":     models.GetAllowedStatusesForRole(user.Role), // Filter statuses by user role
 	}
 
 	// Execute template using pre-parsed global templates
