@@ -13,7 +13,7 @@ A comprehensive web application for tracking laptop pickup and delivery from cli
 - 📊 **Dashboard & Analytics**: Real-time statistics and visualization
 - 📅 **Calendar View**: Track pickup and delivery schedules
 - 📸 **Photo Uploads**: Document device condition at pickup and delivery
-- 🔍 **Inventory Management**: Track device serial numbers and availability
+- 🔍 **Inventory Management**: Track device serial numbers, availability, and software engineer assignments
 
 ## Tech Stack
 

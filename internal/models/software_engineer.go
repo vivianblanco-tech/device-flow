@@ -1,7 +1,9 @@
 package models
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -63,5 +65,62 @@ func (s *SoftwareEngineer) ConfirmAddress() {
 	now := time.Now()
 	s.AddressConfirmed = true
 	s.AddressConfirmationAt = &now
+}
+
+// GetAllSoftwareEngineers retrieves all software engineers from the database sorted by name
+func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface{}) (*sql.Rows, error) }) ([]SoftwareEngineer, error) {
+	query := `
+		SELECT id, name, email, phone, address, address_confirmed, address_confirmation_at, created_at, updated_at
+		FROM software_engineers
+		ORDER BY name ASC
+	`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query software engineers: %w", err)
+	}
+	defer rows.Close()
+
+	var engineers []SoftwareEngineer
+	for rows.Next() {
+		var engineer SoftwareEngineer
+		var phone sql.NullString
+		var address sql.NullString
+		var addressConfirmationAt sql.NullTime
+
+		err := rows.Scan(
+			&engineer.ID,
+			&engineer.Name,
+			&engineer.Email,
+			&phone,
+			&address,
+			&engineer.AddressConfirmed,
+			&addressConfirmationAt,
+			&engineer.CreatedAt,
+			&engineer.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan software engineer: %w", err)
+		}
+
+		// Set nullable fields if available
+		if phone.Valid {
+			engineer.Phone = phone.String
+		}
+		if address.Valid {
+			engineer.Address = address.String
+		}
+		if addressConfirmationAt.Valid {
+			engineer.AddressConfirmationAt = &addressConfirmationAt.Time
+		}
+
+		engineers = append(engineers, engineer)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating software engineers: %w", err)
+	}
+
+	return engineers, nil
 }
 

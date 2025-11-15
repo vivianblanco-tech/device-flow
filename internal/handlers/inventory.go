@@ -151,11 +151,20 @@ func (h *InventoryHandler) AddLaptopPage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Get all software engineers
+	engineers, err := models.GetAllSoftwareEngineers(h.DB)
+	if err != nil {
+		log.Printf("Error getting software engineers: %v", err)
+		http.Error(w, "Failed to load software engineers", http.StatusInternalServerError)
+		return
+	}
+
 	// Prepare template data
 	data := map[string]interface{}{
 		"User":      user,
 		"Statuses":  models.GetLaptopStatusesForNewLaptop(),
 		"Companies": companies,
+		"Engineers": engineers,
 	}
 
 	// Execute template using pre-parsed global templates
@@ -206,6 +215,17 @@ func (h *InventoryHandler) AddLaptopSubmit(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		laptop.ClientCompanyID = &clientCompanyID
+	}
+
+	// Parse software engineer ID
+	softwareEngineerIDStr := r.FormValue("software_engineer_id")
+	if softwareEngineerIDStr != "" {
+		softwareEngineerID, err := strconv.ParseInt(softwareEngineerIDStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid software engineer ID", http.StatusBadRequest)
+			return
+		}
+		laptop.SoftwareEngineerID = &softwareEngineerID
 	}
 
 	// Create laptop
@@ -259,12 +279,21 @@ func (h *InventoryHandler) EditLaptopPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Get all software engineers
+	engineers, err := models.GetAllSoftwareEngineers(h.DB)
+	if err != nil {
+		log.Printf("Error getting software engineers: %v", err)
+		http.Error(w, "Failed to load software engineers", http.StatusInternalServerError)
+		return
+	}
+
 	// Prepare template data
 	data := map[string]interface{}{
 		"User":      user,
 		"Laptop":    laptop,
 		"Statuses":  models.GetLaptopStatusesInOrder(),
 		"Companies": companies,
+		"Engineers": engineers,
 		"IsEdit":    true,
 	}
 
@@ -333,6 +362,19 @@ func (h *InventoryHandler) UpdateLaptopSubmit(w http.ResponseWriter, r *http.Req
 		laptop.ClientCompanyID = &clientCompanyID
 	} else {
 		laptop.ClientCompanyID = nil
+	}
+
+	// Parse software engineer ID
+	softwareEngineerIDStr := r.FormValue("software_engineer_id")
+	if softwareEngineerIDStr != "" {
+		softwareEngineerID, err := strconv.ParseInt(softwareEngineerIDStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid software engineer ID", http.StatusBadRequest)
+			return
+		}
+		laptop.SoftwareEngineerID = &softwareEngineerID
+	} else {
+		laptop.SoftwareEngineerID = nil
 	}
 
 	// Update laptop

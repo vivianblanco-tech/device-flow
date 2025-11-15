@@ -71,6 +71,39 @@
                     <p class="mt-1 text-sm text-gray-500">{{if .IsEdit}}Select to change the company{{else}}The company that owns this laptop{{end}}</p>
                 </div>
 
+                <!-- Software Engineer -->
+                <div class="mb-6">
+                    <label for="software_engineer_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        Assigned Software Engineer
+                    </label>
+                    {{if .IsEdit}}
+                    {{if .Laptop.SoftwareEngineerName}}
+                    <div class="mb-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p class="text-sm text-green-900">
+                            <span class="font-medium">Currently Assigned:</span> {{.Laptop.SoftwareEngineerName}}
+                        </p>
+                    </div>
+                    {{end}}
+                    {{end}}
+                    <select 
+                        id="software_engineer_id" 
+                        name="software_engineer_id"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="">None (Unassigned)</option>
+                        {{$currentEngineerID := ""}}
+                        {{if and .Laptop .Laptop.SoftwareEngineerID}}
+                            {{$currentEngineerID = printf "%d" (index .Laptop.SoftwareEngineerID)}}
+                        {{end}}
+                        {{range .Engineers}}
+                        <option value="{{.ID}}" {{if eq $currentEngineerID (printf "%d" .ID)}}selected{{end}}>
+                            {{.Name}} ({{.Email}})
+                        </option>
+                        {{end}}
+                    </select>
+                    <p class="mt-1 text-sm text-gray-500">{{if .IsEdit}}Select to change or clear assignment{{else}}Optionally assign to a software engineer{{end}}</p>
+                </div>
+
                 <!-- Brand -->
                 <div class="mb-6">
                     <label for="brand" class="block text-sm font-medium text-gray-700 mb-2">
