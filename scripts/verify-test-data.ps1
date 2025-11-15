@@ -148,14 +148,16 @@ Write-Host "================================================" -ForegroundColor G
 Write-Host ""
 
 Write-Host "Key Features in Sample Data:" -ForegroundColor Cyan
-Write-Host "  * Three shipment types (single, bulk, warehouse-to-engineer)" -ForegroundColor White
-Write-Host "  * All eight shipment statuses represented" -ForegroundColor White
-Write-Host "  * Multiple bulk shipments (2-6 laptops each)" -ForegroundColor White
-Write-Host "  * High-end workstations and premium laptops" -ForegroundColor White
-Write-Host "  * Complete forms with detailed JSON data" -ForegroundColor White
-Write-Host "  * Photo URLs and realistic notes" -ForegroundColor White
-Write-Host "  * Audit logs tracking system activity" -ForegroundColor White
-Write-Host "  * Magic links for secure access" -ForegroundColor White
+Write-Host "  ✓ Three shipment types (single, bulk, warehouse-to-engineer)" -ForegroundColor Green
+Write-Host "  ✓ All eight shipment statuses represented" -ForegroundColor Green
+Write-Host "  ✓ Multiple bulk shipments (2-5 laptops each)" -ForegroundColor Green
+Write-Host "  ✓ High-end workstations and premium laptops" -ForegroundColor Green
+Write-Host "  ✓ Complete pickup forms with detailed JSON data" -ForegroundColor Green
+Write-Host "  ✓ Laptop-based reception reports with approval workflow" -ForegroundColor Green
+Write-Host "  ✓ Delivery forms with photo documentation" -ForegroundColor Green
+Write-Host "  ✓ Audit logs tracking all system activity" -ForegroundColor Green
+Write-Host "  ✓ Magic links for secure delivery confirmation" -ForegroundColor Green
+Write-Host "  ✓ Address confirmation tracking for engineers" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Data Quality Indicators:" -ForegroundColor Cyan
@@ -166,12 +168,36 @@ FROM shipments s
 WHERE EXISTS (SELECT 1 FROM pickup_forms pf WHERE pf.shipment_id = s.id);
 
 SELECT 
-    '  Engineers with addresses: ' || COUNT(*) || ' / ' || (SELECT COUNT(*) FROM software_engineers) as address_coverage
-FROM software_engineers WHERE address IS NOT NULL AND address != '';
+    '  Engineers with confirmed addresses: ' || COUNT(*) || ' / ' || (SELECT COUNT(*) FROM software_engineers) as address_coverage
+FROM software_engineers WHERE address_confirmed = true;
+
+SELECT 
+    '  Reception reports (laptop-based): ' || COUNT(*) as reception_reports
+FROM reception_reports;
+
+SELECT 
+    '  Reports pending approval: ' || COUNT(*) as pending_approval
+FROM reception_reports WHERE status = 'pending_approval';
 
 SELECT 
     '  Average laptops per bulk shipment: ' || ROUND(AVG(laptop_count), 1) as avg_bulk_size
 FROM shipments WHERE laptop_count > 1;
+
+SELECT 
+    '  Active magic links: ' || COUNT(*) as active_links
+FROM magic_links WHERE used = false AND expires_at > NOW();
+" -t
+
+Write-Host ""
+Write-Host "Shipment Types Breakdown:" -ForegroundColor Cyan
+docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "
+SELECT 
+    shipment_type,
+    COUNT(*) as count,
+    SUM(laptop_count) as total_laptops
+FROM shipments 
+GROUP BY shipment_type 
+ORDER BY count DESC;
 " -t
 
 Write-Host ""
@@ -188,8 +214,15 @@ Write-Host "  Project Manager: pm@bairesdev.com" -ForegroundColor Gray
 Write-Host "  Client:          client@techcorp.com" -ForegroundColor Gray
 Write-Host ""
 
+Write-Host "Workflow Testing:" -ForegroundColor Cyan
+Write-Host "  > Single Full Journey: Check shipment SCOP-90001 (delivered)" -ForegroundColor White
+Write-Host "  > Bulk to Warehouse: Check shipment SCOP-90002 (at warehouse, pending approval)" -ForegroundColor White
+Write-Host "  > Warehouse to Engineer: Check shipment SCOP-90003 (in transit)" -ForegroundColor White
+Write-Host "  > In Progress: Check shipments SCOP-90004, SCOP-90005, SCOP-90006" -ForegroundColor White
+Write-Host ""
+
 Write-Host "Additional Resources:" -ForegroundColor Cyan
 Write-Host "  Documentation: .\docs\" -ForegroundColor White
-Write-Host "  Reload data: docker exec -i laptop-tracking-db psql ..." -ForegroundColor White
+Write-Host "  Reload data: .\scripts\load-sample-data.ps1" -ForegroundColor White
 Write-Host "  Backup DB: .\scripts\backup-db.ps1" -ForegroundColor White
 Write-Host ""

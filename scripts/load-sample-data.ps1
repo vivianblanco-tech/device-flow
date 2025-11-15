@@ -55,53 +55,97 @@ if (-Not $containerRunning) {
     exit 1
 }
 
-# Load sample data
-Write-Host "Loading sample data from scripts/sample_data.sql..." -ForegroundColor Cyan
+# Load comprehensive sample data (v2)
+Write-Host "Loading comprehensive sample data..." -ForegroundColor Cyan
 Write-Host "Container: $containerName" -ForegroundColor Yellow
 Write-Host ""
 
-# Copy SQL file to container and execute it
-$tempFile = "/tmp/sample_data.sql"
-docker cp "scripts\sample_data.sql" "${containerName}:${tempFile}" 2>&1 | Out-Null
+# Step 1: Load base data (users, companies, engineers, laptops)
+Write-Host "[1/2] Loading base data (users, companies, engineers, laptops)..." -ForegroundColor Yellow
+$tempFileBase = "/tmp/comprehensive-sample-data-v2.sql"
+docker cp "scripts\comprehensive-sample-data-v2.sql" "${containerName}:${tempFileBase}" 2>&1 | Out-Null
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Failed to copy SQL file to container!" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to copy base data SQL file to container!" -ForegroundColor Red
     exit 1
 }
 
-$result = docker exec $containerName psql -U $DB_USER -d $DB_NAME -f $tempFile 2>&1
+$resultBase = docker exec $containerName psql -U $DB_USER -d $DB_NAME -f $tempFileBase 2>&1
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Failed to load base data!" -ForegroundColor Red
+    Write-Host "Error details:" -ForegroundColor Yellow
+    Write-Host $resultBase -ForegroundColor Gray
+    docker exec $containerName rm $tempFileBase 2>&1 | Out-Null
+    exit 1
+}
+
+Write-Host "[OK] Base data loaded" -ForegroundColor Green
+docker exec $containerName rm $tempFileBase 2>&1 | Out-Null
+
+# Step 2: Load shipments data (shipments, forms, reports, audit logs)
+Write-Host "[2/2] Loading shipments data (shipments, forms, reports)..." -ForegroundColor Yellow
+$tempFileShipments = "/tmp/comprehensive-shipments-data-v2.sql"
+docker cp "scripts\comprehensive-shipments-data-v2.sql" "${containerName}:${tempFileShipments}" 2>&1 | Out-Null
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Failed to copy shipments data SQL file to container!" -ForegroundColor Red
+    exit 1
+}
+
+$resultShipments = docker exec $containerName psql -U $DB_USER -d $DB_NAME -f $tempFileShipments 2>&1
 
 if ($LASTEXITCODE -eq 0) {
     # Clean up temp file
-    docker exec $containerName rm $tempFile 2>&1 | Out-Null
+    docker exec $containerName rm $tempFileShipments 2>&1 | Out-Null
     
+    Write-Host "[OK] Shipments data loaded" -ForegroundColor Green
     Write-Host ""
-    Write-Host "[SUCCESS] Sample data loaded successfully!" -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Green
+    Write-Host "[SUCCESS] Comprehensive sample data loaded!" -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Sample Users (all passwords: 'password123'):" -ForegroundColor Cyan
+    Write-Host "Test Credentials (Password: Test123!):" -ForegroundColor Cyan
     Write-Host "  Logistics:        logistics@bairesdev.com" -ForegroundColor White
-    Write-Host "  Client:           client1@techcorp.com" -ForegroundColor White
     Write-Host "  Warehouse:        warehouse@bairesdev.com" -ForegroundColor White
     Write-Host "  Project Manager:  pm@bairesdev.com" -ForegroundColor White
+    Write-Host "  Client:           client@techcorp.com" -ForegroundColor White
     Write-Host ""
     Write-Host "Sample Data Includes:" -ForegroundColor Cyan
-    Write-Host "  - 9 users across all roles" -ForegroundColor White
-    Write-Host "  - 5 client companies" -ForegroundColor White
-    Write-Host "  - 10 software engineers" -ForegroundColor White
-    Write-Host "  - 15 laptops (Dell, HP, Lenovo, Apple, Microsoft)" -ForegroundColor White
-    Write-Host "  - 8 shipments in various statuses" -ForegroundColor White
-    Write-Host "  - 5 pickup forms with detailed information" -ForegroundColor White
-    Write-Host "  - 3 reception reports" -ForegroundColor White
-    Write-Host "  - 2 delivery forms" -ForegroundColor White
+    Write-Host "  - 30+ users across all 4 roles" -ForegroundColor White
+    Write-Host "  - 15 client companies" -ForegroundColor White
+    Write-Host "  - 35+ software engineers (with address confirmations)" -ForegroundColor White
+    Write-Host "  - 40+ laptops (Dell, HP, Lenovo, Apple)" -ForegroundColor White
+    Write-Host "  - 7+ shipments (all three types: single, bulk, warehouse-to-engineer)" -ForegroundColor White
+    Write-Host "  - Complete pickup forms with detailed JSON data" -ForegroundColor White
+    Write-Host "  - Laptop-based reception reports with approval workflow" -ForegroundColor White
+    Write-Host "  - Delivery forms with photos" -ForegroundColor White
+    Write-Host "  - Audit logs tracking all activities" -ForegroundColor White
+    Write-Host "  - Magic links for secure delivery confirmation" -ForegroundColor White
+    Write-Host ""
+    Write-Host "Shipment Types Represented:" -ForegroundColor Cyan
+    Write-Host "  + Single Full Journey (Client -> Warehouse -> Engineer)" -ForegroundColor Green
+    Write-Host "  + Bulk to Warehouse (2+ laptops -> Warehouse only)" -ForegroundColor Green
+    Write-Host "  + Warehouse to Engineer (Inventory -> Engineer)" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "All Shipment Statuses:" -ForegroundColor Cyan
+    Write-Host "  ✓ pending_pickup_from_client" -ForegroundColor Green
+    Write-Host "  ✓ pickup_from_client_scheduled" -ForegroundColor Green
+    Write-Host "  ✓ picked_up_from_client" -ForegroundColor Green
+    Write-Host "  ✓ in_transit_to_warehouse" -ForegroundColor Green
+    Write-Host "  ✓ at_warehouse" -ForegroundColor Green
+    Write-Host "  ✓ released_from_warehouse" -ForegroundColor Green
+    Write-Host "  ✓ in_transit_to_engineer" -ForegroundColor Green
+    Write-Host "  ✓ delivered" -ForegroundColor Green
     Write-Host ""
 } else {
     Write-Host ""
-    Write-Host "[ERROR] Failed to load sample data!" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to load shipments data!" -ForegroundColor Red
     Write-Host "Error details:" -ForegroundColor Yellow
-    Write-Host $result -ForegroundColor Gray
+    Write-Host $resultShipments -ForegroundColor Gray
     
     # Clean up temp file even on error
-    docker exec $containerName rm $tempFile 2>&1 | Out-Null
+    docker exec $containerName rm $tempFileShipments 2>&1 | Out-Null
     exit 1
 }
 

@@ -167,6 +167,26 @@ func main() {
 		"laptopStatusDisplayName": func(status models.LaptopStatus) string {
 			return models.GetLaptopStatusDisplayName(status)
 		},
+		"receptionReportStatusColor": func(status string) string {
+			switch models.ReceptionReportStatus(status) {
+			case models.ReceptionReportStatusPendingApproval:
+				return "bg-yellow-100 text-yellow-800"
+			case models.ReceptionReportStatusApproved:
+				return "bg-green-100 text-green-800"
+			default:
+				return "bg-gray-100 text-gray-800"
+			}
+		},
+		"receptionReportStatusDisplayName": func(status string) string {
+			switch models.ReceptionReportStatus(status) {
+			case models.ReceptionReportStatusPendingApproval:
+				return "Pending Approval"
+			case models.ReceptionReportStatusApproved:
+				return "Approved"
+			default:
+				return "Unknown"
+			}
+		},
 	}
 
 	templates, err := template.New("").Funcs(funcMap).ParseGlob("templates/pages/*.html")

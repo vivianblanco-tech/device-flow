@@ -37,6 +37,11 @@ type Laptop struct {
 	ClientCompanyName    string `json:"client_company_name,omitempty" db:"client_company_name"`
 	SoftwareEngineerName string `json:"software_engineer_name,omitempty" db:"software_engineer_name"`
 	EmployeeID           string `json:"employee_id,omitempty" db:"employee_id"`
+	
+	// Reception Report information (populated by queries with joins for warehouse users)
+	HasReceptionReport     bool    `json:"has_reception_report" db:"has_reception_report"`
+	ReceptionReportID      *int64  `json:"reception_report_id,omitempty" db:"reception_report_id"`
+	ReceptionReportStatus  string  `json:"reception_report_status,omitempty" db:"reception_report_status"`
 }
 
 // Validate validates the Laptop model

@@ -23,10 +23,14 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 			l.id, l.serial_number, l.sku, l.brand, l.model, l.ram_gb, l.ssd_gb, l.status, 
 			l.client_company_id, l.software_engineer_id, l.created_at, l.updated_at,
 			cc.name as client_company_name,
-			se.name as software_engineer_name
+			se.name as software_engineer_name,
+			COALESCE(rr.id IS NOT NULL, false) as has_reception_report,
+			rr.id as reception_report_id,
+			rr.status as reception_report_status
 		FROM laptops l
 		LEFT JOIN client_companies cc ON cc.id = l.client_company_id
 		LEFT JOIN software_engineers se ON se.id = l.software_engineer_id
+		LEFT JOIN reception_reports rr ON rr.laptop_id = l.id
 	`
 
 	var conditions []string
@@ -96,6 +100,8 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 		var brand sql.NullString
 		var clientCompanyName sql.NullString
 		var softwareEngineerName sql.NullString
+		var receptionReportID sql.NullInt64
+		var receptionReportStatus sql.NullString
 
 		err := rows.Scan(
 			&laptop.ID,
@@ -112,6 +118,9 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 			&laptop.UpdatedAt,
 			&clientCompanyName,
 			&softwareEngineerName,
+			&laptop.HasReceptionReport,
+			&receptionReportID,
+			&receptionReportStatus,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan laptop: %w", err)
@@ -129,6 +138,12 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 		}
 		if softwareEngineerName.Valid {
 			laptop.SoftwareEngineerName = softwareEngineerName.String
+		}
+		if receptionReportID.Valid {
+			laptop.ReceptionReportID = &receptionReportID.Int64
+		}
+		if receptionReportStatus.Valid {
+			laptop.ReceptionReportStatus = receptionReportStatus.String
 		}
 
 		laptops = append(laptops, laptop)

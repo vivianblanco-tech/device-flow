@@ -46,9 +46,9 @@ func (h *PickupFormHandler) PickupFormsLandingPage(w http.ResponseWriter, r *htt
 	showWarehouseToEngineer := user.Role == models.RoleLogistics
 
 	data := map[string]interface{}{
-		"User":                     user,
-		"Nav":                      views.GetNavigationLinks(user.Role),
-		"CurrentPage":              "pickup-forms",
+		"User":                    user,
+		"Nav":                     views.GetNavigationLinks(user.Role),
+		"CurrentPage":             "pickup-forms",
 		"ShowWarehouseToEngineer": showWarehouseToEngineer,
 	}
 
@@ -118,12 +118,14 @@ func (h *PickupFormHandler) PickupFormPage(w http.ResponseWriter, r *http.Reques
 	}
 
 	data := map[string]interface{}{
-		"Error":     errorMsg,
-		"Success":   successMsg,
-		"User":      user,
-		"CompanyID": companyID,
-		"Companies": companies,
-		"TimeSlots": []string{"morning", "afternoon", "evening"},
+		"Error":       errorMsg,
+		"Success":     successMsg,
+		"User":        user,
+		"Nav":         views.GetNavigationLinks(user.Role),
+		"CurrentPage": "pickup-forms",
+		"CompanyID":   companyID,
+		"Companies":   companies,
+		"TimeSlots":   []string{"morning", "afternoon", "evening"},
 	}
 
 	if h.Templates != nil {
@@ -178,6 +180,8 @@ func (h *PickupFormHandler) SingleShipmentFormPage(w http.ResponseWriter, r *htt
 		"Error":        errorMsg,
 		"Success":      successMsg,
 		"User":         user,
+		"Nav":          views.GetNavigationLinks(user.Role),
+		"CurrentPage":  "pickup-forms",
 		"Companies":    companies,
 		"TimeSlots":    []string{"morning", "afternoon", "evening"},
 		"ShipmentType": models.ShipmentTypeSingleFullJourney,
@@ -235,6 +239,8 @@ func (h *PickupFormHandler) BulkShipmentFormPage(w http.ResponseWriter, r *http.
 		"Error":        errorMsg,
 		"Success":      successMsg,
 		"User":         user,
+		"Nav":          views.GetNavigationLinks(user.Role),
+		"CurrentPage":  "pickup-forms",
 		"Companies":    companies,
 		"TimeSlots":    []string{"morning", "afternoon", "evening"},
 		"ShipmentType": models.ShipmentTypeBulkToWarehouse,
@@ -320,6 +326,8 @@ func (h *PickupFormHandler) WarehouseToEngineerFormPage(w http.ResponseWriter, r
 		"Error":        errorMsg,
 		"Success":      successMsg,
 		"User":         user,
+		"Nav":          views.GetNavigationLinks(user.Role),
+		"CurrentPage":  "pickup-forms",
 		"Laptops":      laptops,
 		"ShipmentType": models.ShipmentTypeWarehouseToEngineer,
 	}
@@ -360,10 +368,10 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 
 	// Get shipment type first (needed to determine if we need client_company_id)
 	shipmentTypeStr := r.FormValue("shipment_type")
-	
+
 	// Detect legacy form format (no shipment_type and has old fields)
 	isLegacyForm := shipmentTypeStr == "" && r.FormValue("number_of_laptops") != ""
-	
+
 	// Set shipment type
 	if isLegacyForm {
 		// Legacy forms - will be handled by legacy handler
@@ -372,7 +380,7 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 		// New forms without explicit type default to single_full_journey
 		shipmentTypeStr = string(models.ShipmentTypeSingleFullJourney)
 	}
-	
+
 	shipmentType := models.ShipmentType(shipmentTypeStr)
 
 	// Validate shipment type (skip for legacy)
@@ -384,7 +392,7 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 	// Extract company ID
 	var companyID int64
 	companyIDStr := r.FormValue("client_company_id")
-	
+
 	// For warehouse-to-engineer shipments, extract company ID from laptop if not provided
 	if shipmentType == models.ShipmentTypeWarehouseToEngineer && companyIDStr == "" {
 		laptopIDStr := r.FormValue("laptop_id")
@@ -397,12 +405,12 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 					`SELECT client_company_id FROM laptops WHERE id = $1`,
 					laptopID,
 				).Scan(&nullableCompanyID)
-				
+
 				if err != nil {
 					http.Redirect(w, r, "/shipments/create/warehouse-to-engineer?error=Laptop+not+found", http.StatusSeeOther)
 					return
 				}
-				
+
 				if nullableCompanyID.Valid {
 					// Laptop has a company ID
 					companyID = nullableCompanyID.Int64
@@ -417,7 +425,7 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 						 LIMIT 1`,
 						laptopID,
 					).Scan(&companyID)
-					
+
 					if err != nil {
 						http.Redirect(w, r, "/shipments/create/warehouse-to-engineer?error=Unable+to+find+laptop+company", http.StatusSeeOther)
 						return
@@ -1042,15 +1050,15 @@ func (h *PickupFormHandler) handleBulkToWarehouseForm(r *http.Request, user *mod
 
 	// Create audit log entry
 	auditDetails, _ := json.Marshal(map[string]interface{}{
-		"action":         "pickup_form_submitted",
-		"shipment_id":    shipmentID,
-		"shipment_type":  models.ShipmentTypeBulkToWarehouse,
-		"company_id":     companyID,
-		"laptop_count":   numberOfLaptops,
-		"bulk_length":    bulkLength,
-		"bulk_width":     bulkWidth,
-		"bulk_height":    bulkHeight,
-		"bulk_weight":    bulkWeight,
+		"action":        "pickup_form_submitted",
+		"shipment_id":   shipmentID,
+		"shipment_type": models.ShipmentTypeBulkToWarehouse,
+		"company_id":    companyID,
+		"laptop_count":  numberOfLaptops,
+		"bulk_length":   bulkLength,
+		"bulk_width":    bulkWidth,
+		"bulk_height":   bulkHeight,
+		"bulk_weight":   bulkWeight,
 	})
 
 	_, err = tx.ExecContext(r.Context(),
@@ -1160,13 +1168,13 @@ func (h *PickupFormHandler) handleWarehouseToEngineerForm(r *http.Request, user 
 
 	// Create shipment with warehouse_to_engineer type
 	shipment := models.Shipment{
-		ShipmentType:        models.ShipmentTypeWarehouseToEngineer,
-		ClientCompanyID:     companyID,
-		Status:              models.ShipmentStatusReleasedFromWarehouse, // Start at released status
-		LaptopCount:         1,
-		SoftwareEngineerID:  softwareEngineerID,
-		JiraTicketNumber:    formInput.JiraTicketNumber,
-		Notes:               formInput.SpecialInstructions,
+		ShipmentType:       models.ShipmentTypeWarehouseToEngineer,
+		ClientCompanyID:    companyID,
+		Status:             models.ShipmentStatusReleasedFromWarehouse, // Start at released status
+		LaptopCount:        1,
+		SoftwareEngineerID: softwareEngineerID,
+		JiraTicketNumber:   formInput.JiraTicketNumber,
+		Notes:              formInput.SpecialInstructions,
 	}
 	shipment.BeforeCreate()
 
@@ -1236,12 +1244,12 @@ func (h *PickupFormHandler) handleWarehouseToEngineerForm(r *http.Request, user 
 
 	// Create audit log entry
 	auditDetails, _ := json.Marshal(map[string]interface{}{
-		"action":                "warehouse_to_engineer_form_submitted",
-		"shipment_id":           shipmentID,
-		"shipment_type":         models.ShipmentTypeWarehouseToEngineer,
-		"company_id":            companyID,
-		"laptop_id":             laptopID,
-		"software_engineer_id":  softwareEngineerID,
+		"action":               "warehouse_to_engineer_form_submitted",
+		"shipment_id":          shipmentID,
+		"shipment_type":        models.ShipmentTypeWarehouseToEngineer,
+		"company_id":           companyID,
+		"laptop_id":            laptopID,
+		"software_engineer_id": softwareEngineerID,
 	})
 
 	_, err = tx.ExecContext(r.Context(),
@@ -1511,16 +1519,16 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 	).Scan(&laptopID)
 	if err != nil {
 		// Log the actual database error for debugging
-		fmt.Printf("Failed to create laptop: %v (serial: %s, model: %s, ram: %s, ssd: %s, status: %s, company: %v)\n", 
+		fmt.Printf("Failed to create laptop: %v (serial: %s, model: %s, ram: %s, ssd: %s, status: %s, company: %v)\n",
 			err, laptop.SerialNumber, laptop.Model, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID)
-		
+
 		// Check if it's a duplicate serial number error
 		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
 			redirectURL := fmt.Sprintf("/shipments/%d?error=Laptop+serial+number+already+exists", shipmentID)
 			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 			return
 		}
-		
+
 		http.Error(w, "Failed to create laptop", http.StatusInternalServerError)
 		return
 	}
@@ -1770,7 +1778,7 @@ func (h *PickupFormHandler) EditShipmentDetails(w http.ResponseWriter, r *http.R
 		updateQuery := `UPDATE laptops SET updated_at = $1`
 		args := []interface{}{time.Now()}
 		argIdx := 2
-		
+
 		if formInput.LaptopModel != "" {
 			updateQuery += fmt.Sprintf(", model = $%d", argIdx)
 			args = append(args, formInput.LaptopModel)
@@ -1786,11 +1794,11 @@ func (h *PickupFormHandler) EditShipmentDetails(w http.ResponseWriter, r *http.R
 			args = append(args, formInput.LaptopSSDGB)
 			argIdx++
 		}
-		
+
 		if argIdx > 2 { // Only execute if we have fields to update
 			updateQuery += fmt.Sprintf(" WHERE id = $%d", argIdx)
 			args = append(args, laptopID)
-			
+
 			_, err = tx.ExecContext(r.Context(), updateQuery, args...)
 			if err != nil {
 				http.Error(w, "Failed to update laptop", http.StatusInternalServerError)
@@ -1827,7 +1835,7 @@ func (h *PickupFormHandler) EditShipmentDetails(w http.ResponseWriter, r *http.R
 		"engineer_name":           formInput.EngineerName,
 		"include_accessories":     formInput.IncludeAccessories,
 		"accessories_description": formInput.AccessoriesDescription,
-		"jira_ticket_number":      jiraTicket,                              // Preserved from shipment
+		"jira_ticket_number":      jiraTicket,                               // Preserved from shipment
 		"laptop_serial_number":    existingFormData["laptop_serial_number"], // Preserved from existing form
 	}
 

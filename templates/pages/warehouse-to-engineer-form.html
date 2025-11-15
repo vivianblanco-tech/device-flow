@@ -88,7 +88,7 @@
                                 data-serial="{{.SerialNumber}}" 
                                 data-brand="{{.Brand}}" 
                                 data-model="{{.Model}}" 
-                                data-specs="{{.Specs}}"
+                                data-specs="{{if .RAMGB}}RAM: {{.RAMGB}}GB{{end}}{{if and .RAMGB .SSDGB}}, {{end}}{{if .SSDGB}}SSD: {{.SSDGB}}GB{{end}}"
                                 data-company="{{.ClientCompanyName}}"
                             >
                                 {{.SerialNumber}} - {{.Brand}} {{.Model}} {{if .ClientCompanyName}}({{.ClientCompanyName}}){{end}}

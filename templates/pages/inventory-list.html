@@ -78,28 +78,28 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Serial Number
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                SKU
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Brand/Model
                             </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Brand
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Model
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Client
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Assigned to SE
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Status
                             </th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {{if eq .User.Role "warehouse"}}
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Reception Report
+                            </th>
+                            {{else}}
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Client
+                            </th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Assigned to SE
+                            </th>
+                            {{end}}
+                            <th scope="col" class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Actions
                             </th>
                         </tr>
@@ -107,35 +107,62 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         {{range .Laptops}}
                         <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900">{{.SerialNumber}}</div>
+                                {{if .SKU}}<div class="text-xs text-gray-500">{{.SKU}}</div>{{end}}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-600">{{if .SKU}}{{.SKU}}{{else}}-{{end}}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">{{if .Brand}}{{.Brand}}{{else}}-{{end}}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">{{if .Model}}{{.Model}}{{else}}-{{end}}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">{{if .ClientCompanyName}}{{.ClientCompanyName}}{{else}}-{{end}}</div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-3 py-4">
                                 <div class="text-sm text-gray-900">
-                                    {{if .SoftwareEngineerName}}
-                                        <div>{{.SoftwareEngineerName}}</div>
-                                        {{if .SoftwareEngineerID}}<div class="text-xs text-gray-500">ID: {{.SoftwareEngineerID}}</div>{{end}}
-                                    {{else}}-{{end}}
+                                    {{if .Brand}}{{.Brand}}{{else}}-{{end}}
+                                    {{if .Model}}{{if .Brand}} {{end}}{{.Model}}{{end}}
                                 </div>
+                                {{if or .RAMGB .SSDGB}}
+                                <div class="text-xs text-gray-500">
+                                    {{if .RAMGB}}{{.RAMGB}} RAM{{end}}
+                                    {{if and .RAMGB .SSDGB}}, {{end}}
+                                    {{if .SSDGB}}{{.SSDGB}} SSD{{end}}
+                                </div>
+                                {{end}}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{inventoryStatusColor .Status}}">
+                            <td class="px-3 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{inventoryStatusColor .Status}}">
                                     {{laptopStatusDisplayName .Status}}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            {{if eq $.User.Role "warehouse"}}
+                            <td class="px-3 py-4">
+                                {{if .HasReceptionReport}}
+                                    <div class="flex flex-col space-y-1">
+                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full {{receptionReportStatusColor .ReceptionReportStatus}}">
+                                            {{receptionReportStatusDisplayName .ReceptionReportStatus}}
+                                        </span>
+                                        {{if .ReceptionReportID}}
+                                        <a href="/reception-reports/{{.ReceptionReportID}}" class="text-xs text-blue-600 hover:text-blue-900">View Report</a>
+                                        {{end}}
+                                    </div>
+                                {{else}}
+                                    {{if eq .Status "at_warehouse"}}
+                                    <a href="/laptops/{{.ID}}/reception-report" class="inline-flex items-center px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors">
+                                        + Create Report
+                                    </a>
+                                    {{else}}
+                                    <span class="text-xs text-gray-500">-</span>
+                                    {{end}}
+                                {{end}}
+                            </td>
+                            {{else}}
+                            <td class="px-3 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{if .ClientCompanyName}}{{.ClientCompanyName}}{{else}}-{{end}}</div>
+                            </td>
+                            <td class="px-3 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">
+                                    {{if .SoftwareEngineerName}}
+                                        <div>{{.SoftwareEngineerName}}</div>
+                                    {{else}}-{{end}}
+                                </div>
+                            </td>
+                            {{end}}
+                            <td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end space-x-2">
                                     <a href="/inventory/{{.ID}}" class="text-blue-600 hover:text-blue-900">View</a>
                                     {{if or (eq $.User.Role "logistics") (eq $.User.Role "warehouse")}}
