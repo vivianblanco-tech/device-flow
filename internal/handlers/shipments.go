@@ -649,6 +649,32 @@ func (h *ShipmentsHandler) AssignEngineer(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// For single_full_journey shipments, also assign the engineer to the laptop
+	// Get shipment type first
+	var shipmentType models.ShipmentType
+	err = h.DB.QueryRowContext(r.Context(),
+		`SELECT shipment_type FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&shipmentType)
+	if err != nil {
+		fmt.Printf("Error querying shipment type: %v\n", err)
+		// Non-critical error - continue with audit log
+	} else if shipmentType == models.ShipmentTypeSingleFullJourney {
+		// Update the laptop's engineer assignment too
+		_, err = h.DB.ExecContext(r.Context(),
+			`UPDATE laptops l 
+			 SET software_engineer_id = $1, updated_at = $2 
+			 FROM shipment_laptops sl 
+			 WHERE sl.laptop_id = l.id 
+			 AND sl.shipment_id = $3`,
+			engineerID, time.Now(), shipmentID,
+		)
+		if err != nil {
+			fmt.Printf("Error assigning engineer to laptop: %v\n", err)
+			// Non-critical error - continue with audit log
+		}
+	}
+
 	// Create audit log
 	auditDetails, _ := json.Marshal(map[string]interface{}{
 		"action":      "engineer_assigned",
