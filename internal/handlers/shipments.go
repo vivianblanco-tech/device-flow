@@ -532,6 +532,23 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// For single_full_journey shipments, when status changes to at_warehouse,
+	// also update the laptop status to at_warehouse (Received at Warehouse)
+	if currentShipment.ShipmentType == models.ShipmentTypeSingleFullJourney && newStatus == models.ShipmentStatusAtWarehouse {
+		_, err = h.DB.ExecContext(r.Context(),
+			`UPDATE laptops l
+			SET status = $1, updated_at = $2
+			FROM shipment_laptops sl
+			WHERE sl.laptop_id = l.id
+			AND sl.shipment_id = $3`,
+			models.LaptopStatusAtWarehouse, time.Now(), shipmentID,
+		)
+		if err != nil {
+			fmt.Printf("Error updating laptop status for single shipment: %v\n", err)
+			// Non-critical error - log but don't fail the request
+		}
+	}
+
 	// Send email notification if status changed to pickup_scheduled
 	notificationSent := false
 	if oldStatus == string(models.ShipmentStatusPendingPickup) && newStatus == models.ShipmentStatusPickupScheduled {
