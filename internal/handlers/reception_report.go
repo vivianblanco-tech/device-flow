@@ -590,16 +590,15 @@ func (h *ReceptionReportHandler) ReceptionReportDetail(w http.ResponseWriter, r 
 	}
 }
 
-
 // buildReceptionReportsOrderByClause builds the ORDER BY clause for reception reports based on sort parameters
 func buildReceptionReportsOrderByClause(sortBy, sortOrder string) string {
 	// Map of allowed sort columns to their SQL equivalents
 	sortColumns := map[string]string{
-		"id":           "rr.id",
-		"shipment":     "s.jira_ticket_number",
-		"company":      "c.name",
-		"type":         "s.shipment_type",
-		"received_at":  "rr.received_at",
+		"id":             "rr.id",
+		"shipment":       "s.jira_ticket_number",
+		"company":        "c.name",
+		"type":           "s.shipment_type",
+		"received_at":    "rr.received_at",
 		"warehouse_user": "u.email",
 	}
 
@@ -624,3 +623,4 @@ func buildReceptionReportsOrderByClause(sortBy, sortOrder string) string {
 	// Return the ORDER BY clause with the specified column and order
 	return fmt.Sprintf("ORDER BY %s COLLATE \"C\" %s", sqlColumn, order)
 }
+
