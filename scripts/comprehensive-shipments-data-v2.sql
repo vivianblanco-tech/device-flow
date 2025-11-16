@@ -1,5 +1,5 @@
 -- =============================================
--- COMPREHENSIVE SHIPMENTS DATA v2.1
+-- COMPREHENSIVE SHIPMENTS DATA v2.2
 -- Complete Shipments, Forms, Reports & Audit Logs
 -- =============================================
 -- This script adds complete shipment data with all three types:
@@ -8,6 +8,7 @@
 -- 3. warehouse_to_engineer - Warehouse inventory → Engineer
 --
 -- Run this AFTER loading comprehensive-sample-data-v2.sql
+-- Compatible with CPU-required laptop schema (v2.2)
 -- =============================================
 
 -- ===========================================

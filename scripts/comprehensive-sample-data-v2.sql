@@ -1,5 +1,5 @@
 -- =============================================
--- COMPREHENSIVE ENHANCED SAMPLE DATA v2.1
+-- COMPREHENSIVE ENHANCED SAMPLE DATA v2.2
 -- Laptop Tracking System - Production-Ready Test Data
 -- =============================================
 -- Features:
@@ -8,6 +8,8 @@
 -- * Laptop-based reception reports with approval workflow
 -- * 25+ shipments with complete lifecycle data
 -- * 80+ laptops (diverse brands and configurations)
+-- * Required CPU field for all laptops
+-- * RAM and SSD values in GB format (e.g., 32GB, 1TB)
 -- * 30+ users (all roles properly configured)
 -- * 15 client companies
 -- * 35+ software engineers (with address confirmations)
@@ -16,7 +18,7 @@
 -- * Historical data spanning 6 months
 -- * Edge cases and realistic scenarios
 -- Password for all users: "Test123!"
--- Last Updated: 2025-11-15
+-- Last Updated: 2025-11-16
 -- =============================================
 
 -- =============================================
@@ -195,56 +197,56 @@ INSERT INTO software_engineers (name, email, phone, address, address_confirmed, 
 -- This script includes 40 laptops as a representative sample.
 -- For production, expand this section or generate programmatically.
 
-INSERT INTO laptops (serial_number, sku, brand, model, ram_gb, ssd_gb, status, created_at) VALUES
+INSERT INTO laptops (serial_number, sku, brand, model, cpu, ram_gb, ssd_gb, status, created_at) VALUES
 -- Dell Precision Workstations (6 units)
-('DELL-PREC-5570-001', 'DELL-PREC-5570', 'Dell', 'Precision 5570', 64, 2048, 'available', NOW() - INTERVAL '4 months'),
-('DELL-PREC-5570-002', 'DELL-PREC-5570', 'Dell', 'Precision 5570', 64, 2048, 'available', NOW() - INTERVAL '4 months'),
-('DELL-PREC-5570-003', 'DELL-PREC-5570', 'Dell', 'Precision 5570', 64, 2048, 'at_warehouse', NOW() - INTERVAL '3 months'),
-('DELL-PREC-7670-001', 'DELL-PREC-7670', 'Dell', 'Precision 7670', 128, 4096, 'available', NOW() - INTERVAL '4 months'),
-('DELL-PREC-7670-002', 'DELL-PREC-7670', 'Dell', 'Precision 7670', 128, 4096, 'at_warehouse', NOW() - INTERVAL '3 months'),
-('DELL-PREC-5570-004', 'DELL-PREC-5570', 'Dell', 'Precision 5570', 64, 2048, 'delivered', NOW() - INTERVAL '5 months'),
+('DELL-PREC-5570-001', 'DELL-PREC-5570', 'Dell', 'Precision 5570', 'Intel Core i9-12900H', '64GB', '2TB', 'available', NOW() - INTERVAL '4 months'),
+('DELL-PREC-5570-002', 'DELL-PREC-5570', 'Dell', 'Precision 5570', 'Intel Core i9-12900H', '64GB', '2TB', 'available', NOW() - INTERVAL '4 months'),
+('DELL-PREC-5570-003', 'DELL-PREC-5570', 'Dell', 'Precision 5570', 'Intel Core i9-12900H', '64GB', '2TB', 'at_warehouse', NOW() - INTERVAL '3 months'),
+('DELL-PREC-7670-001', 'DELL-PREC-7670', 'Dell', 'Precision 7670', 'Intel Xeon W-11955M', '128GB', '4TB', 'available', NOW() - INTERVAL '4 months'),
+('DELL-PREC-7670-002', 'DELL-PREC-7670', 'Dell', 'Precision 7670', 'Intel Xeon W-11955M', '128GB', '4TB', 'at_warehouse', NOW() - INTERVAL '3 months'),
+('DELL-PREC-5570-004', 'DELL-PREC-5570', 'Dell', 'Precision 5570', 'Intel Core i9-12900H', '64GB', '2TB', 'delivered', NOW() - INTERVAL '5 months'),
 
 -- Dell XPS (10 units)
-('DELL-XPS-9520-001', 'DELL-XPS-9520', 'Dell', 'XPS 15 9520', 32, 1024, 'available', NOW() - INTERVAL '3 months'),
-('DELL-XPS-9520-002', 'DELL-XPS-9520', 'Dell', 'XPS 15 9520', 32, 1024, 'available', NOW() - INTERVAL '3 months'),
-('DELL-XPS-9520-003', 'DELL-XPS-9520', 'Dell', 'XPS 15 9520', 32, 1024, 'available', NOW() - INTERVAL '3 months'),
-('DELL-XPS-9520-004', 'DELL-XPS-9520', 'Dell', 'XPS 15 9520', 32, 1024, 'at_warehouse', NOW() - INTERVAL '2 months'),
-('DELL-XPS-9520-005', 'DELL-XPS-9520', 'Dell', 'XPS 15 9520', 32, 1024, 'delivered', NOW() - INTERVAL '5 months'),
-('DELL-XPS-9315-001', 'DELL-XPS-9315', 'Dell', 'XPS 13 Plus 9315', 32, 1024, 'available', NOW() - INTERVAL '3 months'),
-('DELL-XPS-9315-002', 'DELL-XPS-9315', 'Dell', 'XPS 13 Plus 9315', 32, 1024, 'available', NOW() - INTERVAL '3 months'),
-('DELL-XPS-9315-003', 'DELL-XPS-9315', 'Dell', 'XPS 13 Plus 9315', 32, 1024, 'at_warehouse', NOW() - INTERVAL '2 months'),
-('DELL-XPS-9315-004', 'DELL-XPS-9315', 'Dell', 'XPS 13 Plus 9315', 32, 1024, 'in_transit_to_engineer', NOW() - INTERVAL '1 week'),
-('DELL-XPS-9315-005', 'DELL-XPS-9315', 'Dell', 'XPS 13 Plus 9315', 32, 1024, 'delivered', NOW() - INTERVAL '5 months'),
+('DELL-XPS-9520-001', 'DELL-XPS-9520', 'Dell', 'XPS 15 9520', 'Intel Core i7-12700H', '32GB', '1TB', 'available', NOW() - INTERVAL '3 months'),
+('DELL-XPS-9520-002', 'DELL-XPS-9520', 'Dell', 'XPS 15 9520', 'Intel Core i7-12700H', '32GB', '1TB', 'available', NOW() - INTERVAL '3 months'),
+('DELL-XPS-9520-003', 'DELL-XPS-9520', 'Dell', 'XPS 15 9520', 'Intel Core i7-12700H', '32GB', '1TB', 'available', NOW() - INTERVAL '3 months'),
+('DELL-XPS-9520-004', 'DELL-XPS-9520', 'Dell', 'XPS 15 9520', 'Intel Core i7-12700H', '32GB', '1TB', 'at_warehouse', NOW() - INTERVAL '2 months'),
+('DELL-XPS-9520-005', 'DELL-XPS-9520', 'Dell', 'XPS 15 9520', 'Intel Core i7-12700H', '32GB', '1TB', 'delivered', NOW() - INTERVAL '5 months'),
+('DELL-XPS-9315-001', 'DELL-XPS-9315', 'Dell', 'XPS 13 Plus 9315', 'Intel Core i7-1280P', '32GB', '1TB', 'available', NOW() - INTERVAL '3 months'),
+('DELL-XPS-9315-002', 'DELL-XPS-9315', 'Dell', 'XPS 13 Plus 9315', 'Intel Core i7-1280P', '32GB', '1TB', 'available', NOW() - INTERVAL '3 months'),
+('DELL-XPS-9315-003', 'DELL-XPS-9315', 'Dell', 'XPS 13 Plus 9315', 'Intel Core i7-1280P', '32GB', '1TB', 'at_warehouse', NOW() - INTERVAL '2 months'),
+('DELL-XPS-9315-004', 'DELL-XPS-9315', 'Dell', 'XPS 13 Plus 9315', 'Intel Core i7-1280P', '32GB', '1TB', 'in_transit_to_engineer', NOW() - INTERVAL '1 week'),
+('DELL-XPS-9315-005', 'DELL-XPS-9315', 'Dell', 'XPS 13 Plus 9315', 'Intel Core i7-1280P', '32GB', '1TB', 'delivered', NOW() - INTERVAL '5 months'),
 
 -- HP ZBook (8 units)
-('HP-ZBOOK-G9-001', 'HP-ZBOOK-STU-G9', 'HP', 'ZBook Studio G9', 64, 2048, 'available', NOW() - INTERVAL '4 months'),
-('HP-ZBOOK-G9-002', 'HP-ZBOOK-STU-G9', 'HP', 'ZBook Studio G9', 64, 2048, 'available', NOW() - INTERVAL '4 months'),
-('HP-ZBOOK-G9-003', 'HP-ZBOOK-STU-G9', 'HP', 'ZBook Studio G9', 64, 2048, 'at_warehouse', NOW() - INTERVAL '2 months'),
-('HP-ZBOOK-FUR-G9-001', 'HP-ZBOOK-FUR-G9', 'HP', 'ZBook Fury G9', 128, 4096, 'available', NOW() - INTERVAL '4 months'),
-('HP-ZBOOK-FUR-G9-002', 'HP-ZBOOK-FUR-G9', 'HP', 'ZBook Fury G9', 128, 4096, 'at_warehouse', NOW() - INTERVAL '3 months'),
-('HP-ZBOOK-G9-004', 'HP-ZBOOK-STU-G9', 'HP', 'ZBook Studio G9', 64, 2048, 'delivered', NOW() - INTERVAL '5 months'),
-('HP-ZBOOK-FUR-G9-003', 'HP-ZBOOK-FUR-G9', 'HP', 'ZBook Fury G9', 128, 4096, 'in_transit_to_engineer', NOW() - INTERVAL '1 week'),
-('HP-ZBOOK-G9-005', 'HP-ZBOOK-STU-G9', 'HP', 'ZBook Studio G9', 64, 2048, 'in_transit_to_warehouse', NOW() - INTERVAL '2 days'),
+('HP-ZBOOK-G9-001', 'HP-ZBOOK-STU-G9', 'HP', 'ZBook Studio G9', 'Intel Core i9-12900H', '64GB', '2TB', 'available', NOW() - INTERVAL '4 months'),
+('HP-ZBOOK-G9-002', 'HP-ZBOOK-STU-G9', 'HP', 'ZBook Studio G9', 'Intel Core i9-12900H', '64GB', '2TB', 'available', NOW() - INTERVAL '4 months'),
+('HP-ZBOOK-G9-003', 'HP-ZBOOK-STU-G9', 'HP', 'ZBook Studio G9', 'Intel Core i9-12900H', '64GB', '2TB', 'at_warehouse', NOW() - INTERVAL '2 months'),
+('HP-ZBOOK-FUR-G9-001', 'HP-ZBOOK-FUR-G9', 'HP', 'ZBook Fury G9', 'Intel Xeon W-11955M', '128GB', '4TB', 'available', NOW() - INTERVAL '4 months'),
+('HP-ZBOOK-FUR-G9-002', 'HP-ZBOOK-FUR-G9', 'HP', 'ZBook Fury G9', 'Intel Xeon W-11955M', '128GB', '4TB', 'at_warehouse', NOW() - INTERVAL '3 months'),
+('HP-ZBOOK-G9-004', 'HP-ZBOOK-STU-G9', 'HP', 'ZBook Studio G9', 'Intel Core i9-12900H', '64GB', '2TB', 'delivered', NOW() - INTERVAL '5 months'),
+('HP-ZBOOK-FUR-G9-003', 'HP-ZBOOK-FUR-G9', 'HP', 'ZBook Fury G9', 'Intel Xeon W-11955M', '128GB', '4TB', 'in_transit_to_engineer', NOW() - INTERVAL '1 week'),
+('HP-ZBOOK-G9-005', 'HP-ZBOOK-STU-G9', 'HP', 'ZBook Studio G9', 'Intel Core i9-12900H', '64GB', '2TB', 'in_transit_to_warehouse', NOW() - INTERVAL '2 days'),
 
 -- Lenovo ThinkPad (10 units)
-('LENOVO-X1C-G10-001', 'LENOVO-X1C-G10', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 32, 1024, 'available', NOW() - INTERVAL '4 months'),
-('LENOVO-X1C-G10-002', 'LENOVO-X1C-G10', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 32, 1024, 'available', NOW() - INTERVAL '4 months'),
-('LENOVO-X1C-G10-003', 'LENOVO-X1C-G10', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 32, 1024, 'at_warehouse', NOW() - INTERVAL '3 months'),
-('LENOVO-X1C-G10-004', 'LENOVO-X1C-G10', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 32, 1024, 'at_warehouse', NOW() - INTERVAL '2 months'),
-('LENOVO-X1C-G10-005', 'LENOVO-X1C-G10', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 32, 1024, 'delivered', NOW() - INTERVAL '5 months'),
-('LENOVO-P1-G5-001', 'LENOVO-P1-G5', 'Lenovo', 'ThinkPad P1 Gen 5', 64, 2048, 'available', NOW() - INTERVAL '4 months'),
-('LENOVO-P1-G5-002', 'LENOVO-P1-G5', 'Lenovo', 'ThinkPad P1 Gen 5', 64, 2048, 'at_warehouse', NOW() - INTERVAL '3 months'),
-('LENOVO-P16-G1-001', 'LENOVO-P16-G1', 'Lenovo', 'ThinkPad P16 Gen 1', 128, 4096, 'available', NOW() - INTERVAL '4 months'),
-('LENOVO-P1-G5-003', 'LENOVO-P1-G5', 'Lenovo', 'ThinkPad P1 Gen 5', 64, 2048, 'delivered', NOW() - INTERVAL '5 months'),
-('LENOVO-P16-G1-002', 'LENOVO-P16-G1', 'Lenovo', 'ThinkPad P16 Gen 1', 128, 4096, 'in_transit_to_engineer', NOW() - INTERVAL '1 week'),
+('LENOVO-X1C-G10-001', 'LENOVO-X1C-G10', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 'Intel Core i7-1270P', '32GB', '1TB', 'available', NOW() - INTERVAL '4 months'),
+('LENOVO-X1C-G10-002', 'LENOVO-X1C-G10', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 'Intel Core i7-1270P', '32GB', '1TB', 'available', NOW() - INTERVAL '4 months'),
+('LENOVO-X1C-G10-003', 'LENOVO-X1C-G10', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 'Intel Core i7-1270P', '32GB', '1TB', 'at_warehouse', NOW() - INTERVAL '3 months'),
+('LENOVO-X1C-G10-004', 'LENOVO-X1C-G10', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 'Intel Core i7-1270P', '32GB', '1TB', 'at_warehouse', NOW() - INTERVAL '2 months'),
+('LENOVO-X1C-G10-005', 'LENOVO-X1C-G10', 'Lenovo', 'ThinkPad X1 Carbon Gen 10', 'Intel Core i7-1270P', '32GB', '1TB', 'delivered', NOW() - INTERVAL '5 months'),
+('LENOVO-P1-G5-001', 'LENOVO-P1-G5', 'Lenovo', 'ThinkPad P1 Gen 5', 'Intel Core i9-12900H', '64GB', '2TB', 'available', NOW() - INTERVAL '4 months'),
+('LENOVO-P1-G5-002', 'LENOVO-P1-G5', 'Lenovo', 'ThinkPad P1 Gen 5', 'Intel Core i9-12900H', '64GB', '2TB', 'at_warehouse', NOW() - INTERVAL '3 months'),
+('LENOVO-P16-G1-001', 'LENOVO-P16-G1', 'Lenovo', 'ThinkPad P16 Gen 1', 'Intel Xeon W-11955M', '128GB', '4TB', 'available', NOW() - INTERVAL '4 months'),
+('LENOVO-P1-G5-003', 'LENOVO-P1-G5', 'Lenovo', 'ThinkPad P1 Gen 5', 'Intel Core i9-12900H', '64GB', '2TB', 'delivered', NOW() - INTERVAL '5 months'),
+('LENOVO-P16-G1-002', 'LENOVO-P16-G1', 'Lenovo', 'ThinkPad P16 Gen 1', 'Intel Xeon W-11955M', '128GB', '4TB', 'in_transit_to_engineer', NOW() - INTERVAL '1 week'),
 
 -- Apple MacBook (6 units - added to demonstrate variety)
-('APPLE-MBP16-M2MAX-001', 'APPLE-MBP16-M2MAX', 'Apple', 'MacBook Pro 16" M2 Max', 96, 2048, 'available', NOW() - INTERVAL '3 months'),
-('APPLE-MBP16-M2PRO-001', 'APPLE-MBP16-M2PRO', 'Apple', 'MacBook Pro 16" M2 Pro', 32, 1024, 'available', NOW() - INTERVAL '3 months'),
-('APPLE-MBP14-M2PRO-001', 'APPLE-MBP14-M2PRO', 'Apple', 'MacBook Pro 14" M2 Pro', 16, 512, 'available', NOW() - INTERVAL '3 months'),
-('APPLE-MBA-M2-001', 'APPLE-MBA-M2', 'Apple', 'MacBook Air 13" M2', 24, 1024, 'at_warehouse', NOW() - INTERVAL '2 months'),
-('APPLE-MBP16-M2MAX-002', 'APPLE-MBP16-M2MAX', 'Apple', 'MacBook Pro 16" M2 Max', 96, 2048, 'delivered', NOW() - INTERVAL '5 months'),
-('APPLE-MBP14-M2PRO-002', 'APPLE-MBP14-M2PRO', 'Apple', 'MacBook Pro 14" M2 Pro', 16, 512, 'in_transit_to_engineer', NOW() - INTERVAL '3 days');
+('APPLE-MBP16-M2MAX-001', 'APPLE-MBP16-M2MAX', 'Apple', 'MacBook Pro 16" M2 Max', 'Apple M2 Max', '96GB', '2TB', 'available', NOW() - INTERVAL '3 months'),
+('APPLE-MBP16-M2PRO-001', 'APPLE-MBP16-M2PRO', 'Apple', 'MacBook Pro 16" M2 Pro', 'Apple M2 Pro', '32GB', '1TB', 'available', NOW() - INTERVAL '3 months'),
+('APPLE-MBP14-M2PRO-001', 'APPLE-MBP14-M2PRO', 'Apple', 'MacBook Pro 14" M2 Pro', 'Apple M2 Pro', '16GB', '512GB', 'available', NOW() - INTERVAL '3 months'),
+('APPLE-MBA-M2-001', 'APPLE-MBA-M2', 'Apple', 'MacBook Air 13" M2', 'Apple M2', '24GB', '1TB', 'at_warehouse', NOW() - INTERVAL '2 months'),
+('APPLE-MBP16-M2MAX-002', 'APPLE-MBP16-M2MAX', 'Apple', 'MacBook Pro 16" M2 Max', 'Apple M2 Max', '96GB', '2TB', 'delivered', NOW() - INTERVAL '5 months'),
+('APPLE-MBP14-M2PRO-002', 'APPLE-MBP14-M2PRO', 'Apple', 'MacBook Pro 14" M2 Pro', 'Apple M2 Pro', '16GB', '512GB', 'in_transit_to_engineer', NOW() - INTERVAL '3 days');
 
 -- Note: This is a representative sample of 40 laptops.
 -- For a complete dataset, add 40 more laptops following the same pattern.
