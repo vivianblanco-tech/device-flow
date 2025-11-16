@@ -937,6 +937,8 @@ func (h *ShipmentsHandler) ShipmentPickupFormPage(w http.ResponseWriter, r *http
 	// Prepare template data
 	data := map[string]interface{}{
 		"User":           user,
+		"Nav":            views.GetNavigationLinks(user.Role),
+		"CurrentPage":    "shipments",
 		"Shipment":       shipment,
 		"CompanyName":    companyName,
 		"PickupFormData": pickupFormData,

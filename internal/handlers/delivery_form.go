@@ -15,8 +15,10 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/yourusername/laptop-tracking-system/internal/email"
+	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 	"github.com/yourusername/laptop-tracking-system/internal/validator"
+	"github.com/yourusername/laptop-tracking-system/internal/views"
 )
 
 const (
@@ -45,6 +47,13 @@ func NewDeliveryFormHandler(db *sql.DB, templates *template.Template, notifier *
 
 // DeliveryFormPage displays the delivery form
 func (h *DeliveryFormHandler) DeliveryFormPage(w http.ResponseWriter, r *http.Request) {
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
 	// Get shipment ID from URL query parameter
 	shipmentIDStr := r.URL.Query().Get("shipment_id")
 	if shipmentIDStr == "" {
@@ -121,6 +130,9 @@ func (h *DeliveryFormHandler) DeliveryFormPage(w http.ResponseWriter, r *http.Re
 	data := map[string]interface{}{
 		"Error":        errorMsg,
 		"Success":      successMsg,
+		"User":         user,
+		"Nav":          views.GetNavigationLinks(user.Role),
+		"CurrentPage":  "shipments",
 		"Shipment":     shipment,
 		"CompanyName":  companyName,
 		"EngineerName": engineerName.String,

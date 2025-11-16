@@ -120,6 +120,8 @@ func (h *InventoryHandler) LaptopDetail(w http.ResponseWriter, r *http.Request) 
 	// Prepare template data
 	data := map[string]interface{}{
 		"User":            user,
+		"Nav":             views.GetNavigationLinks(user.Role),
+		"CurrentPage":     "inventory",
 		"Laptop":          laptop,
 		"ReceptionReport": receptionReport,
 		"Success":         successMsg,
@@ -166,14 +168,16 @@ func (h *InventoryHandler) AddLaptopPage(w http.ResponseWriter, r *http.Request)
 
 	// Prepare template data
 	data := map[string]interface{}{
-		"User":      user,
-		"Statuses":  models.GetLaptopStatusesForNewLaptop(),
-		"Companies": companies,
-		"Engineers": engineers,
+		"User":        user,
+		"Nav":         views.GetNavigationLinks(user.Role),
+		"CurrentPage": "inventory",
+		"Statuses":    models.GetLaptopStatusesForNewLaptop(),
+		"Companies":   companies,
+		"Engineers":   engineers,
 	}
 
 	// Execute template using pre-parsed global templates
-	if err := h.Templates.ExecuteTemplate(w, "laptop-form.html", data); err != nil {
+	if err := h.Templates.ExecuteTemplate(w, "laptop-form.html", data); err != nil{
 		log.Printf("Error executing laptop form template: %v", err)
 		http.Error(w, "Failed to render form", http.StatusInternalServerError)
 		return
@@ -310,6 +314,8 @@ func (h *InventoryHandler) EditLaptopPage(w http.ResponseWriter, r *http.Request
 	// Prepare template data
 	data := map[string]interface{}{
 		"User":              user,
+		"Nav":               views.GetNavigationLinks(user.Role),
+		"CurrentPage":       "inventory",
 		"Laptop":            laptop,
 		"Statuses":          models.GetLaptopStatusesInOrder(),
 		"Companies":         companies,

@@ -303,6 +303,12 @@ func loadTemplatesWithNavigation(t *testing.T) *template.Template {
 		"laptopStatusDisplayName": func(status models.LaptopStatus) string {
 			return models.GetLaptopStatusDisplayName(status)
 		},
+		"receptionReportStatusColor": func(status models.ReceptionReportStatus) string {
+			return "bg-gray-100 text-gray-800"
+		},
+		"receptionReportStatusDisplayName": func(status models.ReceptionReportStatus) string {
+			return string(status)
+		},
 	}
 
 	// Parse all templates including the navbar component

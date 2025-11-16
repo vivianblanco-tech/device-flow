@@ -105,6 +105,8 @@ func (h *ReceptionReportHandler) ReceptionReportPage(w http.ResponseWriter, r *h
 		"Error":       errorMsg,
 		"Success":     successMsg,
 		"User":        user,
+		"Nav":         views.GetNavigationLinks(user.Role),
+		"CurrentPage": "reception-reports",
 		"Shipment":    shipment,
 		"CompanyName": companyName,
 	}
