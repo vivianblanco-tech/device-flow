@@ -23,16 +23,28 @@ func TestGetAllLaptopsWithReceptionReportInfo(t *testing.T) {
 		t.Fatalf("Failed to create warehouse user: %v", err)
 	}
 
+	// Create a client company first
+	var clientID int64
+	err = db.QueryRow(
+		`INSERT INTO client_companies (name, created_at, updated_at)
+		VALUES ($1, NOW(), NOW()) RETURNING id`,
+		"Test Company",
+	).Scan(&clientID)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
 	// Create test laptops with different reception report scenarios
 	// Laptop 1: Has reception report (pending approval)
 	laptop1 := &Laptop{
-		SerialNumber: "SN001",
-		Brand:        "Dell",
-		Model:        "Latitude 5520",
-		CPU:          "Intel Core i7",
-		RAMGB:        "16",
-		SSDGB:        "512",
-		Status:       LaptopStatusAtWarehouse,
+		SerialNumber:    "SN001",
+		Brand:           "Dell",
+		Model:           "Latitude 5520",
+		CPU:             "Intel Core i7",
+		RAMGB:           "16GB",
+		SSDGB:           "512GB",
+		Status:          LaptopStatusAtWarehouse,
+		ClientCompanyID: &clientID,
 	}
 	err = CreateLaptop(db, laptop1)
 	if err != nil {
@@ -56,13 +68,14 @@ func TestGetAllLaptopsWithReceptionReportInfo(t *testing.T) {
 
 	// Laptop 2: No reception report
 	laptop2 := &Laptop{
-		SerialNumber: "SN002",
-		Brand:        "HP",
-		Model:        "EliteBook 840",
-		CPU:          "Intel Core i9",
-		RAMGB:        "32",
-		SSDGB:        "1024",
-		Status:       LaptopStatusAtWarehouse,
+		SerialNumber:    "SN002",
+		Brand:           "HP",
+		Model:           "EliteBook 840",
+		CPU:             "Intel Core i9",
+		RAMGB:           "32GB",
+		SSDGB:           "1024GB",
+		Status:          LaptopStatusAtWarehouse,
+		ClientCompanyID: &clientID,
 	}
 	err = CreateLaptop(db, laptop2)
 	if err != nil {
@@ -71,13 +84,14 @@ func TestGetAllLaptopsWithReceptionReportInfo(t *testing.T) {
 
 	// Laptop 3: Has reception report (approved)
 	laptop3 := &Laptop{
-		SerialNumber: "SN003",
-		Brand:        "Lenovo",
-		Model:        "ThinkPad X1",
-		CPU:          "Intel Core i7",
-		RAMGB:        "16",
-		SSDGB:        "512",
-		Status:       LaptopStatusAvailable,
+		SerialNumber:    "SN003",
+		Brand:           "Lenovo",
+		Model:           "ThinkPad X1",
+		CPU:             "Intel Core i7",
+		RAMGB:           "16GB",
+		SSDGB:           "512GB",
+		Status:          LaptopStatusAvailable,
+		ClientCompanyID: &clientID,
 	}
 	err = CreateLaptop(db, laptop3)
 	if err != nil {
@@ -169,16 +183,28 @@ func TestGetAllLaptopsForLogisticsUsersIncludesReceptionReports(t *testing.T) {
 		t.Fatalf("Failed to create warehouse user: %v", err)
 	}
 
+	// Create a client company first
+	var clientID int64
+	err = db.QueryRow(
+		`INSERT INTO client_companies (name, created_at, updated_at)
+		VALUES ($1, NOW(), NOW()) RETURNING id`,
+		"Test Company",
+	).Scan(&clientID)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
 	// Create test laptops
 	// Laptop 1: At warehouse with pending approval reception report
 	laptop1 := &Laptop{
-		SerialNumber: "SN100",
-		Brand:        "Dell",
-		Model:        "Latitude 7420",
-		CPU:          "Intel Core i7",
-		RAMGB:        "16",
-		SSDGB:        "512",
-		Status:       LaptopStatusAtWarehouse,
+		SerialNumber:    "SN100",
+		Brand:           "Dell",
+		Model:           "Latitude 7420",
+		CPU:             "Intel Core i7",
+		RAMGB:           "16GB",
+		SSDGB:           "512GB",
+		Status:          LaptopStatusAtWarehouse,
+		ClientCompanyID: &clientID,
 	}
 	err = CreateLaptop(db, laptop1)
 	if err != nil {
@@ -202,13 +228,14 @@ func TestGetAllLaptopsForLogisticsUsersIncludesReceptionReports(t *testing.T) {
 
 	// Laptop 2: At warehouse without reception report
 	laptop2 := &Laptop{
-		SerialNumber: "SN200",
-		Brand:        "HP",
-		Model:        "EliteBook 850",
-		CPU:          "Intel Core i9",
-		RAMGB:        "32",
-		SSDGB:        "1024",
-		Status:       LaptopStatusAtWarehouse,
+		SerialNumber:    "SN200",
+		Brand:           "HP",
+		Model:           "EliteBook 850",
+		CPU:             "Intel Core i9",
+		RAMGB:           "32GB",
+		SSDGB:           "1024GB",
+		Status:          LaptopStatusAtWarehouse,
+		ClientCompanyID: &clientID,
 	}
 	err = CreateLaptop(db, laptop2)
 	if err != nil {
@@ -217,13 +244,14 @@ func TestGetAllLaptopsForLogisticsUsersIncludesReceptionReports(t *testing.T) {
 
 	// Laptop 3: Available with approved reception report
 	laptop3 := &Laptop{
-		SerialNumber: "SN300",
-		Brand:        "Lenovo",
-		Model:        "ThinkPad X1 Carbon",
-		CPU:          "Intel Core i7",
-		RAMGB:        "16",
-		SSDGB:        "512",
-		Status:       LaptopStatusAvailable,
+		SerialNumber:    "SN300",
+		Brand:           "Lenovo",
+		Model:           "ThinkPad X1 Carbon",
+		CPU:             "Intel Core i7",
+		RAMGB:           "16GB",
+		SSDGB:           "512GB",
+		Status:          LaptopStatusAvailable,
+		ClientCompanyID: &clientID,
 	}
 	err = CreateLaptop(db, laptop3)
 	if err != nil {

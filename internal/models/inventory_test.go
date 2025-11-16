@@ -175,18 +175,30 @@ func TestCreateLaptop(t *testing.T) {
 	db, cleanup := database.SetupTestDB(t)
 	defer cleanup()
 
+	// Create a client company first
+	var clientID int64
+	err := db.QueryRow(
+		`INSERT INTO client_companies (name, created_at, updated_at)
+		VALUES ($1, NOW(), NOW()) RETURNING id`,
+		"Test Company",
+	).Scan(&clientID)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
 	laptop := &Laptop{
-		SerialNumber: "SN001",
-		Brand:        "Dell",
-		Model:        "Latitude 5520",
-		CPU:          "Intel Core i7",
-		RAMGB:        "16GB",
-		SSDGB:        "512GB",
-		Status:       LaptopStatusAvailable,
+		SerialNumber:    "SN001",
+		Brand:           "Dell",
+		Model:           "Latitude 5520",
+		CPU:             "Intel Core i7",
+		RAMGB:           "16GB",
+		SSDGB:           "512GB",
+		Status:          LaptopStatusAvailable,
+		ClientCompanyID: &clientID,
 	}
 
 	// Test: Create laptop
-	err := CreateLaptop(db, laptop)
+	err = CreateLaptop(db, laptop)
 	if err != nil {
 		t.Fatalf("CreateLaptop failed: %v", err)
 	}
@@ -212,28 +224,43 @@ func TestCreateLaptopDuplicateSerial(t *testing.T) {
 	db, cleanup := database.SetupTestDB(t)
 	defer cleanup()
 
-	laptop1 := &Laptop{
-		SerialNumber: "DUPLICATE001",
-		Model:        "Dell Latitude 5520",
-		CPU:          "Intel Core i5",
-		RAMGB:        "16",
-		SSDGB:        "512",
-		Status:       LaptopStatusAvailable,
+	// Create a client company first
+	var clientID int64
+	err := db.QueryRow(
+		`INSERT INTO client_companies (name, created_at, updated_at)
+		VALUES ($1, NOW(), NOW()) RETURNING id`,
+		"Test Company",
+	).Scan(&clientID)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
 	}
 
-	err := CreateLaptop(db, laptop1)
+	laptop1 := &Laptop{
+		SerialNumber:    "DUPLICATE001",
+		Brand:           "Dell",
+		Model:           "Dell Latitude 5520",
+		CPU:             "Intel Core i5",
+		RAMGB:           "16GB",
+		SSDGB:           "512GB",
+		Status:          LaptopStatusAvailable,
+		ClientCompanyID: &clientID,
+	}
+
+	err = CreateLaptop(db, laptop1)
 	if err != nil {
 		t.Fatalf("Failed to create first laptop: %v", err)
 	}
 
 	// Test: Try to create laptop with same serial number
 	laptop2 := &Laptop{
-		SerialNumber: "DUPLICATE001",
-		Model:        "Dell Latitude 5520",
-		CPU:          "Intel Core i5",
-		RAMGB:        "16",
-		SSDGB:        "512",
-		Status:       LaptopStatusAvailable,
+		SerialNumber:    "DUPLICATE001",
+		Brand:           "HP",
+		Model:           "Dell Latitude 5520",
+		CPU:             "Intel Core i5",
+		RAMGB:           "16GB",
+		SSDGB:           "512GB",
+		Status:          LaptopStatusAvailable,
+		ClientCompanyID: &clientID,
 	}
 
 	err = CreateLaptop(db, laptop2)
@@ -247,17 +274,29 @@ func TestUpdateLaptop(t *testing.T) {
 	db, cleanup := database.SetupTestDB(t)
 	defer cleanup()
 
+	// Create a client company first
+	var clientID int64
+	err := db.QueryRow(
+		`INSERT INTO client_companies (name, created_at, updated_at)
+		VALUES ($1, NOW(), NOW()) RETURNING id`,
+		"Test Company",
+	).Scan(&clientID)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
 	// Create test laptop
 	laptop := &Laptop{
-		SerialNumber: "SN001",
-		Brand:        "Dell",
-		Model:        "Latitude",
-		CPU:          "Intel Core i5",
-		RAMGB:        "8GB",
-		SSDGB:        "256GB",
-		Status:       LaptopStatusAvailable,
+		SerialNumber:    "SN001",
+		Brand:           "Dell",
+		Model:           "Latitude",
+		CPU:             "Intel Core i5",
+		RAMGB:           "8GB",
+		SSDGB:           "256GB",
+		Status:          LaptopStatusAvailable,
+		ClientCompanyID: &clientID,
 	}
-	err := createLaptop(db, laptop)
+	err = createLaptop(db, laptop)
 	if err != nil {
 		t.Fatalf("Failed to create laptop: %v", err)
 	}

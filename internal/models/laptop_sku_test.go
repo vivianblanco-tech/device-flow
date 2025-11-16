@@ -245,52 +245,52 @@ func TestLaptop_GenerateAndSetSKU(t *testing.T) {
 		{
 			name: "Generate SKU for Dell laptop with i7",
 			laptop: &Laptop{
-				Model:  "Dell Latitude 5520",
-				CPU:    "i7",
-				RAMGB:  "16GB",
-				SSDGB:  "512GB",
+				Model: "Dell Latitude 5520",
+				CPU:   "i7",
+				RAMGB: "16GB",
+				SSDGB: "512GB",
 			},
 			expectedSKU: "C.NOT.0I7.016.2G",
 		},
 		{
 			name: "Generate SKU for MacBook Pro M1",
 			laptop: &Laptop{
-				Model:  "MacBook Pro",
-				CPU:    "M1",
-				RAMGB:  "32GB",
-				SSDGB:  "1TB",
+				Model: "MacBook Pro",
+				CPU:   "M1",
+				RAMGB: "32GB",
+				SSDGB: "1TB",
 			},
 			expectedSKU: "C.MAC.M01.032.1T",
 		},
 		{
 			name: "Generate SKU for MacBook M1 Max",
 			laptop: &Laptop{
-				Model:  "MacBook Pro M1 Max",
-				CPU:    "M1 Max",
-				RAMGB:  "64GB",
-				SSDGB:  "1TB",
+				Model: "MacBook Pro M1 Max",
+				CPU:   "M1 Max",
+				RAMGB: "64GB",
+				SSDGB: "1TB",
 			},
 			expectedSKU: "C.MAC.MM1.064.1T",
 		},
 		{
 			name: "Do not overwrite existing SKU",
 			laptop: &Laptop{
-				SKU:    "CUSTOM-SKU-123",
-				Model:  "Dell XPS",
-				CPU:    "i9",
-				RAMGB:  "32GB",
-				SSDGB:  "1TB",
+				SKU:   "CUSTOM-SKU-123",
+				Model: "Dell XPS",
+				CPU:   "i9",
+				RAMGB: "32GB",
+				SSDGB: "1TB",
 			},
 			expectedSKU: "CUSTOM-SKU-123",
 		},
 		{
 			name: "Empty SKU should be generated",
 			laptop: &Laptop{
-				SKU:    "",
-				Model:  "HP EliteBook",
-				CPU:    "i5",
-				RAMGB:  "16GB",
-				SSDGB:  "512GB",
+				SKU:   "",
+				Model: "HP EliteBook",
+				CPU:   "i5",
+				RAMGB: "16GB",
+				SSDGB: "512GB",
 			},
 			expectedSKU: "C.NOT.0I5.016.2G",
 		},
@@ -305,4 +305,3 @@ func TestLaptop_GenerateAndSetSKU(t *testing.T) {
 		})
 	}
 }
-

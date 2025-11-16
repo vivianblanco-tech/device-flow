@@ -130,31 +130,35 @@
                 <!-- Brand -->
                 <div class="mb-6">
                     <label for="brand" class="block text-sm font-medium text-gray-700 mb-2">
-                        Brand
+                        Brand <span class="text-red-500">*</span>
                     </label>
                     <input 
                         type="text" 
                         id="brand" 
                         name="brand"
                         value="{{if .Laptop}}{{.Laptop.Brand}}{{end}}"
+                        required
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="e.g., Dell, HP, Lenovo"
                     />
+                    <p class="mt-1 text-sm text-gray-500">Laptop manufacturer</p>
                 </div>
 
                 <!-- Model -->
                 <div class="mb-6">
                     <label for="model" class="block text-sm font-medium text-gray-700 mb-2">
-                        Model
+                        Model <span class="text-red-500">*</span>
                     </label>
                     <input 
                         type="text" 
                         id="model" 
                         name="model"
                         value="{{if .Laptop}}{{.Laptop.Model}}{{end}}"
+                        required
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="e.g., Latitude 5520, EliteBook, XPS 15"
                     />
+                    <p class="mt-1 text-sm text-gray-500">Laptop model name</p>
                 </div>
 
                 <!-- CPU -->
@@ -179,13 +183,14 @@
                     <!-- RAM -->
                     <div>
                         <label for="ram_gb" class="block text-sm font-medium text-gray-700 mb-2">
-                            RAM
+                            RAM <span class="text-red-500">*</span>
                         </label>
                         <input 
                             type="text" 
                             id="ram_gb" 
                             name="ram_gb"
                             value="{{if .Laptop}}{{.Laptop.RAMGB}}{{end}}"
+                            required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="e.g., 8GB, 16GB, 32GB"
                         />
@@ -195,13 +200,14 @@
                     <!-- SSD -->
                     <div>
                         <label for="ssd_gb" class="block text-sm font-medium text-gray-700 mb-2">
-                            SSD Storage
+                            SSD Storage <span class="text-red-500">*</span>
                         </label>
                         <input 
                             type="text" 
                             id="ssd_gb" 
                             name="ssd_gb"
                             value="{{if .Laptop}}{{.Laptop.SSDGB}}{{end}}"
+                            required
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="e.g., 256GB, 512GB, 1TB"
                         />

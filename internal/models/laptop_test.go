@@ -34,25 +34,28 @@ func TestLaptop_Validate(t *testing.T) {
 		{
 			name: "valid laptop with all fields",
 			laptop: Laptop{
-				SerialNumber: "SN123456789",
-				Brand:        "Dell",
-				Model:        "Latitude 5520",
-				CPU:          "Intel Core i5-1145G7",
-				RAMGB:        "16GB",
-				SSDGB:        "512GB",
-				Status:       LaptopStatusAvailable,
+				SerialNumber:    "SN123456789",
+				Brand:           "Dell",
+				Model:           "Latitude 5520",
+				CPU:             "Intel Core i5-1145G7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				Status:          LaptopStatusAvailable,
+				ClientCompanyID: &clientID,
 			},
 			wantErr: false,
 		},
 		{
 			name: "valid laptop with minimal fields",
 			laptop: Laptop{
-				SerialNumber: "SN987654321",
-				Model:        "Unknown Model",
-				CPU:          "Intel Core i3",
-				RAMGB:        "8GB",
-				SSDGB:        "256GB",
-				Status:       LaptopStatusAtWarehouse,
+				SerialNumber:    "SN987654321",
+				Brand:           "HP",
+				Model:           "Unknown Model",
+				CPU:             "Intel Core i3",
+				RAMGB:           "8GB",
+				SSDGB:           "256GB",
+				Status:          LaptopStatusAtWarehouse,
+				ClientCompanyID: &clientID,
 			},
 			wantErr: false,
 		},
@@ -86,12 +89,13 @@ func TestLaptop_Validate(t *testing.T) {
 		{
 			name: "invalid - missing serial number",
 			laptop: Laptop{
-				Brand:  "HP",
-				Model:  "EliteBook",
-				CPU:    "Intel Core i7",
-				RAMGB:  "16",
-				SSDGB:  "512",
-				Status: LaptopStatusAvailable,
+				Brand:           "HP",
+				Model:           "EliteBook",
+				CPU:             "Intel Core i7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				Status:          LaptopStatusAvailable,
+				ClientCompanyID: &clientID,
 			},
 			wantErr: true,
 			errMsg:  "serial number is required",
@@ -99,12 +103,14 @@ func TestLaptop_Validate(t *testing.T) {
 		{
 			name: "invalid - empty serial number",
 			laptop: Laptop{
-				SerialNumber: "",
-				Model:        "EliteBook",
-				CPU:          "Intel Core i7",
-				RAMGB:        "16",
-				SSDGB:        "512",
-				Status:       LaptopStatusAvailable,
+				SerialNumber:    "",
+				Brand:           "HP",
+				Model:           "EliteBook",
+				CPU:             "Intel Core i7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				Status:          LaptopStatusAvailable,
+				ClientCompanyID: &clientID,
 			},
 			wantErr: true,
 			errMsg:  "serial number is required",
@@ -112,11 +118,13 @@ func TestLaptop_Validate(t *testing.T) {
 		{
 			name: "invalid - missing status",
 			laptop: Laptop{
-				SerialNumber: "SN123456789",
-				Model:        "EliteBook",
-				CPU:          "Intel Core i7",
-				RAMGB:        "16",
-				SSDGB:        "512",
+				SerialNumber:    "SN123456789",
+				Brand:           "HP",
+				Model:           "EliteBook",
+				CPU:             "Intel Core i7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				ClientCompanyID: &clientID,
 			},
 			wantErr: true,
 			errMsg:  "status is required",
@@ -124,12 +132,14 @@ func TestLaptop_Validate(t *testing.T) {
 		{
 			name: "invalid - invalid status",
 			laptop: Laptop{
-				SerialNumber: "SN123456789",
-				Model:        "EliteBook",
-				CPU:          "Intel Core i7",
-				RAMGB:        "16",
-				SSDGB:        "512",
-				Status:       "invalid_status",
+				SerialNumber:    "SN123456789",
+				Brand:           "HP",
+				Model:           "EliteBook",
+				CPU:             "Intel Core i7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				Status:          "invalid_status",
+				ClientCompanyID: &clientID,
 			},
 			wantErr: true,
 			errMsg:  "invalid status",
@@ -137,12 +147,14 @@ func TestLaptop_Validate(t *testing.T) {
 		{
 			name: "valid - serial number exactly 3 characters",
 			laptop: Laptop{
-				SerialNumber: "ABC",
-				Model:        "EliteBook",
-				CPU:          "Intel Core i5",
-				RAMGB:        "8",
-				SSDGB:        "256",
-				Status:       LaptopStatusAvailable,
+				SerialNumber:    "ABC",
+				Brand:           "HP",
+				Model:           "EliteBook",
+				CPU:             "Intel Core i5",
+				RAMGB:           "8GB",
+				SSDGB:           "256GB",
+				Status:          LaptopStatusAvailable,
+				ClientCompanyID: &clientID,
 			},
 			wantErr: false,
 		},
@@ -468,6 +480,236 @@ func TestLaptop_IsAvailableForWarehouseShipment(t *testing.T) {
 			available := tt.laptop.IsAvailableForWarehouseShipment(tt.hasReceptionReport, tt.inActiveShipment)
 			if available != tt.shouldBeAvailable {
 				t.Errorf("Expected available=%v, got %v", tt.shouldBeAvailable, available)
+			}
+		})
+	}
+}
+
+func TestLaptop_ValidateStatusWithReceptionReport(t *testing.T) {
+	clientID := int64(1)
+	
+	tests := []struct {
+		name            string
+		laptop          Laptop
+		receptionReport *ReceptionReport
+		wantErr         bool
+		errMsg          string
+	}{
+		{
+			name: "cannot set status to available without reception report",
+			laptop: Laptop{
+				SerialNumber:    "SN123456789",
+				Model:           "Latitude 5520",
+				CPU:             "Intel Core i7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				Status:          LaptopStatusAvailable,
+				ClientCompanyID: &clientID,
+			},
+			receptionReport: nil,
+			wantErr:         true,
+			errMsg:          "cannot set status to available without an approved reception report",
+		},
+		{
+			name: "cannot set status to available with unapproved reception report",
+			laptop: Laptop{
+				ID:              1,
+				SerialNumber:    "SN123456789",
+				Model:           "Latitude 5520",
+				CPU:             "Intel Core i7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				Status:          LaptopStatusAvailable,
+				ClientCompanyID: &clientID,
+			},
+			receptionReport: &ReceptionReport{
+				LaptopID: 1,
+				Status:   ReceptionReportStatusPendingApproval,
+			},
+			wantErr: true,
+			errMsg:  "cannot set status to available without an approved reception report",
+		},
+		{
+			name: "can set status to available with approved reception report",
+			laptop: Laptop{
+				ID:              1,
+				SerialNumber:    "SN123456789",
+				Model:           "Latitude 5520",
+				CPU:             "Intel Core i7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				Status:          LaptopStatusAvailable,
+				ClientCompanyID: &clientID,
+			},
+			receptionReport: &ReceptionReport{
+				LaptopID: 1,
+				Status:   ReceptionReportStatusApproved,
+			},
+			wantErr: false,
+		},
+		{
+			name: "can set status to at_warehouse without reception report",
+			laptop: Laptop{
+				SerialNumber:    "SN123456789",
+				Model:           "Latitude 5520",
+				CPU:             "Intel Core i7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				Status:          LaptopStatusAtWarehouse,
+				ClientCompanyID: &clientID,
+			},
+			receptionReport: nil,
+			wantErr:         false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.laptop.ValidateStatusChange(tt.receptionReport)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStatusChange() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil && tt.errMsg != "" && err.Error() != tt.errMsg {
+				t.Errorf("ValidateStatusChange() error message = %v, want %v", err.Error(), tt.errMsg)
+			}
+		})
+	}
+}
+
+func TestLaptop_ValidateStatusWithEngineer(t *testing.T) {
+	clientID := int64(1)
+	engineerID := int64(10)
+	
+	tests := []struct {
+		name    string
+		laptop  Laptop
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "cannot set status to in transit to engineer without assigned engineer",
+			laptop: Laptop{
+				SerialNumber:       "SN123456789",
+				Model:              "Latitude 5520",
+				CPU:                "Intel Core i7",
+				RAMGB:              "16GB",
+				SSDGB:              "512GB",
+				Status:             LaptopStatusInTransitToEngineer,
+				ClientCompanyID:    &clientID,
+				SoftwareEngineerID: nil,
+			},
+			wantErr: true,
+			errMsg:  "cannot set status to in transit to engineer without an assigned engineer",
+		},
+		{
+			name: "can set status to in transit to engineer with assigned engineer",
+			laptop: Laptop{
+				SerialNumber:       "SN123456789",
+				Model:              "Latitude 5520",
+				CPU:                "Intel Core i7",
+				RAMGB:              "16GB",
+				SSDGB:              "512GB",
+				Status:             LaptopStatusInTransitToEngineer,
+				ClientCompanyID:    &clientID,
+				SoftwareEngineerID: &engineerID,
+			},
+			wantErr: false,
+		},
+		{
+			name: "can set status to delivered without assigned engineer (legacy case)",
+			laptop: Laptop{
+				SerialNumber:       "SN123456789",
+				Model:              "Latitude 5520",
+				CPU:                "Intel Core i7",
+				RAMGB:              "16GB",
+				SSDGB:              "512GB",
+				Status:             LaptopStatusDelivered,
+				ClientCompanyID:    &clientID,
+				SoftwareEngineerID: nil,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.laptop.ValidateStatusChange(nil)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStatusChange() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil && tt.errMsg != "" && err.Error() != tt.errMsg {
+				t.Errorf("ValidateStatusChange() error message = %v, want %v", err.Error(), tt.errMsg)
+			}
+		})
+	}
+}
+
+func TestLaptop_ValidateRequiredFields(t *testing.T) {
+	clientID := int64(1)
+
+	tests := []struct {
+		name    string
+		laptop  Laptop
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid laptop with all required fields",
+			laptop: Laptop{
+				SerialNumber:    "SN123456789",
+				Brand:           "Dell",
+				Model:           "Latitude 5520",
+				CPU:             "Intel Core i7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				Status:          LaptopStatusAtWarehouse,
+				ClientCompanyID: &clientID,
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid - missing brand",
+			laptop: Laptop{
+				SerialNumber:    "SN123456789",
+				Brand:           "",
+				Model:           "Latitude 5520",
+				CPU:             "Intel Core i7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				Status:          LaptopStatusAtWarehouse,
+				ClientCompanyID: &clientID,
+			},
+			wantErr: true,
+			errMsg:  "brand is required",
+		},
+		{
+			name: "invalid - missing client company",
+			laptop: Laptop{
+				SerialNumber:    "SN123456789",
+				Brand:           "Dell",
+				Model:           "Latitude 5520",
+				CPU:             "Intel Core i7",
+				RAMGB:           "16GB",
+				SSDGB:           "512GB",
+				Status:          LaptopStatusAtWarehouse,
+				ClientCompanyID: nil,
+			},
+			wantErr: true,
+			errMsg:  "client company is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.laptop.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil && tt.errMsg != "" && err.Error() != tt.errMsg {
+				t.Errorf("Validate() error message = %v, want %v", err.Error(), tt.errMsg)
 			}
 		})
 	}

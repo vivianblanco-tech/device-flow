@@ -60,6 +60,11 @@ func (l *Laptop) Validate() error {
 		return errors.New("serial number is required")
 	}
 
+	// Brand validation (required)
+	if l.Brand == "" {
+		return errors.New("brand is required")
+	}
+
 	// Model validation (required)
 	if l.Model == "" {
 		return errors.New("laptop model is required")
@@ -80,12 +85,36 @@ func (l *Laptop) Validate() error {
 		return errors.New("laptop SSD is required")
 	}
 
+	// Client company validation (required)
+	if l.ClientCompanyID == nil {
+		return errors.New("client company is required")
+	}
+
 	// Status validation
 	if l.Status == "" {
 		return errors.New("status is required")
 	}
 	if !IsValidLaptopStatus(l.Status) {
 		return errors.New("invalid status")
+	}
+
+	return nil
+}
+
+// ValidateStatusChange validates that a laptop status change is allowed based on business rules
+func (l *Laptop) ValidateStatusChange(receptionReport *ReceptionReport) error {
+	// Rule 1: Cannot set status to "available" without an approved reception report
+	if l.Status == LaptopStatusAvailable {
+		if receptionReport == nil || !receptionReport.IsApproved() {
+			return errors.New("cannot set status to available without an approved reception report")
+		}
+	}
+
+	// Rule 2: Cannot set status to "in transit to engineer" without an assigned engineer
+	if l.Status == LaptopStatusInTransitToEngineer {
+		if l.SoftwareEngineerID == nil {
+			return errors.New("cannot set status to in transit to engineer without an assigned engineer")
+		}
 	}
 
 	return nil

@@ -57,8 +57,8 @@ func TestGetLaptopStatusDisplayName(t *testing.T) {
 func TestGetLaptopStatusesInOrder(t *testing.T) {
 	expectedOrder := []LaptopStatus{
 		LaptopStatusInTransitToWarehouse,
-		LaptopStatusAtWarehouse,         // "Received at Warehouse"
-		LaptopStatusAvailable,           // "Available at Warehouse"
+		LaptopStatusAtWarehouse, // "Received at Warehouse"
+		LaptopStatusAvailable,   // "Available at Warehouse"
 		LaptopStatusInTransitToEngineer,
 		LaptopStatusDelivered,
 		LaptopStatusRetired,
@@ -105,4 +105,3 @@ func TestGetLaptopStatusesForNewLaptop(t *testing.T) {
 		}
 	}
 }
-

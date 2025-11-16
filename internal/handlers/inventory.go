@@ -391,6 +391,25 @@ func (h *InventoryHandler) UpdateLaptopSubmit(w http.ResponseWriter, r *http.Req
 		laptop.SoftwareEngineerID = nil
 	}
 
+	// Validate status change - check if laptop can transition to the requested status
+	// Get reception report if status is being set to 'available'
+	var receptionReport *models.ReceptionReport
+	if laptop.Status == models.LaptopStatusAvailable {
+		receptionReport, err = models.GetLaptopReceptionReport(r.Context(), h.DB, laptop.ID)
+		if err != nil {
+			log.Printf("Error getting reception report: %v", err)
+			// If there's an error getting the report, treat it as no report
+			receptionReport = nil
+		}
+	}
+
+	// Validate the status change
+	if err := laptop.ValidateStatusChange(receptionReport); err != nil {
+		log.Printf("Status change validation failed: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	// Update laptop
 	if err := models.UpdateLaptop(h.DB, laptop); err != nil {
 		log.Printf("Error updating laptop: %v", err)
