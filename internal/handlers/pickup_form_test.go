@@ -330,14 +330,15 @@ func TestPickupFormHandler_SubmitSingleFullJourney(t *testing.T) {
 			"pickup_state":         {"NY"},
 			"pickup_zip":           {"10001"},
 			"pickup_date":          {time.Now().Add(24 * time.Hour).Format("2006-01-02")},
-			"pickup_time_slot":     {"morning"},
-			"jira_ticket_number":   {"SCOP-12345"},
-			"laptop_serial_number": {"ABC123456"},
-			"laptop_model":         {"Dell XPS 15"},
-			"laptop_ram_gb":        {"16"},
-			"laptop_ssd_gb":        {"512"},
-			"engineer_name":        {"Jane Smith"},
-			"include_accessories":  {"false"},
+		"pickup_time_slot":     {"morning"},
+		"jira_ticket_number":   {"SCOP-12345"},
+		"laptop_serial_number": {"ABC123456"},
+		"laptop_model":         {"Dell XPS 15"},
+		"laptop_cpu":           {"Intel Core i7"},
+		"laptop_ram_gb":        {"16"},
+		"laptop_ssd_gb":        {"512"},
+		"engineer_name":        {"Jane Smith"},
+		"include_accessories":  {"false"},
 		}
 
 		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
@@ -413,14 +414,15 @@ func TestPickupFormHandler_SubmitSingleFullJourney(t *testing.T) {
 			"pickup_state":         {"NY"},
 			"pickup_zip":           {"10001"},
 			"pickup_date":          {time.Now().Add(24 * time.Hour).Format("2006-01-02")},
-			"pickup_time_slot":     {"morning"},
-			"jira_ticket_number":   {"SCOP-12346"},
-			"laptop_serial_number": {"DEF789012"},
-			"laptop_model":         {"Lenovo ThinkPad"},
-			"laptop_ram_gb":        {"16"},
-			"laptop_ssd_gb":        {"512"},
-			// engineer_name is optional
-			"include_accessories": {"false"},
+		"pickup_time_slot":     {"morning"},
+		"jira_ticket_number":   {"SCOP-12346"},
+		"laptop_serial_number": {"DEF789012"},
+		"laptop_model":         {"Lenovo ThinkPad"},
+		"laptop_cpu":           {"AMD Ryzen 7"},
+		"laptop_ram_gb":        {"16"},
+		"laptop_ssd_gb":        {"512"},
+		// engineer_name is optional
+		"include_accessories": {"false"},
 		}
 
 		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
@@ -1469,14 +1471,15 @@ func TestCompleteShipmentDetailsViaMagicLink(t *testing.T) {
 
 	t.Run("Client completes shipment details with all required fields", func(t *testing.T) {
 		// Prepare form data
-		formData := url.Values{}
-		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
-		formData.Set("laptop_serial_number", "ABC123456789")
-		formData.Set("laptop_model", "Dell XPS 15")
-		formData.Set("laptop_ram_gb", "16GB")
-		formData.Set("laptop_ssd_gb", "512GB")
-		formData.Set("engineer_name", "Jane Smith")
-		formData.Set("contact_name", "John Doe")
+	formData := url.Values{}
+	formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+	formData.Set("laptop_serial_number", "ABC123456789")
+	formData.Set("laptop_model", "Dell XPS 15")
+	formData.Set("laptop_cpu", "Intel Core i7")
+	formData.Set("laptop_ram_gb", "16GB")
+	formData.Set("laptop_ssd_gb", "512GB")
+	formData.Set("engineer_name", "Jane Smith")
+	formData.Set("contact_name", "John Doe")
 		formData.Set("contact_email", "john.doe@company.com")
 		formData.Set("contact_phone", "+1-555-0123")
 		formData.Set("pickup_address", "123 Main Street, Suite 400")
@@ -1713,6 +1716,7 @@ func TestCompleteShipmentDetailsRequiresLaptopModel(t *testing.T) {
 	formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 	formData.Set("laptop_serial_number", "ABC123456789")
 	// Missing laptop_model
+	formData.Set("laptop_cpu", "Intel Core i7")
 	formData.Set("laptop_ram_gb", "16GB")
 	formData.Set("laptop_ssd_gb", "512GB")
 	formData.Set("contact_name", "John Doe")
@@ -1805,6 +1809,7 @@ func TestCompleteShipmentDetailsRequiresLaptopRAM(t *testing.T) {
 	formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 	formData.Set("laptop_serial_number", "ABC123456789")
 	formData.Set("laptop_model", "Dell XPS 15")
+	formData.Set("laptop_cpu", "Intel Core i7")
 	// Missing laptop_ram_gb
 	formData.Set("laptop_ssd_gb", "512GB")
 	formData.Set("contact_name", "John Doe")
@@ -1897,6 +1902,7 @@ func TestCompleteShipmentDetailsRequiresLaptopSSD(t *testing.T) {
 	formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 	formData.Set("laptop_serial_number", "ABC123456789")
 	formData.Set("laptop_model", "Dell XPS 15")
+	formData.Set("laptop_cpu", "Intel Core i7")
 	formData.Set("laptop_ram_gb", "16GB")
 	// Missing laptop_ssd_gb
 	formData.Set("contact_name", "John Doe")
@@ -2042,12 +2048,13 @@ func TestLogisticsEditShipmentDetails(t *testing.T) {
 		formData.Set("pickup_city", "Boston")
 		formData.Set("pickup_state", "MA")
 		formData.Set("pickup_zip", "02101")
-		formData.Set("pickup_date", "2025-12-20")
-		formData.Set("pickup_time_slot", "afternoon")
-		formData.Set("laptop_model", "Dell XPS 15")
-		formData.Set("laptop_ram_gb", "32")
-		formData.Set("laptop_ssd_gb", "1024")
-		formData.Set("engineer_name", "John Engineer")
+	formData.Set("pickup_date", "2025-12-20")
+	formData.Set("pickup_time_slot", "afternoon")
+	formData.Set("laptop_model", "Dell XPS 15")
+	formData.Set("laptop_cpu", "Intel Core i9")
+	formData.Set("laptop_ram_gb", "32")
+	formData.Set("laptop_ssd_gb", "1024")
+	formData.Set("engineer_name", "John Engineer")
 		formData.Set("special_instructions", "Updated instructions")
 
 		req := httptest.NewRequest(http.MethodPost, "/shipments/"+strconv.FormatInt(shipmentID, 10)+"/edit-details", strings.NewReader(formData.Encode()))

@@ -18,7 +18,9 @@ func TestValidateCompleteShipmentDetails_LaptopModelRequired(t *testing.T) {
 		PickupDate:         "2025-12-15",
 		PickupTimeSlot:     "morning",
 		LaptopSerialNumber: "ABC123456789",
+		LaptopBrand:        "Dell",
 		// Missing LaptopModel
+		LaptopCPU:          "Intel Core i7",
 		LaptopRAMGB:        "16GB",
 		LaptopSSDGB:        "512GB",
 	}
@@ -46,7 +48,9 @@ func TestValidateCompleteShipmentDetails_LaptopRAMRequired(t *testing.T) {
 		PickupDate:         "2025-12-15",
 		PickupTimeSlot:     "morning",
 		LaptopSerialNumber: "ABC123456789",
+		LaptopBrand:        "Dell",
 		LaptopModel:        "Dell XPS 15",
+		LaptopCPU:          "Intel Core i7",
 		// Missing LaptopRAMGB
 		LaptopSSDGB: "512GB",
 	}
@@ -74,7 +78,9 @@ func TestValidateCompleteShipmentDetails_LaptopSSDRequired(t *testing.T) {
 		PickupDate:         "2025-12-15",
 		PickupTimeSlot:     "morning",
 		LaptopSerialNumber: "ABC123456789",
+		LaptopBrand:        "Dell",
 		LaptopModel:        "Dell XPS 15",
+		LaptopCPU:          "Intel Core i7",
 		LaptopRAMGB:        "16GB",
 		// Missing LaptopSSDGB
 	}
@@ -102,7 +108,9 @@ func TestValidateCompleteShipmentDetails_AllLaptopFieldsProvided(t *testing.T) {
 		PickupDate:         "2025-12-15",
 		PickupTimeSlot:     "morning",
 		LaptopSerialNumber: "ABC123456789",
+		LaptopBrand:        "Dell",
 		LaptopModel:        "Dell XPS 15",
+		LaptopCPU:          "Intel Core i7",
 		LaptopRAMGB:        "16GB",
 		LaptopSSDGB:        "512GB",
 	}

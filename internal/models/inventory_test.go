@@ -14,10 +14,10 @@ func TestGetAllLaptops(t *testing.T) {
 
 	// Create test laptops
 	laptops := []Laptop{
-		{SerialNumber: "SN001", Brand: "Dell", Model: "Latitude", Status: LaptopStatusAvailable},
-		{SerialNumber: "SN002", Brand: "HP", Model: "EliteBook", Status: LaptopStatusAvailable},
-		{SerialNumber: "SN003", Brand: "Dell", Model: "XPS", Status: LaptopStatusDelivered},
-		{SerialNumber: "SN004", Brand: "Lenovo", Model: "ThinkPad", Status: LaptopStatusAtWarehouse},
+		{SerialNumber: "SN001", Brand: "Dell", Model: "Latitude", CPU: "Intel Core i5", RAMGB: "8GB", SSDGB: "256GB", Status: LaptopStatusAvailable},
+		{SerialNumber: "SN002", Brand: "HP", Model: "EliteBook", CPU: "Intel Core i7", RAMGB: "16GB", SSDGB: "512GB", Status: LaptopStatusAvailable},
+		{SerialNumber: "SN003", Brand: "Dell", Model: "XPS", CPU: "Intel Core i9", RAMGB: "32GB", SSDGB: "1TB", Status: LaptopStatusDelivered},
+		{SerialNumber: "SN004", Brand: "Lenovo", Model: "ThinkPad", CPU: "AMD Ryzen 7", RAMGB: "16GB", SSDGB: "512GB", Status: LaptopStatusAtWarehouse},
 	}
 
 	for i := range laptops {
@@ -45,9 +45,9 @@ func TestGetAllLaptopsWithFilter(t *testing.T) {
 
 	// Create test laptops
 	laptops := []Laptop{
-		{SerialNumber: "SN001", Brand: "Dell", Status: LaptopStatusAvailable},
-		{SerialNumber: "SN002", Brand: "HP", Status: LaptopStatusAvailable},
-		{SerialNumber: "SN003", Brand: "Dell", Status: LaptopStatusDelivered},
+		{SerialNumber: "SN001", Brand: "Dell", Model: "Latitude", CPU: "Intel Core i5", RAMGB: "8GB", SSDGB: "256GB", Status: LaptopStatusAvailable},
+		{SerialNumber: "SN002", Brand: "HP", Model: "EliteBook", CPU: "Intel Core i7", RAMGB: "16GB", SSDGB: "512GB", Status: LaptopStatusAvailable},
+		{SerialNumber: "SN003", Brand: "Dell", Model: "XPS", CPU: "Intel Core i9", RAMGB: "32GB", SSDGB: "1TB", Status: LaptopStatusDelivered},
 	}
 
 	for i := range laptops {
@@ -83,9 +83,9 @@ func TestSearchLaptops(t *testing.T) {
 
 	// Create test laptops
 	laptops := []Laptop{
-		{SerialNumber: "ABC123", Brand: "Dell", Model: "Latitude", Status: LaptopStatusAvailable},
-		{SerialNumber: "XYZ789", Brand: "HP", Model: "EliteBook", Status: LaptopStatusAvailable},
-		{SerialNumber: "DEF456", Brand: "Dell", Model: "XPS", Status: LaptopStatusDelivered},
+		{SerialNumber: "ABC123", Brand: "Dell", Model: "Latitude", CPU: "Intel Core i5", RAMGB: "8GB", SSDGB: "256GB", Status: LaptopStatusAvailable},
+		{SerialNumber: "XYZ789", Brand: "HP", Model: "EliteBook", CPU: "Intel Core i7", RAMGB: "16GB", SSDGB: "512GB", Status: LaptopStatusAvailable},
+		{SerialNumber: "DEF456", Brand: "Dell", Model: "XPS", CPU: "Intel Core i9", RAMGB: "32GB", SSDGB: "1TB", Status: LaptopStatusDelivered},
 	}
 
 	for i := range laptops {
@@ -126,6 +126,9 @@ func TestGetLaptopByID(t *testing.T) {
 		SerialNumber: "SN001",
 		Brand:        "Dell",
 		Model:        "Latitude",
+		CPU:          "Intel Core i5",
+		RAMGB:        "8GB",
+		SSDGB:        "256GB",
 		Status:       LaptopStatusAvailable,
 	}
 	err := createLaptop(db, laptop)
@@ -169,6 +172,7 @@ func TestCreateLaptop(t *testing.T) {
 		SerialNumber: "SN001",
 		Brand:        "Dell",
 		Model:        "Latitude 5520",
+		CPU:          "Intel Core i7",
 		RAMGB:        "16GB",
 		SSDGB:        "512GB",
 		Status:       LaptopStatusAvailable,
@@ -204,6 +208,7 @@ func TestCreateLaptopDuplicateSerial(t *testing.T) {
 	laptop1 := &Laptop{
 		SerialNumber: "DUPLICATE001",
 		Model:        "Dell Latitude 5520",
+		CPU:          "Intel Core i5",
 		RAMGB:        "16",
 		SSDGB:        "512",
 		Status:       LaptopStatusAvailable,
@@ -218,6 +223,7 @@ func TestCreateLaptopDuplicateSerial(t *testing.T) {
 	laptop2 := &Laptop{
 		SerialNumber: "DUPLICATE001",
 		Model:        "Dell Latitude 5520",
+		CPU:          "Intel Core i5",
 		RAMGB:        "16",
 		SSDGB:        "512",
 		Status:       LaptopStatusAvailable,
@@ -239,6 +245,9 @@ func TestUpdateLaptop(t *testing.T) {
 		SerialNumber: "SN001",
 		Brand:        "Dell",
 		Model:        "Latitude",
+		CPU:          "Intel Core i5",
+		RAMGB:        "8GB",
+		SSDGB:        "256GB",
 		Status:       LaptopStatusAvailable,
 	}
 	err := createLaptop(db, laptop)
@@ -248,6 +257,7 @@ func TestUpdateLaptop(t *testing.T) {
 
 	// Test: Update laptop
 	laptop.Model = "Latitude 5520"
+	laptop.CPU = "Intel Core i7"
 	laptop.RAMGB = "16GB"
 	laptop.SSDGB = "256GB"
 	laptop.Status = LaptopStatusDelivered
@@ -280,6 +290,10 @@ func TestDeleteLaptop(t *testing.T) {
 	// Create test laptop
 	laptop := &Laptop{
 		SerialNumber: "SN001",
+		Model:        "Test Model",
+		CPU:          "Intel Core i5",
+		RAMGB:        "8GB",
+		SSDGB:        "256GB",
 		Status:       LaptopStatusAvailable,
 	}
 	err := createLaptop(db, laptop)
@@ -307,10 +321,10 @@ func TestGetLaptopsByStatus(t *testing.T) {
 
 	// Create test laptops
 	laptops := []Laptop{
-		{SerialNumber: "SN001", Status: LaptopStatusAvailable},
-		{SerialNumber: "SN002", Status: LaptopStatusAvailable},
-		{SerialNumber: "SN003", Status: LaptopStatusDelivered},
-		{SerialNumber: "SN004", Status: LaptopStatusAtWarehouse},
+		{SerialNumber: "SN001", Model: "Model1", CPU: "Intel Core i5", RAMGB: "8GB", SSDGB: "256GB", Status: LaptopStatusAvailable},
+		{SerialNumber: "SN002", Model: "Model2", CPU: "Intel Core i7", RAMGB: "16GB", SSDGB: "512GB", Status: LaptopStatusAvailable},
+		{SerialNumber: "SN003", Model: "Model3", CPU: "Intel Core i9", RAMGB: "32GB", SSDGB: "1TB", Status: LaptopStatusDelivered},
+		{SerialNumber: "SN004", Model: "Model4", CPU: "AMD Ryzen 7", RAMGB: "16GB", SSDGB: "512GB", Status: LaptopStatusAtWarehouse},
 	}
 
 	for i := range laptops {
@@ -376,6 +390,7 @@ func TestGetAllLaptopsWithJoins(t *testing.T) {
 		SKU:                "SKU-DELL-LAT-001",
 		Brand:              "Dell",
 		Model:              "Latitude 5520",
+		CPU:                "Intel Core i7",
 		RAMGB:              "16",
 		SSDGB:              "512",
 		Status:             LaptopStatusDelivered,
@@ -456,6 +471,7 @@ func TestGetLaptopByIDWithJoins(t *testing.T) {
 		SKU:                "SKU-HP-ELITE-002",
 		Brand:              "HP",
 		Model:              "EliteBook 840",
+		CPU:                "Intel Core i9",
 		RAMGB:              "32",
 		SSDGB:              "1024",
 		Status:             LaptopStatusDelivered,

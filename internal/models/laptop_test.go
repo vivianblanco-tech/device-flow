@@ -385,7 +385,7 @@ func TestLaptop_WithNewFields(t *testing.T) {
 	if laptop.SKU != "SKU-DELL-LAT-5520" {
 		t.Errorf("Expected SKU to be 'SKU-DELL-LAT-5520', got %s", laptop.SKU)
 	}
-	
+
 	if laptop.CPU != "Intel Core i7-1185G7" {
 		t.Errorf("Expected CPU to be 'Intel Core i7-1185G7', got %s", laptop.CPU)
 	}
@@ -401,65 +401,65 @@ func TestLaptop_WithNewFields(t *testing.T) {
 
 func TestLaptop_IsAvailableForWarehouseShipment(t *testing.T) {
 	tests := []struct {
-		name                 string
-		laptop               Laptop
-		hasReceptionReport   bool
-		inActiveShipment     bool
-		shouldBeAvailable    bool
+		name               string
+		laptop             Laptop
+		hasReceptionReport bool
+		inActiveShipment   bool
+		shouldBeAvailable  bool
 	}{
 		{
 			name: "available laptop with reception report and not in shipment",
 			laptop: Laptop{
 				Status: LaptopStatusAvailable,
 			},
-			hasReceptionReport:  true,
-			inActiveShipment:    false,
-			shouldBeAvailable:   true,
+			hasReceptionReport: true,
+			inActiveShipment:   false,
+			shouldBeAvailable:  true,
 		},
 		{
 			name: "at_warehouse laptop with reception report",
 			laptop: Laptop{
 				Status: LaptopStatusAtWarehouse,
 			},
-			hasReceptionReport:  true,
-			inActiveShipment:    false,
-			shouldBeAvailable:   true,
+			hasReceptionReport: true,
+			inActiveShipment:   false,
+			shouldBeAvailable:  true,
 		},
 		{
 			name: "available laptop without reception report",
 			laptop: Laptop{
 				Status: LaptopStatusAvailable,
 			},
-			hasReceptionReport:  false,
-			inActiveShipment:    false,
-			shouldBeAvailable:   false,
+			hasReceptionReport: false,
+			inActiveShipment:   false,
+			shouldBeAvailable:  false,
 		},
 		{
 			name: "laptop in active shipment",
 			laptop: Laptop{
 				Status: LaptopStatusAvailable,
 			},
-			hasReceptionReport:  true,
-			inActiveShipment:    true,
-			shouldBeAvailable:   false,
+			hasReceptionReport: true,
+			inActiveShipment:   true,
+			shouldBeAvailable:  false,
 		},
 		{
 			name: "laptop in transit (wrong status)",
 			laptop: Laptop{
 				Status: LaptopStatusInTransitToEngineer,
 			},
-			hasReceptionReport:  true,
-			inActiveShipment:    false,
-			shouldBeAvailable:   false,
+			hasReceptionReport: true,
+			inActiveShipment:   false,
+			shouldBeAvailable:  false,
 		},
 		{
 			name: "retired laptop",
 			laptop: Laptop{
 				Status: LaptopStatusRetired,
 			},
-			hasReceptionReport:  true,
-			inActiveShipment:    false,
-			shouldBeAvailable:   false,
+			hasReceptionReport: true,
+			inActiveShipment:   false,
+			shouldBeAvailable:  false,
 		},
 	}
 
