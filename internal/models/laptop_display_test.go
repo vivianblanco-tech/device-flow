@@ -79,9 +79,11 @@ func TestGetLaptopStatusesInOrder(t *testing.T) {
 
 // TestGetLaptopStatusesForNewLaptop tests that only appropriate statuses are shown when adding a new laptop
 func TestGetLaptopStatusesForNewLaptop(t *testing.T) {
+	// Only "Received at Warehouse" should be available for new laptops
+	// This ensures warehouse users must create a reception report for every laptop
+	// before it becomes "Available at Warehouse"
 	expectedStatuses := []LaptopStatus{
-		LaptopStatusAtWarehouse, // "Received at Warehouse"
-		LaptopStatusAvailable,   // "Available at Warehouse"
+		LaptopStatusAtWarehouse, // "Received at Warehouse" - the only status for new laptops
 	}
 
 	got := GetLaptopStatusesForNewLaptop()
@@ -93,6 +95,13 @@ func TestGetLaptopStatusesForNewLaptop(t *testing.T) {
 	for i, status := range expectedStatuses {
 		if got[i] != status {
 			t.Errorf("GetLaptopStatusesForNewLaptop()[%d] = %v, want %v", i, got[i], status)
+		}
+	}
+
+	// Explicitly verify that "Available at Warehouse" is NOT included
+	for _, status := range got {
+		if status == LaptopStatusAvailable {
+			t.Errorf("GetLaptopStatusesForNewLaptop() should not include 'Available at Warehouse' status, but it does")
 		}
 	}
 }

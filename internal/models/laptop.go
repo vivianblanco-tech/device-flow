@@ -253,10 +253,11 @@ func GetLaptopStatusesInOrder() []LaptopStatus {
 }
 
 // GetLaptopStatusesForNewLaptop returns statuses appropriate for newly added laptops
+// Only "Received at Warehouse" is allowed to ensure all laptops go through
+// the reception report process before becoming available
 func GetLaptopStatusesForNewLaptop() []LaptopStatus {
 	return []LaptopStatus{
-		LaptopStatusAtWarehouse, // "Received at Warehouse"
-		LaptopStatusAvailable,   // "Available at Warehouse"
+		LaptopStatusAtWarehouse, // "Received at Warehouse" - the only status for new laptops
 	}
 }
 
