@@ -263,6 +263,9 @@ func GetLaptopByID(db *sql.DB, id int64) (*Laptop, error) {
 
 // CreateLaptop creates a new laptop in the database
 func CreateLaptop(db *sql.DB, laptop *Laptop) error {
+	// Auto-generate SKU if not provided
+	laptop.GenerateAndSetSKU()
+
 	// Validate laptop
 	if err := laptop.Validate(); err != nil {
 		return fmt.Errorf("validation failed: %w", err)

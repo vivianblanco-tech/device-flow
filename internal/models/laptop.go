@@ -45,6 +45,14 @@ type Laptop struct {
 	ReceptionReportStatus  string  `json:"reception_report_status,omitempty" db:"reception_report_status"`
 }
 
+// GenerateAndSetSKU generates and sets the SKU for the laptop if it's not already set
+func (l *Laptop) GenerateAndSetSKU() {
+	// Only generate if SKU is empty
+	if l.SKU == "" {
+		l.SKU = GenerateSKU(l.Model, l.CPU, l.RAMGB, l.SSDGB)
+	}
+}
+
 // Validate validates the Laptop model
 func (l *Laptop) Validate() error {
 	// Serial number validation

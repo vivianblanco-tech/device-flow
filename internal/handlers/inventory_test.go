@@ -17,6 +17,197 @@ import (
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 )
 
+// TestAddLaptopAutoGeneratesSKU tests that SKU is auto-generated when adding a laptop
+func TestAddLaptopAutoGeneratesSKU(t *testing.T) {
+	// Setup test database
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Create a test client company
+	var companyID int64
+	err := db.QueryRow(
+		`INSERT INTO client_companies (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW()) RETURNING id`,
+		"Test Corp", "contact@test.com",
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
+	// Create a test user (logistics role can add laptops)
+	var userID int64
+	err = db.QueryRow(
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id`,
+		"logistics@test.com", "hashed_password", models.RoleLogistics,
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create user: %v", err)
+	}
+
+	user := &models.User{
+		ID:           userID,
+		Email:        "logistics@test.com",
+		PasswordHash: "hashed_password",
+		Role:         models.RoleLogistics,
+	}
+
+	// Setup handler with minimal template
+	tmpl := template.New("test")
+	handler := &InventoryHandler{
+		DB:        db,
+		Templates: tmpl,
+	}
+
+	// Create form data for a Dell laptop with i7
+	form := url.Values{}
+	form.Add("serial_number", "SN-AUTO-SKU-001")
+	form.Add("client_company_id", strconv.FormatInt(companyID, 10))
+	form.Add("brand", "Dell")
+	form.Add("model", "Latitude 5520")
+	form.Add("cpu", "i7")
+	form.Add("ram_gb", "16GB")
+	form.Add("ssd_gb", "512GB")
+	form.Add("status", string(models.LaptopStatusAvailable))
+
+	// Create request
+	req := httptest.NewRequest("POST", "/inventory/add", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	
+	// Add user to context
+	ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+	req = req.WithContext(ctx)
+
+	// Create response recorder
+	rr := httptest.NewRecorder()
+
+	// Call handler
+	handler.AddLaptopSubmit(rr, req)
+
+	// Check response
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("Expected status %d, got %d", http.StatusSeeOther, rr.Code)
+	}
+
+	// Verify laptop was created with auto-generated SKU
+	filter := &models.LaptopFilter{}
+	laptops, err := models.GetAllLaptops(db, filter)
+	if err != nil {
+		t.Fatalf("Failed to get laptops: %v", err)
+	}
+
+	if len(laptops) == 0 {
+		t.Fatal("Expected laptop to be created")
+	}
+
+	laptop := laptops[0]
+	expectedSKU := "C.NOT.0I7.016.2G"
+	if laptop.SKU != expectedSKU {
+		t.Errorf("Expected SKU %s, got %s", expectedSKU, laptop.SKU)
+	}
+}
+
+// TestUpdateLaptopAutoRegeneratesSKUWhenFieldsChange tests that SKU can be manually overridden
+func TestUpdateLaptopAutoRegeneratesSKUWhenFieldsChange(t *testing.T) {
+	// Setup test database
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Create a test client company
+	var companyID int64
+	err := db.QueryRow(
+		`INSERT INTO client_companies (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW()) RETURNING id`,
+		"Test Corp", "contact@test.com",
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
+	// Create a test laptop
+	laptop := &models.Laptop{
+		SerialNumber:    "SN-UPDATE-SKU-001",
+		SKU:             "C.NOT.0I5.016.2G",
+		Brand:           "Dell",
+		Model:           "Latitude 5420",
+		CPU:             "i5",
+		RAMGB:           "16GB",
+		SSDGB:           "512GB",
+		Status:          models.LaptopStatusAvailable,
+		ClientCompanyID: &companyID,
+	}
+	if err := models.CreateLaptop(db, laptop); err != nil {
+		t.Fatalf("Failed to create laptop: %v", err)
+	}
+
+	// Create a test user (logistics role can update laptops)
+	var userID int64
+	err = db.QueryRow(
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id`,
+		"logistics@test.com", "hashed_password", models.RoleLogistics,
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create user: %v", err)
+	}
+
+	user := &models.User{
+		ID:           userID,
+		Email:        "logistics@test.com",
+		PasswordHash: "hashed_password",
+		Role:         models.RoleLogistics,
+	}
+
+	// Setup handler with minimal template
+	tmpl := template.New("test")
+	handler := &InventoryHandler{
+		DB:        db,
+		Templates: tmpl,
+	}
+
+	// Create form data updating CPU to i7 and RAM to 32GB (SKU should remain as-is since we provide it)
+	form := url.Values{}
+	form.Add("serial_number", "SN-UPDATE-SKU-001")
+	form.Add("sku", "CUSTOM-SKU-123") // Manual override
+	form.Add("client_company_id", strconv.FormatInt(companyID, 10))
+	form.Add("brand", "Dell")
+	form.Add("model", "Latitude 5520")
+	form.Add("cpu", "i7")
+	form.Add("ram_gb", "32GB")
+	form.Add("ssd_gb", "512GB")
+	form.Add("status", string(models.LaptopStatusAvailable))
+
+	// Create request
+	req := httptest.NewRequest("POST", "/inventory/"+strconv.FormatInt(laptop.ID, 10)+"/update", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(laptop.ID, 10)})
+	
+	// Add user to context
+	ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+	req = req.WithContext(ctx)
+
+	// Create response recorder
+	rr := httptest.NewRecorder()
+
+	// Call handler
+	handler.UpdateLaptopSubmit(rr, req)
+
+	// Check response
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("Expected status %d, got %d", http.StatusSeeOther, rr.Code)
+	}
+
+	// Verify laptop was updated with the custom SKU (not auto-generated)
+	updatedLaptop, err := models.GetLaptopByID(db, laptop.ID)
+	if err != nil {
+		t.Fatalf("Failed to get updated laptop: %v", err)
+	}
+
+	if updatedLaptop.SKU != "CUSTOM-SKU-123" {
+		t.Errorf("Expected SKU to be CUSTOM-SKU-123, got %s", updatedLaptop.SKU)
+	}
+}
+
 // TestUpdateLaptopWithSoftwareEngineerAssignment tests updating a laptop with software engineer assignment
 func TestUpdateLaptopWithSoftwareEngineerAssignment(t *testing.T) {
 	// Setup test database

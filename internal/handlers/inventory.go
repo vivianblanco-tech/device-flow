@@ -199,6 +199,7 @@ func (h *InventoryHandler) AddLaptopSubmit(w http.ResponseWriter, r *http.Reques
 	// Create laptop from form data
 	laptop := &models.Laptop{
 		SerialNumber: r.FormValue("serial_number"),
+		SKU:          r.FormValue("sku"), // Optional: will be auto-generated if empty
 		Brand:        r.FormValue("brand"),
 		Model:        r.FormValue("model"),
 		CPU:          r.FormValue("cpu"),
@@ -346,6 +347,17 @@ func (h *InventoryHandler) UpdateLaptopSubmit(w http.ResponseWriter, r *http.Req
 
 	// Update laptop fields
 	laptop.SerialNumber = r.FormValue("serial_number")
+	
+	// Parse SKU - if provided, use it; otherwise, auto-generate
+	skuFromForm := r.FormValue("sku")
+	if skuFromForm != "" {
+		laptop.SKU = skuFromForm
+	} else {
+		// Clear SKU to trigger auto-generation
+		laptop.SKU = ""
+		laptop.GenerateAndSetSKU()
+	}
+	
 	laptop.Brand = r.FormValue("brand")
 	laptop.Model = r.FormValue("model")
 	laptop.CPU = r.FormValue("cpu")

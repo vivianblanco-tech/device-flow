@@ -37,6 +37,29 @@
                     <p class="mt-1 text-sm text-gray-500">Unique identifier for the laptop</p>
                 </div>
 
+                <!-- SKU -->
+                <div class="mb-6">
+                    <label for="sku" class="block text-sm font-medium text-gray-700 mb-2">
+                        SKU {{if not .IsEdit}}<span class="text-sm font-normal text-gray-500">(Auto-generated)</span>{{end}}
+                    </label>
+                    <input 
+                        type="text" 
+                        id="sku" 
+                        name="sku"
+                        value="{{if .Laptop}}{{.Laptop.SKU}}{{end}}"
+                        {{if not .IsEdit}}readonly{{end}}
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {{if not .IsEdit}}bg-gray-50 cursor-not-allowed{{end}}"
+                        placeholder="{{if .IsEdit}}e.g., C.NOT.0I7.016.2G{{else}}Will be auto-generated{{end}}"
+                    />
+                    <p class="mt-1 text-sm text-gray-500">
+                        {{if .IsEdit}}
+                            Stock Keeping Unit - editable for custom SKUs
+                        {{else}}
+                            Automatically generated from Model, CPU, RAM, and SSD
+                        {{end}}
+                    </p>
+                </div>
+
                 <!-- Client Company -->
                 <div class="mb-6">
                     <label for="client_company_id" class="block text-sm font-medium text-gray-700 mb-2">
