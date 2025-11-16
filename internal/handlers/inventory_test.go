@@ -430,6 +430,189 @@ func TestUpdateLaptopRemoveSoftwareEngineerAssignment(t *testing.T) {
 	}
 }
 
+// TestInventoryListWithSorting tests that the inventory list can be sorted by different columns
+func TestInventoryListWithSorting(t *testing.T) {
+	// Setup test database
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Create test companies
+	var company1ID, company2ID int64
+	err := db.QueryRow(
+		`INSERT INTO client_companies (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW()) RETURNING id`,
+		"Alpha Corp", "alpha@test.com",
+	).Scan(&company1ID)
+	if err != nil {
+		t.Fatalf("Failed to create company1: %v", err)
+	}
+
+	err = db.QueryRow(
+		`INSERT INTO client_companies (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW()) RETURNING id`,
+		"Beta Corp", "beta@test.com",
+	).Scan(&company2ID)
+	if err != nil {
+		t.Fatalf("Failed to create company2: %v", err)
+	}
+
+	// Create test laptops with different attributes
+	laptops := []struct {
+		serial  string
+		brand   string
+		model   string
+		status  models.LaptopStatus
+		company int64
+	}{
+		{"SN-001", "Dell", "Latitude 5520", models.LaptopStatusAvailable, company1ID},
+		{"SN-002", "HP", "EliteBook 850", models.LaptopStatusAtWarehouse, company2ID},
+		{"SN-003", "Apple", "MacBook Pro", models.LaptopStatusDelivered, company1ID},
+		{"SN-004", "Lenovo", "ThinkPad X1", models.LaptopStatusAvailable, company2ID},
+	}
+
+	for _, l := range laptops {
+		laptop := &models.Laptop{
+			SerialNumber:    l.serial,
+			Brand:           l.brand,
+			Model:           l.model,
+			CPU:             "i7",
+			RAMGB:           "16GB",
+			SSDGB:           "512GB",
+			Status:          l.status,
+			ClientCompanyID: &l.company,
+		}
+		if err := models.CreateLaptop(db, laptop); err != nil {
+			t.Fatalf("Failed to create laptop: %v", err)
+		}
+	}
+
+	// Create test user (logistics role can view all inventory)
+	var userID int64
+	err = db.QueryRow(
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id`,
+		"logistics@test.com", "hashed_password", models.RoleLogistics,
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create user: %v", err)
+	}
+
+	user := &models.User{
+		ID:           userID,
+		Email:        "logistics@test.com",
+		PasswordHash: "hashed_password",
+		Role:         models.RoleLogistics,
+	}
+
+	// Setup handler
+	tmpl := template.New("test")
+	handler := &InventoryHandler{
+		DB:        db,
+		Templates: tmpl,
+	}
+
+	// Test cases for different sorting combinations
+	testCases := []struct {
+		name          string
+		sortBy        string
+		sortOrder     string
+		expectedFirst string // Expected first serial number
+		expectedLast  string // Expected last serial number
+	}{
+		{
+			name:          "Sort by serial number ascending",
+			sortBy:        "serial_number",
+			sortOrder:     "asc",
+			expectedFirst: "SN-001",
+			expectedLast:  "SN-004",
+		},
+		{
+			name:          "Sort by serial number descending",
+			sortBy:        "serial_number",
+			sortOrder:     "desc",
+			expectedFirst: "SN-004",
+			expectedLast:  "SN-001",
+		},
+		{
+			name:          "Sort by brand ascending",
+			sortBy:        "brand",
+			sortOrder:     "asc",
+			expectedFirst: "SN-003", // Apple
+			expectedLast:  "SN-004", // Lenovo
+		},
+		{
+			name:          "Sort by status ascending",
+			sortBy:        "status",
+			sortOrder:     "asc",
+			expectedFirst: "SN-002", // at_warehouse (alphabetically first: 'at' < 'av')
+			expectedLast:  "SN-003", // delivered (alphabetically last)
+		},
+		{
+			name:          "Sort by client company ascending",
+			sortBy:        "client_company",
+			sortOrder:     "asc",
+			expectedFirst: "SN-001", // Alpha Corp (first)
+			expectedLast:  "SN-004", // Beta Corp (last of Beta items)
+		},
+		{
+			name:          "Default sort (client then status)",
+			sortBy:        "",
+			sortOrder:     "",
+			expectedFirst: "SN-001", // Alpha Corp, available (first alphabetically by company then status)
+			expectedLast:  "SN-004", // Beta Corp, available (last when sorted by company then status)
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create request with sort parameters
+			url := "/inventory?sort=" + tc.sortBy + "&order=" + tc.sortOrder
+			req := httptest.NewRequest("GET", url, nil)
+
+			// Add user to context
+			ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+			req = req.WithContext(ctx)
+
+			// Create response recorder
+			rr := httptest.NewRecorder()
+
+			// Call handler
+			handler.InventoryList(rr, req)
+
+			// Check response status
+			if rr.Code != http.StatusOK {
+				t.Errorf("Expected status %d, got %d", http.StatusOK, rr.Code)
+			}
+
+			// For now, we'll check the database directly to verify sorting
+			// Once the handler is implemented, we could parse the response body
+			filter := &models.LaptopFilter{
+				UserRole:  user.Role,
+				SortBy:    tc.sortBy,
+				SortOrder: tc.sortOrder,
+			}
+
+			results, err := models.GetAllLaptops(db, filter)
+			if err != nil {
+				t.Fatalf("Failed to get laptops: %v", err)
+			}
+
+			if len(results) == 0 {
+				t.Fatal("Expected laptops to be returned")
+			}
+
+			// Verify first and last items match expected order
+			if results[0].SerialNumber != tc.expectedFirst {
+				t.Errorf("Expected first item to be %s, got %s", tc.expectedFirst, results[0].SerialNumber)
+			}
+
+			if results[len(results)-1].SerialNumber != tc.expectedLast {
+				t.Errorf("Expected last item to be %s, got %s", tc.expectedLast, results[len(results)-1].SerialNumber)
+			}
+		})
+	}
+}
+
 // Helper function to create a test software engineer
 func createTestSoftwareEngineer(db interface {
 	QueryRow(query string, args ...interface{}) *sql.Row

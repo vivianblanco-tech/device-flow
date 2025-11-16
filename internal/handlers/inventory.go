@@ -40,11 +40,15 @@ func (h *InventoryHandler) InventoryList(w http.ResponseWriter, r *http.Request)
 	// Parse query parameters
 	searchQuery := r.URL.Query().Get("search")
 	statusFilter := r.URL.Query().Get("status")
+	sortBy := r.URL.Query().Get("sort")
+	sortOrder := r.URL.Query().Get("order")
 
 	// Build filter
 	filter := &models.LaptopFilter{
-		Search:   searchQuery,
-		UserRole: user.Role, // Apply role-based filtering
+		Search:    searchQuery,
+		UserRole:  user.Role, // Apply role-based filtering
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
 	}
 
 	if statusFilter != "" {
@@ -67,6 +71,8 @@ func (h *InventoryHandler) InventoryList(w http.ResponseWriter, r *http.Request)
 		"Laptops":      laptops,
 		"SearchQuery":  searchQuery,
 		"StatusFilter": statusFilter,
+		"SortBy":       sortBy,
+		"SortOrder":    sortOrder,
 		"Statuses":     models.GetAllowedStatusesForRole(user.Role), // Filter statuses by user role
 	}
 

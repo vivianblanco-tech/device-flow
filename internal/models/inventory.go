@@ -8,12 +8,14 @@ import (
 
 // LaptopFilter represents filtering options for laptop queries
 type LaptopFilter struct {
-	Status   LaptopStatus
-	Brand    string
-	Search   string
-	Limit    int
-	Offset   int
-	UserRole UserRole // Filter laptops based on user role permissions
+	Status    LaptopStatus
+	Brand     string
+	Search    string
+	Limit     int
+	Offset    int
+	UserRole  UserRole // Filter laptops based on user role permissions
+	SortBy    string   // Column to sort by (e.g., "serial_number", "brand", "status", "client_company")
+	SortOrder string   // Sort order: "asc" or "desc"
 }
 
 // GetAllLaptops retrieves all laptops with optional filtering
@@ -71,7 +73,8 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 	}
 
 	// Add ordering
-	query += " ORDER BY l.created_at DESC"
+	orderBy := buildOrderByClause(filter)
+	query += " " + orderBy
 
 	// Add pagination if specified
 	if filter != nil {
@@ -418,5 +421,46 @@ func GetLaptopsByStatus(db *sql.DB, status LaptopStatus) ([]Laptop, error) {
 	}
 
 	return laptops, nil
+}
+
+// buildOrderByClause builds the ORDER BY clause based on the filter
+func buildOrderByClause(filter *LaptopFilter) string {
+	if filter == nil {
+		// Default sort: by client company, then status, then serial number for consistency
+		return "ORDER BY COALESCE(cc.name, '') COLLATE \"C\" ASC, l.status::text COLLATE \"C\" ASC, l.serial_number ASC"
+	}
+
+	// Map of allowed sort columns to their SQL equivalents
+	sortColumns := map[string]string{
+		"serial_number":  "l.serial_number",
+		"brand":          "l.brand",
+		"model":          "l.model",
+		"status":         "l.status::text COLLATE \"C\"",
+		"client_company": "COALESCE(cc.name, '') COLLATE \"C\"",
+		"assigned_se":    "COALESCE(se.name, '') COLLATE \"C\"",
+	}
+
+	// Validate sort order
+	sortOrder := "ASC"
+	if filter.SortOrder == "desc" {
+		sortOrder = "DESC"
+	}
+
+	// If no sort column specified, use default
+	if filter.SortBy == "" {
+		// Default sort: by client company, then status, then serial number for consistency
+		return "ORDER BY COALESCE(cc.name, '') COLLATE \"C\" ASC, l.status::text COLLATE \"C\" ASC, l.serial_number ASC"
+	}
+
+	// Get the SQL column name
+	sqlColumn, exists := sortColumns[filter.SortBy]
+	if !exists {
+		// If invalid column, use default
+		return "ORDER BY COALESCE(cc.name, '') COLLATE \"C\" ASC, l.status::text COLLATE \"C\" ASC, l.serial_number ASC"
+	}
+
+	// Return the ORDER BY clause with the specified column and order
+	// Also add serial_number as tie-breaker for consistent ordering
+	return fmt.Sprintf("ORDER BY %s %s, l.serial_number ASC", sqlColumn, sortOrder)
 }
 
