@@ -37,7 +37,7 @@ func (h *ReceptionReportHandler) LaptopReceptionReportPage(w http.ResponseWriter
 	
 	err := h.DB.QueryRowContext(r.Context(),
 		`SELECT 
-			l.id, l.serial_number, l.brand, l.model, l.ram_gb, l.ssd_gb, l.status,
+			l.id, l.serial_number, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb, l.status,
 			l.client_company_id, l.software_engineer_id, l.created_at, l.updated_at,
 			cc.name as client_company_name,
 			s.id as shipment_id,
@@ -50,7 +50,7 @@ func (h *ReceptionReportHandler) LaptopReceptionReportPage(w http.ResponseWriter
 		LIMIT 1`,
 		laptopID,
 	).Scan(
-		&laptop.ID, &laptop.SerialNumber, &laptop.Brand, &laptop.Model,
+		&laptop.ID, &laptop.SerialNumber, &laptop.Brand, &laptop.Model, &laptop.CPU,
 		&laptop.RAMGB, &laptop.SSDGB, &laptop.Status,
 		&laptop.ClientCompanyID, &laptop.SoftwareEngineerID,
 		&laptop.CreatedAt, &laptop.UpdatedAt,

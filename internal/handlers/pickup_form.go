@@ -275,7 +275,7 @@ func (h *PickupFormHandler) WarehouseToEngineerFormPage(w http.ResponseWriter, r
 	// Get list of available laptops from inventory
 	laptops := []models.Laptop{}
 	rows, err := h.DB.QueryContext(r.Context(), `
-		SELECT DISTINCT l.id, l.serial_number, l.sku, l.brand, l.model, l.ram_gb, l.ssd_gb,
+		SELECT DISTINCT l.id, l.serial_number, l.sku, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb,
 			   l.status, l.client_company_id, l.software_engineer_id,
 			   l.created_at, l.updated_at,
 			   cc.name as client_company_name
@@ -309,7 +309,7 @@ func (h *PickupFormHandler) WarehouseToEngineerFormPage(w http.ResponseWriter, r
 		var clientCompanyName sql.NullString
 		err := rows.Scan(
 			&laptop.ID, &laptop.SerialNumber, &laptop.SKU, &laptop.Brand,
-			&laptop.Model, &laptop.RAMGB, &laptop.SSDGB, &laptop.Status, &laptop.ClientCompanyID,
+			&laptop.Model, &laptop.CPU, &laptop.RAMGB, &laptop.SSDGB, &laptop.Status, &laptop.ClientCompanyID,
 			&laptop.SoftwareEngineerID, &laptop.CreatedAt, &laptop.UpdatedAt,
 			&clientCompanyName,
 		)
