@@ -126,10 +126,13 @@
                                     {{if .Brand}}{{.Brand}}{{else}}-{{end}}
                                     {{if .Model}}{{if .Brand}} {{end}}{{.Model}}{{end}}
                                 </div>
-                                {{if or .RAMGB .SSDGB}}
+                                {{if or .CPU .RAMGB .SSDGB}}
                                 <div class="text-xs text-gray-500">
+                                    {{if .CPU}}{{.CPU}}{{end}}
+                                    {{if and .CPU .RAMGB}}, {{end}}
                                     {{if .RAMGB}}{{.RAMGB}} RAM{{end}}
                                     {{if and .RAMGB .SSDGB}}, {{end}}
+                                    {{if and .CPU (not .RAMGB) .SSDGB}}, {{end}}
                                     {{if .SSDGB}}{{.SSDGB}} SSD{{end}}
                                 </div>
                                 {{end}}

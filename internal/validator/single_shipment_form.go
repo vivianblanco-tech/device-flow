@@ -25,6 +25,7 @@ type SingleFullJourneyFormInput struct {
 	LaptopSerialNumber string
 	LaptopBrand        string
 	LaptopModel        string
+	LaptopCPU          string
 	LaptopRAMGB        string
 	LaptopSSDGB        string
 
@@ -82,6 +83,14 @@ func ValidateSingleFullJourneyForm(input SingleFullJourneyFormInput) error {
 	}
 	if len(input.LaptopModel) > 200 {
 		return errors.New("laptop model must be less than 200 characters")
+	}
+
+	// Laptop CPU validation (REQUIRED)
+	if strings.TrimSpace(input.LaptopCPU) == "" {
+		return errors.New("laptop CPU is required")
+	}
+	if len(input.LaptopCPU) > 200 {
+		return errors.New("laptop CPU must be less than 200 characters")
 	}
 
 	// Laptop RAM validation (REQUIRED)

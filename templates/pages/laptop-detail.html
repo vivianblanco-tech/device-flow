@@ -61,6 +61,19 @@
                         <dt class="text-sm font-medium text-gray-500">Model</dt>
                         <dd class="mt-1 text-lg text-gray-900">{{if .Laptop.Model}}{{.Laptop.Model}}{{else}}-{{end}}</dd>
                     </div>
+                    <div class="md:col-span-2">
+                        <dt class="text-sm font-medium text-gray-500">CPU</dt>
+                        <dd class="mt-1 text-lg text-gray-900">
+                            {{if .Laptop.CPU}}
+                            <span class="inline-flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8h8V6z" clip-rule="evenodd"/>
+                                </svg>
+                                {{.Laptop.CPU}}
+                            </span>
+                            {{else}}-{{end}}
+                        </dd>
+                    </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">RAM</dt>
                         <dd class="mt-1 text-lg text-gray-900">

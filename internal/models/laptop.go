@@ -25,6 +25,7 @@ type Laptop struct {
 	SKU                string       `json:"sku,omitempty" db:"sku"`
 	Brand              string       `json:"brand,omitempty" db:"brand"`
 	Model              string       `json:"model" db:"model"`
+	CPU                string       `json:"cpu" db:"cpu"`
 	RAMGB              string       `json:"ram_gb" db:"ram_gb"`
 	SSDGB              string       `json:"ssd_gb" db:"ssd_gb"`
 	Status             LaptopStatus `json:"status" db:"status"`
@@ -54,6 +55,11 @@ func (l *Laptop) Validate() error {
 	// Model validation (required)
 	if l.Model == "" {
 		return errors.New("laptop model is required")
+	}
+
+	// CPU validation (required)
+	if l.CPU == "" {
+		return errors.New("laptop CPU is required")
 	}
 
 	// RAM validation (required)
@@ -180,11 +186,17 @@ func (l *Laptop) GetFullDescription() string {
 		desc += l.Model
 	}
 
-	// Add RAM and SSD specs
-	if l.RAMGB != "" || l.SSDGB != "" {
+	// Add CPU, RAM and SSD specs
+	if l.CPU != "" || l.RAMGB != "" || l.SSDGB != "" {
 		specs := ""
+		if l.CPU != "" {
+			specs = l.CPU
+		}
 		if l.RAMGB != "" {
-			specs = l.RAMGB + " RAM"
+			if specs != "" {
+				specs += ", "
+			}
+			specs += l.RAMGB + " RAM"
 		}
 		if l.SSDGB != "" {
 			if specs != "" {

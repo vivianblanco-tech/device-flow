@@ -22,6 +22,7 @@ func TestLaptop_Validate(t *testing.T) {
 				SKU:                "SKU-DELL-LAT-5520",
 				Brand:              "Dell",
 				Model:              "Latitude 5520",
+				CPU:                "Intel Core i7-1185G7",
 				RAMGB:              "16GB",
 				SSDGB:              "512GB",
 				Status:             LaptopStatusAvailable,
@@ -36,6 +37,7 @@ func TestLaptop_Validate(t *testing.T) {
 				SerialNumber: "SN123456789",
 				Brand:        "Dell",
 				Model:        "Latitude 5520",
+				CPU:          "Intel Core i5-1145G7",
 				RAMGB:        "16GB",
 				SSDGB:        "512GB",
 				Status:       LaptopStatusAvailable,
@@ -47,6 +49,7 @@ func TestLaptop_Validate(t *testing.T) {
 			laptop: Laptop{
 				SerialNumber: "SN987654321",
 				Model:        "Unknown Model",
+				CPU:          "Intel Core i3",
 				RAMGB:        "8GB",
 				SSDGB:        "256GB",
 				Status:       LaptopStatusAtWarehouse,
@@ -54,10 +57,38 @@ func TestLaptop_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "invalid - missing CPU",
+			laptop: Laptop{
+				SerialNumber: "SN123456789",
+				Brand:        "Dell",
+				Model:        "Latitude 5520",
+				RAMGB:        "16GB",
+				SSDGB:        "512GB",
+				Status:       LaptopStatusAvailable,
+			},
+			wantErr: true,
+			errMsg:  "laptop CPU is required",
+		},
+		{
+			name: "invalid - empty CPU",
+			laptop: Laptop{
+				SerialNumber: "SN123456789",
+				Brand:        "Dell",
+				Model:        "Latitude 5520",
+				CPU:          "",
+				RAMGB:        "16GB",
+				SSDGB:        "512GB",
+				Status:       LaptopStatusAvailable,
+			},
+			wantErr: true,
+			errMsg:  "laptop CPU is required",
+		},
+		{
 			name: "invalid - missing serial number",
 			laptop: Laptop{
 				Brand:  "HP",
 				Model:  "EliteBook",
+				CPU:    "Intel Core i7",
 				RAMGB:  "16",
 				SSDGB:  "512",
 				Status: LaptopStatusAvailable,
@@ -70,6 +101,7 @@ func TestLaptop_Validate(t *testing.T) {
 			laptop: Laptop{
 				SerialNumber: "",
 				Model:        "EliteBook",
+				CPU:          "Intel Core i7",
 				RAMGB:        "16",
 				SSDGB:        "512",
 				Status:       LaptopStatusAvailable,
@@ -82,6 +114,7 @@ func TestLaptop_Validate(t *testing.T) {
 			laptop: Laptop{
 				SerialNumber: "SN123456789",
 				Model:        "EliteBook",
+				CPU:          "Intel Core i7",
 				RAMGB:        "16",
 				SSDGB:        "512",
 			},
@@ -93,6 +126,7 @@ func TestLaptop_Validate(t *testing.T) {
 			laptop: Laptop{
 				SerialNumber: "SN123456789",
 				Model:        "EliteBook",
+				CPU:          "Intel Core i7",
 				RAMGB:        "16",
 				SSDGB:        "512",
 				Status:       "invalid_status",
@@ -105,6 +139,7 @@ func TestLaptop_Validate(t *testing.T) {
 			laptop: Laptop{
 				SerialNumber: "ABC",
 				Model:        "EliteBook",
+				CPU:          "Intel Core i5",
 				RAMGB:        "8",
 				SSDGB:        "256",
 				Status:       LaptopStatusAvailable,
@@ -271,10 +306,11 @@ func TestLaptop_GetFullDescription(t *testing.T) {
 			laptop: Laptop{
 				Brand: "Dell",
 				Model: "Latitude 5520",
+				CPU:   "Intel Core i7-1185G7",
 				RAMGB: "16GB",
 				SSDGB: "512GB",
 			},
-			expected: "Dell Latitude 5520 (16GB RAM, 512GB SSD)",
+			expected: "Dell Latitude 5520 (Intel Core i7-1185G7, 16GB RAM, 512GB SSD)",
 		},
 		{
 			name: "laptop with brand and model only",
@@ -298,6 +334,25 @@ func TestLaptop_GetFullDescription(t *testing.T) {
 			},
 			expected: "Unknown",
 		},
+		{
+			name: "laptop with CPU only in specs",
+			laptop: Laptop{
+				Brand: "Apple",
+				Model: "MacBook Pro",
+				CPU:   "M2 Pro",
+			},
+			expected: "Apple MacBook Pro (M2 Pro)",
+		},
+		{
+			name: "laptop with CPU and RAM but no SSD",
+			laptop: Laptop{
+				Brand: "Lenovo",
+				Model: "ThinkPad X1",
+				CPU:   "Intel Core i5",
+				RAMGB: "8GB",
+			},
+			expected: "Lenovo ThinkPad X1 (Intel Core i5, 8GB RAM)",
+		},
 	}
 
 	for _, tt := range tests {
@@ -318,6 +373,9 @@ func TestLaptop_WithNewFields(t *testing.T) {
 		SKU:                "SKU-DELL-LAT-5520",
 		Brand:              "Dell",
 		Model:              "Latitude 5520",
+		CPU:                "Intel Core i7-1185G7",
+		RAMGB:              "16GB",
+		SSDGB:              "512GB",
 		Status:             LaptopStatusAvailable,
 		ClientCompanyID:    &clientID,
 		SoftwareEngineerID: &engineerID,
@@ -326,6 +384,10 @@ func TestLaptop_WithNewFields(t *testing.T) {
 	// Test that fields are properly set
 	if laptop.SKU != "SKU-DELL-LAT-5520" {
 		t.Errorf("Expected SKU to be 'SKU-DELL-LAT-5520', got %s", laptop.SKU)
+	}
+	
+	if laptop.CPU != "Intel Core i7-1185G7" {
+		t.Errorf("Expected CPU to be 'Intel Core i7-1185G7', got %s", laptop.CPU)
 	}
 
 	if laptop.ClientCompanyID == nil || *laptop.ClientCompanyID != 1 {

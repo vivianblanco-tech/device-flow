@@ -558,6 +558,7 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 		LaptopSerialNumber:     r.FormValue("laptop_serial_number"),
 		LaptopBrand:            r.FormValue("laptop_brand"),
 		LaptopModel:            r.FormValue("laptop_model"),
+		LaptopCPU:              r.FormValue("laptop_cpu"),
 		LaptopRAMGB:            r.FormValue("laptop_ram_gb"),
 		LaptopSSDGB:            r.FormValue("laptop_ssd_gb"),
 		EngineerName:           r.FormValue("engineer_name"),
@@ -607,6 +608,7 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 		SerialNumber:    formInput.LaptopSerialNumber,
 		Brand:           formInput.LaptopBrand,
 		Model:           formInput.LaptopModel,
+		CPU:             formInput.LaptopCPU,
 		RAMGB:           formInput.LaptopRAMGB,
 		SSDGB:           formInput.LaptopSSDGB,
 		Status:          models.LaptopStatusInTransitToWarehouse,
@@ -616,10 +618,10 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 
 	var laptopID int64
 	err = tx.QueryRowContext(r.Context(),
-		`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id`,
-		laptop.SerialNumber, laptop.Brand, laptop.Model, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID,
+		laptop.SerialNumber, laptop.Brand, laptop.Model, laptop.CPU, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID,
 		laptop.CreatedAt, laptop.UpdatedAt,
 	).Scan(&laptopID)
 	if err != nil {
@@ -652,6 +654,7 @@ func (h *PickupFormHandler) handleSingleFullJourneyForm(r *http.Request, user *m
 		"laptop_serial_number":    formInput.LaptopSerialNumber,
 		"laptop_brand":            formInput.LaptopBrand,
 		"laptop_model":            formInput.LaptopModel,
+		"laptop_cpu":              formInput.LaptopCPU,
 		"laptop_ram_gb":           formInput.LaptopRAMGB,
 		"laptop_ssd_gb":           formInput.LaptopSSDGB,
 		"engineer_name":           formInput.EngineerName,
@@ -1460,6 +1463,7 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 		LaptopSerialNumber:     r.FormValue("laptop_serial_number"),
 		LaptopBrand:            r.FormValue("laptop_brand"),
 		LaptopModel:            r.FormValue("laptop_model"),
+		LaptopCPU:              r.FormValue("laptop_cpu"),
 		LaptopRAMGB:            r.FormValue("laptop_ram_gb"),
 		LaptopSSDGB:            r.FormValue("laptop_ssd_gb"),
 		EngineerName:           r.FormValue("engineer_name"),
@@ -1502,6 +1506,7 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 		SerialNumber:    formInput.LaptopSerialNumber,
 		Brand:           formInput.LaptopBrand,
 		Model:           formInput.LaptopModel,
+		CPU:             formInput.LaptopCPU,
 		RAMGB:           formInput.LaptopRAMGB,
 		SSDGB:           formInput.LaptopSSDGB,
 		Status:          models.LaptopStatusInTransitToWarehouse,
@@ -1511,16 +1516,16 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 
 	var laptopID int64
 	err = tx.QueryRowContext(r.Context(),
-		`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id`,
-		laptop.SerialNumber, laptop.Brand, laptop.Model, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID,
+		laptop.SerialNumber, laptop.Brand, laptop.Model, laptop.CPU, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID,
 		laptop.CreatedAt, laptop.UpdatedAt,
 	).Scan(&laptopID)
 	if err != nil {
 		// Log the actual database error for debugging
-		fmt.Printf("Failed to create laptop: %v (serial: %s, model: %s, ram: %s, ssd: %s, status: %s, company: %v)\n",
-			err, laptop.SerialNumber, laptop.Model, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID)
+		fmt.Printf("Failed to create laptop: %v (serial: %s, model: %s, cpu: %s, ram: %s, ssd: %s, status: %s, company: %v)\n",
+			err, laptop.SerialNumber, laptop.Model, laptop.CPU, laptop.RAMGB, laptop.SSDGB, laptop.Status, laptop.ClientCompanyID)
 
 		// Check if it's a duplicate serial number error
 		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
@@ -1569,6 +1574,7 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 		"laptop_serial_number":    formInput.LaptopSerialNumber,
 		"laptop_brand":            formInput.LaptopBrand,
 		"laptop_model":            formInput.LaptopModel,
+		"laptop_cpu":              formInput.LaptopCPU,
 		"laptop_ram_gb":           formInput.LaptopRAMGB,
 		"laptop_ssd_gb":           formInput.LaptopSSDGB,
 		"engineer_name":           formInput.EngineerName,
