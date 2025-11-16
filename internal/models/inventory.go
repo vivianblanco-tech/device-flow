@@ -207,7 +207,7 @@ func SearchLaptops(db *sql.DB, searchTerm string) ([]Laptop, error) {
 func GetLaptopByID(db *sql.DB, id int64) (*Laptop, error) {
 	query := `
 		SELECT 
-			l.id, l.serial_number, l.sku, l.brand, l.model, l.ram_gb, l.ssd_gb, l.status, 
+			l.id, l.serial_number, l.sku, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb, l.status, 
 			l.client_company_id, l.software_engineer_id, l.created_at, l.updated_at,
 			cc.name as client_company_name,
 			se.name as software_engineer_name
@@ -228,6 +228,7 @@ func GetLaptopByID(db *sql.DB, id int64) (*Laptop, error) {
 		&sku,
 		&laptop.Brand,
 		&laptop.Model,
+		&laptop.CPU,
 		&laptop.RAMGB,
 		&laptop.SSDGB,
 		&laptop.Status,
@@ -271,8 +272,8 @@ func CreateLaptop(db *sql.DB, laptop *Laptop) error {
 	laptop.BeforeCreate()
 
 	query := `
-		INSERT INTO laptops (serial_number, sku, brand, model, ram_gb, ssd_gb, status, client_company_id, software_engineer_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO laptops (serial_number, sku, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, software_engineer_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id
 	`
 
@@ -282,6 +283,7 @@ func CreateLaptop(db *sql.DB, laptop *Laptop) error {
 		laptop.SKU,
 		laptop.Brand,
 		laptop.Model,
+		laptop.CPU,
 		laptop.RAMGB,
 		laptop.SSDGB,
 		laptop.Status,
@@ -314,9 +316,9 @@ func UpdateLaptop(db *sql.DB, laptop *Laptop) error {
 
 	query := `
 		UPDATE laptops
-		SET serial_number = $1, sku = $2, brand = $3, model = $4, ram_gb = $5, ssd_gb = $6, status = $7, 
-		    client_company_id = $8, software_engineer_id = $9, updated_at = $10
-		WHERE id = $11
+		SET serial_number = $1, sku = $2, brand = $3, model = $4, cpu = $5, ram_gb = $6, ssd_gb = $7, status = $8, 
+		    client_company_id = $9, software_engineer_id = $10, updated_at = $11
+		WHERE id = $12
 	`
 
 	result, err := db.Exec(
@@ -325,6 +327,7 @@ func UpdateLaptop(db *sql.DB, laptop *Laptop) error {
 		laptop.SKU,
 		laptop.Brand,
 		laptop.Model,
+		laptop.CPU,
 		laptop.RAMGB,
 		laptop.SSDGB,
 		laptop.Status,
