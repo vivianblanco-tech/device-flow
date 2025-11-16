@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/gorilla/mux"
@@ -113,11 +114,15 @@ func (h *InventoryHandler) LaptopDetail(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	// Get success message from query parameters
+	successMsg := r.URL.Query().Get("success")
+
 	// Prepare template data
 	data := map[string]interface{}{
 		"User":            user,
 		"Laptop":          laptop,
 		"ReceptionReport": receptionReport,
+		"Success":         successMsg,
 	}
 
 	// Execute template using pre-parsed global templates
@@ -289,14 +294,31 @@ func (h *InventoryHandler) EditLaptopPage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Get current company and engineer IDs for pre-selection
+	var currentCompanyID, currentEngineerID int64
+	if laptop.ClientCompanyID != nil {
+		currentCompanyID = *laptop.ClientCompanyID
+	}
+	if laptop.SoftwareEngineerID != nil {
+		currentEngineerID = *laptop.SoftwareEngineerID
+	}
+
+	// Get error and success messages from query parameters
+	errorMsg := r.URL.Query().Get("error")
+	successMsg := r.URL.Query().Get("success")
+
 	// Prepare template data
 	data := map[string]interface{}{
-		"User":      user,
-		"Laptop":    laptop,
-		"Statuses":  models.GetLaptopStatusesInOrder(),
-		"Companies": companies,
-		"Engineers": engineers,
-		"IsEdit":    true,
+		"User":              user,
+		"Laptop":            laptop,
+		"Statuses":          models.GetLaptopStatusesInOrder(),
+		"Companies":         companies,
+		"Engineers":         engineers,
+		"IsEdit":            true,
+		"CurrentCompanyID":  currentCompanyID,
+		"CurrentEngineerID": currentEngineerID,
+		"Error":             errorMsg,
+		"Success":           successMsg,
 	}
 
 	// Execute template using pre-parsed global templates
@@ -406,19 +428,21 @@ func (h *InventoryHandler) UpdateLaptopSubmit(w http.ResponseWriter, r *http.Req
 	// Validate the status change
 	if err := laptop.ValidateStatusChange(receptionReport); err != nil {
 		log.Printf("Status change validation failed: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		// Redirect back to edit page with error message
+		http.Redirect(w, r, "/inventory/"+idStr+"/edit?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 
 	// Update laptop
 	if err := models.UpdateLaptop(h.DB, laptop); err != nil {
 		log.Printf("Error updating laptop: %v", err)
-		http.Error(w, "Failed to update laptop: "+err.Error(), http.StatusInternalServerError)
+		// Redirect back to edit page with error message
+		http.Redirect(w, r, "/inventory/"+idStr+"/edit?error="+url.QueryEscape("Failed to update laptop: "+err.Error()), http.StatusSeeOther)
 		return
 	}
 
-	// Redirect to laptop detail
-	http.Redirect(w, r, "/inventory/"+idStr, http.StatusSeeOther)
+	// Redirect to laptop detail with success message
+	http.Redirect(w, r, "/inventory/"+idStr+"?success="+url.QueryEscape("Laptop updated successfully"), http.StatusSeeOther)
 }
 
 // DeleteLaptop handles the deletion of a laptop

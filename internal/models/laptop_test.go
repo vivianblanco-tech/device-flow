@@ -487,7 +487,7 @@ func TestLaptop_IsAvailableForWarehouseShipment(t *testing.T) {
 
 func TestLaptop_ValidateStatusWithReceptionReport(t *testing.T) {
 	clientID := int64(1)
-	
+
 	tests := []struct {
 		name            string
 		laptop          Laptop
@@ -580,7 +580,7 @@ func TestLaptop_ValidateStatusWithReceptionReport(t *testing.T) {
 func TestLaptop_ValidateStatusWithEngineer(t *testing.T) {
 	clientID := int64(1)
 	engineerID := int64(10)
-	
+
 	tests := []struct {
 		name    string
 		laptop  Laptop
