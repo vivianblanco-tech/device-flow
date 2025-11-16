@@ -51,6 +51,8 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 	statusFilter := r.URL.Query().Get("status")
 	typeFilter := r.URL.Query().Get("type")
 	searchQuery := r.URL.Query().Get("search")
+	sortBy := r.URL.Query().Get("sort")
+	sortOrder := r.URL.Query().Get("order")
 
 	// Build query based on user role
 	var query string
@@ -110,8 +112,9 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 		argCount++
 	}
 
-	// Order by most recent first
-	query = baseQuery + " ORDER BY s.created_at DESC LIMIT 100"
+	// Build ORDER BY clause
+	orderBy := buildShipmentsOrderByClause(sortBy, sortOrder)
+	query = baseQuery + " " + orderBy + " LIMIT 100"
 
 	// Execute query
 	rows, err := h.DB.QueryContext(r.Context(), query, args...)
@@ -170,6 +173,8 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 		"StatusFilter": statusFilter,
 		"TypeFilter":   typeFilter,
 		"SearchQuery":  searchQuery,
+		"SortBy":       sortBy,
+		"SortOrder":    sortOrder,
 		"AllStatuses": []models.ShipmentStatus{
 			models.ShipmentStatusPendingPickup,
 			models.ShipmentStatusPickedUpFromClient,
@@ -1144,4 +1149,39 @@ func validatePickupFormUpdate(input validator.PickupFormInput) error {
 	// Temporarily set a dummy JIRA ticket to pass validation
 	input.JiraTicketNumber = "TEMP-0"
 	return validator.ValidatePickupForm(input)
+}
+
+// buildShipmentsOrderByClause builds the ORDER BY clause for shipments based on sort parameters
+func buildShipmentsOrderByClause(sortBy, sortOrder string) string {
+	// Map of allowed sort columns to their SQL equivalents
+	sortColumns := map[string]string{
+		"id":           "s.id",
+		"type":         "s.shipment_type",
+		"jira_ticket":  "s.jira_ticket_number",
+		"company":      "c.name",
+		"engineer":     "se.name",
+		"status":       "s.status::text",
+		"created":      "s.created_at",
+	}
+
+	// Validate sort order
+	order := "ASC"
+	if sortOrder == "desc" {
+		order = "DESC"
+	}
+
+	// Default sort: created DESC
+	if sortBy == "" {
+		return "ORDER BY s.created_at DESC"
+	}
+
+	// Get the SQL column name
+	sqlColumn, exists := sortColumns[sortBy]
+	if !exists {
+		// If invalid column, use default
+		return "ORDER BY s.created_at DESC"
+	}
+
+	// Return the ORDER BY clause with the specified column and order
+	return fmt.Sprintf("ORDER BY %s COLLATE \"C\" %s", sqlColumn, order)
 }

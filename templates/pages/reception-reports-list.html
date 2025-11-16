@@ -24,27 +24,88 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <!-- Report ID (Sortable) -->
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Report ID
+                                <a href="/reception-reports?sort=id&order={{if and (eq .SortBy "id") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                    <span>Report ID</span>
+                                    {{if eq .SortBy "id"}}
+                                        {{if eq .SortOrder "asc"}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5-5 5 5H5z"/></svg>
+                                        {{else}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
+                                        {{end}}
+                                    {{end}}
+                                </a>
                             </th>
+                            <!-- Shipment (Sortable) -->
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Shipment
+                                <a href="/reception-reports?sort=shipment&order={{if and (eq .SortBy "shipment") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                    <span>Shipment</span>
+                                    {{if eq .SortBy "shipment"}}
+                                        {{if eq .SortOrder "asc"}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5-5 5 5H5z"/></svg>
+                                        {{else}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
+                                        {{end}}
+                                    {{end}}
+                                </a>
                             </th>
+                            <!-- Company (Sortable) -->
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Company
+                                <a href="/reception-reports?sort=company&order={{if and (eq .SortBy "company") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                    <span>Company</span>
+                                    {{if eq .SortBy "company"}}
+                                        {{if eq .SortOrder "asc"}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5-5 5 5H5z"/></svg>
+                                        {{else}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
+                                        {{end}}
+                                    {{end}}
+                                </a>
                             </th>
+                            <!-- Type (Sortable) -->
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Type
+                                <a href="/reception-reports?sort=type&order={{if and (eq .SortBy "type") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                    <span>Type</span>
+                                    {{if eq .SortBy "type"}}
+                                        {{if eq .SortOrder "asc"}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5-5 5 5H5z"/></svg>
+                                        {{else}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
+                                        {{end}}
+                                    {{end}}
+                                </a>
                             </th>
+                            <!-- Received At (Sortable) -->
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Received At
+                                <a href="/reception-reports?sort=received_at&order={{if and (eq .SortBy "received_at") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                    <span>Received At</span>
+                                    {{if eq .SortBy "received_at"}}
+                                        {{if eq .SortOrder "asc"}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5-5 5 5H5z"/></svg>
+                                        {{else}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
+                                        {{end}}
+                                    {{end}}
+                                </a>
                             </th>
+                            <!-- Warehouse User (Sortable) -->
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Warehouse User
+                                <a href="/reception-reports?sort=warehouse_user&order={{if and (eq .SortBy "warehouse_user") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                    <span>Warehouse User</span>
+                                    {{if eq .SortBy "warehouse_user"}}
+                                        {{if eq .SortOrder "asc"}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 10l5-5 5 5H5z"/></svg>
+                                        {{else}}
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
+                                        {{end}}
+                                    {{end}}
+                                </a>
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Serial Correction
                             </th>
+                            <!-- Actions (Not Sortable) -->
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Actions
                             </th>
