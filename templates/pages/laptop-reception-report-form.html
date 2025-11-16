@@ -71,7 +71,14 @@
                 </div>
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Specifications</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{.Laptop.RAMGB}} RAM, {{.Laptop.SSDGB}} SSD</dd>
+                    <dd class="mt-1 text-sm text-gray-900">
+                        {{if .Laptop.CPU}}{{.Laptop.CPU}}{{end}}
+                        {{if and .Laptop.CPU .Laptop.RAMGB}}, {{end}}
+                        {{if .Laptop.RAMGB}}{{.Laptop.RAMGB}} RAM{{end}}
+                        {{if and .Laptop.RAMGB .Laptop.SSDGB}}, {{end}}
+                        {{if and .Laptop.CPU (not .Laptop.RAMGB) .Laptop.SSDGB}}, {{end}}
+                        {{if .Laptop.SSDGB}}{{.Laptop.SSDGB}} SSD{{end}}
+                    </dd>
                 </div>
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Status</dt>

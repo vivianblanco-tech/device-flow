@@ -88,7 +88,7 @@
                                 data-serial="{{.SerialNumber}}" 
                                 data-brand="{{.Brand}}" 
                                 data-model="{{.Model}}" 
-                                data-specs="{{if .RAMGB}}RAM: {{.RAMGB}}GB{{end}}{{if and .RAMGB .SSDGB}}, {{end}}{{if .SSDGB}}SSD: {{.SSDGB}}GB{{end}}"
+                                data-specs="{{if .CPU}}CPU: {{.CPU}}{{end}}{{if and .CPU .RAMGB}}, {{end}}{{if .RAMGB}}RAM: {{.RAMGB}}{{end}}{{if and .RAMGB .SSDGB}}, {{end}}{{if and .CPU (not .RAMGB) .SSDGB}}, {{end}}{{if .SSDGB}}SSD: {{.SSDGB}}{{end}}"
                                 data-company="{{.ClientCompanyName}}"
                             >
                                 {{.SerialNumber}} - {{.Brand}} {{.Model}} {{if .ClientCompanyName}}({{.ClientCompanyName}}){{end}}

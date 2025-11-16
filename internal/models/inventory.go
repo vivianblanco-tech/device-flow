@@ -20,7 +20,7 @@ type LaptopFilter struct {
 func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 	query := `
 		SELECT 
-			l.id, l.serial_number, l.sku, l.brand, l.model, l.ram_gb, l.ssd_gb, l.status, 
+			l.id, l.serial_number, l.sku, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb, l.status, 
 			l.client_company_id, l.software_engineer_id, l.created_at, l.updated_at,
 			cc.name as client_company_name,
 			se.name as software_engineer_name,
@@ -109,6 +109,7 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 			&sku,
 			&brand,
 			&laptop.Model,
+			&laptop.CPU,
 			&laptop.RAMGB,
 			&laptop.SSDGB,
 			&laptop.Status,
@@ -159,7 +160,7 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 // SearchLaptops searches for laptops by serial number, brand, or model
 func SearchLaptops(db *sql.DB, searchTerm string) ([]Laptop, error) {
 	query := `
-		SELECT id, serial_number, brand, model, ram_gb, ssd_gb, status, created_at, updated_at
+		SELECT id, serial_number, brand, model, cpu, ram_gb, ssd_gb, status, created_at, updated_at
 		FROM laptops
 		WHERE LOWER(serial_number) LIKE $1 
 		   OR LOWER(brand) LIKE $1 
@@ -182,6 +183,7 @@ func SearchLaptops(db *sql.DB, searchTerm string) ([]Laptop, error) {
 			&laptop.SerialNumber,
 			&laptop.Brand,
 			&laptop.Model,
+			&laptop.CPU,
 			&laptop.RAMGB,
 			&laptop.SSDGB,
 			&laptop.Status,
@@ -372,7 +374,7 @@ func DeleteLaptop(db *sql.DB, id int64) error {
 // GetLaptopsByStatus retrieves all laptops with a specific status
 func GetLaptopsByStatus(db *sql.DB, status LaptopStatus) ([]Laptop, error) {
 	query := `
-		SELECT id, serial_number, brand, model, ram_gb, ssd_gb, status, created_at, updated_at
+		SELECT id, serial_number, brand, model, cpu, ram_gb, ssd_gb, status, created_at, updated_at
 		FROM laptops
 		WHERE status = $1
 		ORDER BY created_at DESC
@@ -392,6 +394,7 @@ func GetLaptopsByStatus(db *sql.DB, status LaptopStatus) ([]Laptop, error) {
 			&laptop.SerialNumber,
 			&laptop.Brand,
 			&laptop.Model,
+			&laptop.CPU,
 			&laptop.RAMGB,
 			&laptop.SSDGB,
 			&laptop.Status,

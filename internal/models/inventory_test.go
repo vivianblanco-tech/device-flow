@@ -36,6 +36,13 @@ func TestGetAllLaptops(t *testing.T) {
 	if len(result) != 4 {
 		t.Errorf("Expected 4 laptops, got %d", len(result))
 	}
+
+	// Verify CPU field is populated for all laptops
+	for i, laptop := range result {
+		if laptop.CPU == "" {
+			t.Errorf("Laptop %d (SN: %s) has empty CPU field", i, laptop.SerialNumber)
+		}
+	}
 }
 
 // TestGetAllLaptopsWithFilter tests filtering laptops by status

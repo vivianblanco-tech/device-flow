@@ -503,8 +503,15 @@
                                 <div>
                                     <p class="font-medium text-gray-900">{{if .Brand}}{{.Brand}} {{end}}{{.Model}}</p>
                                     <p class="text-sm text-gray-500 font-mono">SN: {{.SerialNumber}}</p>
-                                    {{if or .RAMGB .SSDGB}}
+                                    {{if or .CPU .RAMGB .SSDGB}}
                                     <p class="text-sm text-gray-600 mt-1">
+                                        {{if .CPU}}<span class="inline-flex items-center">
+                                            <svg class="w-3 h-3 mr-1 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8h8V6z" clip-rule="evenodd"/>
+                                            </svg>
+                                            {{.CPU}}
+                                        </span>{{end}}
+                                        {{if and .CPU .RAMGB}} • {{end}}
                                         {{if .RAMGB}}<span class="inline-flex items-center">
                                             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
@@ -512,6 +519,7 @@
                                             {{.RAMGB}} RAM
                                         </span>{{end}}
                                         {{if and .RAMGB .SSDGB}} • {{end}}
+                                        {{if and .CPU (not .RAMGB) .SSDGB}} • {{end}}
                                         {{if .SSDGB}}<span class="inline-flex items-center">
                                             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z"/>
