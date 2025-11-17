@@ -3258,7 +3258,7 @@ func TestShipmentDetailWarehouseQuickActionsVisibility(t *testing.T) {
 		}
 	})
 
-	t.Run("warehouse user DOES see Quick Actions section when action is available", func(t *testing.T) {
+	t.Run("warehouse user does NOT see Quick Actions section for in_transit_to_warehouse status", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/shipments/%d", shipmentIDWithActions), nil)
 		req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", shipmentIDWithActions)})
 
@@ -3274,14 +3274,14 @@ func TestShipmentDetailWarehouseQuickActionsVisibility(t *testing.T) {
 
 		body := w.Body.String()
 
-		// Warehouse user SHOULD see Quick Actions section when action is available
-		if !strings.Contains(body, "Quick Actions") {
-			t.Error("Warehouse user SHOULD see 'Quick Actions' section when reception report action is available (status: in_transit_to_warehouse)")
+		// Warehouse user should NOT see Quick Actions section (reception report removed)
+		if strings.Contains(body, "Quick Actions") {
+			t.Error("Warehouse user should NOT see 'Quick Actions' section (reception report feature removed)")
 		}
 
-		// Verify they see the reception report link
-		if !strings.Contains(body, "Submit Reception Report") {
-			t.Error("Warehouse user SHOULD see 'Submit Reception Report' link for status in_transit_to_warehouse")
+		// Verify they don't see the reception report link
+		if strings.Contains(body, "Submit Reception Report") {
+			t.Error("Warehouse user should NOT see 'Submit Reception Report' link (feature removed)")
 		}
 	})
 }

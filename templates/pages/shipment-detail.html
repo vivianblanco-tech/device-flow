@@ -544,8 +544,8 @@
 
             <!-- Right Column -->
             <div class="space-y-6">
-                <!-- Quick Actions (hidden for warehouse users when no actions available) -->
-                {{if or (ne .User.Role "warehouse") (eq .Shipment.Status "in_transit_to_warehouse")}}
+                <!-- Quick Actions (not available for warehouse users) -->
+                {{if ne .User.Role "warehouse"}}
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                     <div class="space-y-3">
@@ -747,13 +747,6 @@
                         <p class="text-xs text-gray-500 text-center mt-2">
                             View all shipments for {{.CompanyName}}
                         </p>
-                        {{end}}
-                        
-                        {{if and (eq .User.Role "warehouse") (eq .Shipment.Status "in_transit_to_warehouse")}}
-                        <a href="/reception-report?shipment_id={{.Shipment.ID}}" 
-                           class="block w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-sm font-medium text-center">
-                            Submit Reception Report
-                        </a>
                         {{end}}
 
                         {{if and (ne .User.Role "client") (or (eq .Shipment.Status "in_transit_to_engineer") (eq .Shipment.Status "released_from_warehouse"))}}
