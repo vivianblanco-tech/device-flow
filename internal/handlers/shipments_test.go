@@ -1277,6 +1277,36 @@ func TestShipmentDetail(t *testing.T) {
 			t.Errorf("Expected SKU to be labeled or displayed in laptop detail card")
 		}
 	})
+
+	// 🟥 RED: Test laptop detail card contains "View Laptop" link
+	t.Run("laptop detail card contains View Laptop link", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+
+		// Verify "View Laptop" link is present
+		expectedLinkPattern := fmt.Sprintf("/inventory/%d", laptopID)
+		if !strings.Contains(responseBody, expectedLinkPattern) {
+			t.Errorf("Expected laptop detail card to contain link to '/inventory/%d', but it was not found", laptopID)
+		}
+
+		// Verify the link has appropriate text
+		if !strings.Contains(responseBody, "View Laptop") && !strings.Contains(responseBody, "View Details") {
+			t.Errorf("Expected laptop detail card to contain 'View Laptop' or 'View Details' link text")
+		}
+	})
 }
 
 func TestShipmentDetailTimelineData(t *testing.T) {

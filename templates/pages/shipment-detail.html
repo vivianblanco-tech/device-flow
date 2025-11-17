@@ -500,7 +500,7 @@
                         {{range .Laptops}}
                         <div class="border border-gray-200 rounded-lg p-4">
                             <div class="flex justify-between items-start">
-                                <div>
+                                <div class="flex-1">
                                     <p class="font-medium text-gray-900">{{if .Brand}}{{.Brand}} {{end}}{{.Model}}</p>
                                     <p class="text-sm text-gray-500 font-mono">SN: {{.SerialNumber}}</p>
                                     {{if .SKU}}
@@ -533,6 +533,11 @@
                                         </span>{{end}}
                                     </p>
                                     {{end}}
+                                    <div class="mt-2">
+                                        <a href="/inventory/{{.ID}}" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                            View Laptop →
+                                        </a>
+                                    </div>
                                 </div>
                                 <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
                                     {{laptopStatusDisplayName .Status}}
