@@ -597,9 +597,17 @@ func buildReceptionReportsOrderByClause(sortBy, sortOrder string) string {
 		"id":             "rr.id",
 		"shipment":       "s.jira_ticket_number",
 		"company":        "c.name",
-		"type":           "s.shipment_type",
+		"type":           "s.shipment_type::text",
 		"received_at":    "rr.received_at",
 		"warehouse_user": "u.email",
+	}
+
+	// Columns that should use COLLATE (text columns only)
+	textColumns := map[string]bool{
+		"shipment":       true,
+		"company":        true,
+		"type":           true,
+		"warehouse_user": true,
 	}
 
 	// Validate sort order
@@ -620,7 +628,12 @@ func buildReceptionReportsOrderByClause(sortBy, sortOrder string) string {
 		return "ORDER BY rr.received_at DESC"
 	}
 
-	// Return the ORDER BY clause with the specified column and order
-	return fmt.Sprintf("ORDER BY %s COLLATE \"C\" %s", sqlColumn, order)
+	// Only apply COLLATE to text columns
+	if textColumns[sortBy] {
+		return fmt.Sprintf("ORDER BY %s COLLATE \"C\" %s", sqlColumn, order)
+	}
+
+	// For numeric and timestamp columns, don't use COLLATE
+	return fmt.Sprintf("ORDER BY %s %s", sqlColumn, order)
 }
 

@@ -1155,13 +1155,22 @@ func validatePickupFormUpdate(input validator.PickupFormInput) error {
 func buildShipmentsOrderByClause(sortBy, sortOrder string) string {
 	// Map of allowed sort columns to their SQL equivalents
 	sortColumns := map[string]string{
-		"id":           "s.id",
-		"type":         "s.shipment_type",
-		"jira_ticket":  "s.jira_ticket_number",
-		"company":      "c.name",
-		"engineer":     "se.name",
-		"status":       "s.status::text",
-		"created":      "s.created_at",
+		"id":          "s.id",
+		"type":        "s.shipment_type::text",
+		"jira_ticket": "s.jira_ticket_number",
+		"company":     "c.name",
+		"engineer":    "se.name",
+		"status":      "s.status::text",
+		"created":     "s.created_at",
+	}
+
+	// Columns that should use COLLATE (text columns only)
+	textColumns := map[string]bool{
+		"type":        true,
+		"jira_ticket": true,
+		"company":     true,
+		"engineer":    true,
+		"status":      true,
 	}
 
 	// Validate sort order
@@ -1182,6 +1191,11 @@ func buildShipmentsOrderByClause(sortBy, sortOrder string) string {
 		return "ORDER BY s.created_at DESC"
 	}
 
-	// Return the ORDER BY clause with the specified column and order
-	return fmt.Sprintf("ORDER BY %s COLLATE \"C\" %s", sqlColumn, order)
+	// Only apply COLLATE to text columns
+	if textColumns[sortBy] {
+		return fmt.Sprintf("ORDER BY %s COLLATE \"C\" %s", sqlColumn, order)
+	}
+
+	// For numeric and timestamp columns, don't use COLLATE
+	return fmt.Sprintf("ORDER BY %s %s", sqlColumn, order)
 }
