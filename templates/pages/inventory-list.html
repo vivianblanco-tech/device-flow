@@ -80,7 +80,7 @@
                         <tr>
                             <!-- Serial Number (Sortable) -->
                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=serial_number&order={{if and (eq .SortBy "serial_number") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=serial_number&order={{if and (eq .SortBy "serial_number") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700 cursor-pointer">
                                     <span>Serial Number</span>
                                     {{if eq .SortBy "serial_number"}}
                                         {{if eq .SortOrder "asc"}}
@@ -88,12 +88,14 @@
                                         {{else}}
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
                                         {{end}}
+                                    {{else}}
+                                        <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M5 7l5-5 5 5H5zM5 13l5 5 5-5H5z"/></svg>
                                     {{end}}
                                 </a>
                             </th>
                             <!-- Brand/Model (Sortable) -->
                             <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=brand&order={{if and (eq .SortBy "brand") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=brand&order={{if and (eq .SortBy "brand") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700 cursor-pointer">
                                     <span>Brand/Model</span>
                                     {{if eq .SortBy "brand"}}
                                         {{if eq .SortOrder "asc"}}
@@ -101,12 +103,14 @@
                                         {{else}}
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
                                         {{end}}
+                                    {{else}}
+                                        <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M5 7l5-5 5 5H5zM5 13l5 5 5-5H5z"/></svg>
                                     {{end}}
                                 </a>
                             </th>
                             <!-- Status (Sortable) -->
                             <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=status&order={{if and (eq .SortBy "status") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=status&order={{if and (eq .SortBy "status") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700 cursor-pointer">
                                     <span>Status</span>
                                     {{if eq .SortBy "status"}}
                                         {{if eq .SortOrder "asc"}}
@@ -114,6 +118,8 @@
                                         {{else}}
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
                                         {{end}}
+                                    {{else}}
+                                        <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M5 7l5-5 5 5H5zM5 13l5 5 5-5H5z"/></svg>
                                     {{end}}
                                 </a>
                             </th>
@@ -124,7 +130,7 @@
                             {{else if eq .User.Role "logistics"}}
                             <!-- Client (Sortable) -->
                             <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=client_company&order={{if and (eq .SortBy "client_company") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=client_company&order={{if and (eq .SortBy "client_company") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700 cursor-pointer">
                                     <span>Client</span>
                                     {{if eq .SortBy "client_company"}}
                                         {{if eq .SortOrder "asc"}}
@@ -132,12 +138,14 @@
                                         {{else}}
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
                                         {{end}}
+                                    {{else}}
+                                        <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M5 7l5-5 5 5H5zM5 13l5 5 5-5H5z"/></svg>
                                     {{end}}
                                 </a>
                             </th>
                             <!-- Assigned to SE (Sortable) -->
                             <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=assigned_se&order={{if and (eq .SortBy "assigned_se") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=assigned_se&order={{if and (eq .SortBy "assigned_se") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700 cursor-pointer">
                                     <span>Assigned to SE</span>
                                     {{if eq .SortBy "assigned_se"}}
                                         {{if eq .SortOrder "asc"}}
@@ -145,6 +153,8 @@
                                         {{else}}
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
                                         {{end}}
+                                    {{else}}
+                                        <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M5 7l5-5 5 5H5zM5 13l5 5 5-5H5z"/></svg>
                                     {{end}}
                                 </a>
                             </th>
@@ -154,7 +164,7 @@
                             {{else}}
                             <!-- Client (Sortable) -->
                             <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=client_company&order={{if and (eq .SortBy "client_company") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=client_company&order={{if and (eq .SortBy "client_company") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700 cursor-pointer">
                                     <span>Client</span>
                                     {{if eq .SortBy "client_company"}}
                                         {{if eq .SortOrder "asc"}}
@@ -162,12 +172,14 @@
                                         {{else}}
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
                                         {{end}}
+                                    {{else}}
+                                        <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M5 7l5-5 5 5H5zM5 13l5 5 5-5H5z"/></svg>
                                     {{end}}
                                 </a>
                             </th>
                             <!-- Assigned to SE (Sortable) -->
                             <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=assigned_se&order={{if and (eq .SortBy "assigned_se") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700">
+                                <a href="/inventory?search={{.SearchQuery}}&status={{.StatusFilter}}&sort=assigned_se&order={{if and (eq .SortBy "assigned_se") (eq .SortOrder "asc")}}desc{{else}}asc{{end}}" class="flex items-center space-x-1 hover:text-gray-700 cursor-pointer">
                                     <span>Assigned to SE</span>
                                     {{if eq .SortBy "assigned_se"}}
                                         {{if eq .SortOrder "asc"}}
@@ -175,6 +187,8 @@
                                         {{else}}
                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M15 10l-5 5-5-5h10z"/></svg>
                                         {{end}}
+                                    {{else}}
+                                        <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M5 7l5-5 5 5H5zM5 13l5 5 5-5H5z"/></svg>
                                     {{end}}
                                 </a>
                             </th>
