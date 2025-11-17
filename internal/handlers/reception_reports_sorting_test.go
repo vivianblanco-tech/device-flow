@@ -47,6 +47,43 @@ func TestReceptionReportsListWithSorting(t *testing.T) {
 		Role:  models.RoleWarehouse,
 	}
 
+	// Create a test shipment
+	var shipmentID int64
+	err = db.QueryRow(
+		`INSERT INTO shipments (client_company_id, status, shipment_type, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING id`,
+		companyID, models.ShipmentStatusAtWarehouse, models.ShipmentTypeBulkToWarehouse, "TEST-123",
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create shipment: %v", err)
+	}
+
+	// Create a test laptop
+	var laptopID int64
+	err = db.QueryRow(
+		`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING id`,
+		"TEST123", "Dell", "Latitude", "Intel i5", "16", "512", models.LaptopStatusAtWarehouse, companyID,
+	).Scan(&laptopID)
+	if err != nil {
+		t.Fatalf("Failed to create laptop: %v", err)
+	}
+
+	// Create a test reception report
+	_, err = db.Exec(
+		`INSERT INTO reception_reports (
+			shipment_id, laptop_id, warehouse_user_id, received_at, notes,
+			photo_serial_number, photo_external_condition, photo_working_condition,
+			status, created_at, updated_at
+		) VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, $8, NOW(), NOW())`,
+		shipmentID, laptopID, userID, "Test notes",
+		"/uploads/serial.jpg", "/uploads/external.jpg", "/uploads/working.jpg",
+		"pending_approval",
+	)
+	if err != nil {
+		t.Fatalf("Failed to create reception report: %v", err)
+	}
+
 	// Setup handler
 	handler := &ReceptionReportHandler{
 		DB:        db,
@@ -76,7 +113,7 @@ func TestReceptionReportsListWithSorting(t *testing.T) {
 
 			// Test should compile and run
 			if rr.Code != 200 {
-				t.Logf("Handler returned status %d", rr.Code)
+				t.Errorf("Handler returned status %d, body: %s", rr.Code, rr.Body.String())
 			}
 		})
 	}

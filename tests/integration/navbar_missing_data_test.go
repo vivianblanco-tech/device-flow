@@ -45,14 +45,14 @@ func TestNavbarDataOnAllPages(t *testing.T) {
 	setupTestData(t, db)
 
 	tests := []struct {
-		name             string
-		setupHandler     func() http.HandlerFunc
-		path             string
-		method           string
-		userRole         models.UserRole
-		expectedStatus   int
-		shouldHaveNav    bool
-		expectedPage     string
+		name           string
+		setupHandler   func() http.HandlerFunc
+		path           string
+		method         string
+		userRole       models.UserRole
+		expectedStatus int
+		shouldHaveNav  bool
+		expectedPage   string
 	}{
 		{
 			name: "Laptop Detail Page",
@@ -190,7 +190,7 @@ func TestNavbarDataOnAllPages(t *testing.T) {
 
 				// Check navigation links are present based on role
 				navLinks := views.GetNavigationLinks(tt.userRole)
-				
+
 				if navLinks.Dashboard && !strings.Contains(html, `href="/dashboard"`) {
 					t.Errorf("expected dashboard link for %s role, but not found", tt.userRole)
 				}
@@ -251,4 +251,3 @@ func setupTestData(t *testing.T, db *sql.DB) {
 		t.Fatalf("failed to create test shipment: %v", err)
 	}
 }
-

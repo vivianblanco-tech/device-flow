@@ -597,7 +597,7 @@ func buildReceptionReportsOrderByClause(sortBy, sortOrder string) string {
 		"id":             "rr.id",
 		"shipment":       "s.jira_ticket_number",
 		"company":        "c.name",
-		"type":           "s.shipment_type::text",
+		"type":           "(s.shipment_type::text)",
 		"received_at":    "rr.received_at",
 		"warehouse_user": "u.email",
 	}

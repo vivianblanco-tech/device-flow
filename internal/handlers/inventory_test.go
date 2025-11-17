@@ -73,7 +73,7 @@ func TestAddLaptopAutoGeneratesSKU(t *testing.T) {
 	// Create request
 	req := httptest.NewRequest("POST", "/inventory/add", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	
+
 	// Add user to context
 	ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 	req = req.WithContext(ctx)
@@ -181,7 +181,7 @@ func TestUpdateLaptopAutoRegeneratesSKUWhenFieldsChange(t *testing.T) {
 	req := httptest.NewRequest("POST", "/inventory/"+strconv.FormatInt(laptop.ID, 10)+"/update", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(laptop.ID, 10)})
-	
+
 	// Add user to context
 	ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
 	req = req.WithContext(ctx)
@@ -640,4 +640,3 @@ func createTestSoftwareEngineer(db interface {
 		engineer.UpdatedAt,
 	).Scan(&engineer.ID)
 }
-
