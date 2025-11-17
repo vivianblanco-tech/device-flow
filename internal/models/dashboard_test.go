@@ -541,13 +541,13 @@ func createLaptop(db *sql.DB, l *Laptop) error {
 	l.BeforeCreate()
 
 	query := `
-		INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, software_engineer_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id
 	`
 
 	return db.QueryRow(
 		query,
-		l.SerialNumber, l.Brand, l.Model, l.CPU, l.RAMGB, l.SSDGB, l.Status, l.CreatedAt, l.UpdatedAt,
+		l.SerialNumber, l.Brand, l.Model, l.CPU, l.RAMGB, l.SSDGB, l.Status, l.ClientCompanyID, l.SoftwareEngineerID, l.CreatedAt, l.UpdatedAt,
 	).Scan(&l.ID)
 }

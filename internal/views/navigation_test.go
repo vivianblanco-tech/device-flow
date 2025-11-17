@@ -57,7 +57,7 @@ func TestGetNavigationLinks(t *testing.T) {
 			expectedLinks: map[string]bool{
 				"dashboard":         false,
 				"shipments":         true,
-				"inventory":         false,
+				"inventory":         true, // Client users should now see inventory
 				"calendar":          true,
 				"pickup_forms":      true,
 				"reception_reports": false,

@@ -185,3 +185,114 @@ func TestGetAllLaptops_NoRoleFilter(t *testing.T) {
 	}
 }
 
+// TestGetAllLaptops_ClientRoleFilter tests that client users only see their company's laptops
+func TestGetAllLaptops_ClientRoleFilter(t *testing.T) {
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Create test client companies
+	var company1ID, company2ID int64
+	err := db.QueryRow(
+		`INSERT INTO client_companies (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW()) RETURNING id`,
+		"TechCorp", "contact@techcorp.com",
+	).Scan(&company1ID)
+	if err != nil {
+		t.Fatalf("Failed to create company1: %v", err)
+	}
+
+	err = db.QueryRow(
+		`INSERT INTO client_companies (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW()) RETURNING id`,
+		"InnovateLabs", "contact@innovatelabs.com",
+	).Scan(&company2ID)
+	if err != nil {
+		t.Fatalf("Failed to create company2: %v", err)
+	}
+
+	// Create test laptops for different companies
+	testLaptops := []struct {
+		serial    string
+		brand     string
+		companyID int64
+	}{
+		{"SN-TECH-001", "Dell", company1ID},
+		{"SN-TECH-002", "HP", company1ID},
+		{"SN-TECH-003", "Lenovo", company1ID},
+		{"SN-INNO-001", "Apple", company2ID},
+		{"SN-INNO-002", "Microsoft", company2ID},
+	}
+
+	for _, l := range testLaptops {
+		laptop := &Laptop{
+			SerialNumber:    l.serial,
+			Brand:           l.brand,
+			Model:           "Test Model",
+			RAMGB:           "16GB",
+			SSDGB:           "512GB",
+			Status:          LaptopStatusAvailable,
+			ClientCompanyID: &l.companyID,
+		}
+		err := createLaptop(db, laptop)
+		if err != nil {
+			t.Fatalf("Failed to create laptop %s: %v", l.serial, err)
+		}
+	}
+
+	// Test: Client user from TechCorp should only see TechCorp laptops
+	filter := &LaptopFilter{
+		UserRole:        RoleClient,
+		ClientCompanyID: &company1ID,
+	}
+	result, err := GetAllLaptops(db, filter)
+	if err != nil {
+		t.Fatalf("GetAllLaptops with client role filter failed: %v", err)
+	}
+
+	// Should only see TechCorp laptops (3 laptops)
+	expectedCount := 3
+	if len(result) != expectedCount {
+		t.Errorf("Expected %d laptops for TechCorp client, got %d", expectedCount, len(result))
+	}
+
+	// Verify all laptops belong to TechCorp
+	for _, laptop := range result {
+		if laptop.ClientCompanyID == nil {
+			t.Errorf("Laptop %s has no company assigned", laptop.SerialNumber)
+			continue
+		}
+		if *laptop.ClientCompanyID != company1ID {
+			t.Errorf("Client should only see their company's laptops. Expected company %d, got %d for laptop %s",
+				company1ID, *laptop.ClientCompanyID, laptop.SerialNumber)
+		}
+	}
+
+	// Test: Client user from InnovateLabs should only see InnovateLabs laptops
+	filter2 := &LaptopFilter{
+		UserRole:        RoleClient,
+		ClientCompanyID: &company2ID,
+	}
+	result2, err := GetAllLaptops(db, filter2)
+	if err != nil {
+		t.Fatalf("GetAllLaptops with client role filter (company2) failed: %v", err)
+	}
+
+	// Should only see InnovateLabs laptops (2 laptops)
+	expectedCount2 := 2
+	if len(result2) != expectedCount2 {
+		t.Errorf("Expected %d laptops for InnovateLabs client, got %d", expectedCount2, len(result2))
+	}
+
+	// Verify all laptops belong to InnovateLabs
+	for _, laptop := range result2 {
+		if laptop.ClientCompanyID == nil {
+			t.Errorf("Laptop %s has no company assigned", laptop.SerialNumber)
+			continue
+		}
+		if *laptop.ClientCompanyID != company2ID {
+			t.Errorf("Client should only see their company's laptops. Expected company %d, got %d for laptop %s",
+				company2ID, *laptop.ClientCompanyID, laptop.SerialNumber)
+		}
+	}
+}
+

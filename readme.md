@@ -338,7 +338,7 @@ docker-compose up -d
 ## User Roles
 
 1. **Logistics**: Manage shipments, view all data, coordinate pickups and deliveries
-2. **Client**: Submit pickup forms for their company
+2. **Client**: Submit pickup forms for their company, view their company's laptop inventory
 3. **Warehouse**: Receive shipments, create reception reports, release hardware
 4. **Project Manager**: View dashboards, reports, and shipment status
 
@@ -376,6 +376,7 @@ Key variables:
 - CSRF protection on all forms
 - Role-based access control (RBAC):
   - Dashboard: Logistics users only
+  - Inventory: All roles (Client users see only their company's laptops)
   - Pickup forms: Client and Logistics users
   - Reception reports: Warehouse and Logistics users
   - Delivery forms: Software engineers (via magic links)

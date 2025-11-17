@@ -8,14 +8,15 @@ import (
 
 // LaptopFilter represents filtering options for laptop queries
 type LaptopFilter struct {
-	Status    LaptopStatus
-	Brand     string
-	Search    string
-	Limit     int
-	Offset    int
-	UserRole  UserRole // Filter laptops based on user role permissions
-	SortBy    string   // Column to sort by (e.g., "serial_number", "brand", "status", "client_company")
-	SortOrder string   // Sort order: "asc" or "desc"
+	Status          LaptopStatus
+	Brand           string
+	Search          string
+	Limit           int
+	Offset          int
+	UserRole        UserRole // Filter laptops based on user role permissions
+	ClientCompanyID *int64   // Filter laptops by client company (for client role)
+	SortBy          string   // Column to sort by (e.g., "serial_number", "brand", "status", "client_company")
+	SortOrder       string   // Sort order: "asc" or "desc"
 }
 
 // GetAllLaptops retrieves all laptops with optional filtering
@@ -45,6 +46,13 @@ func GetAllLaptops(db *sql.DB, filter *LaptopFilter) ([]Laptop, error) {
 		if filter.UserRole == RoleWarehouse {
 			// Warehouse users can only see: in_transit_to_warehouse, at_warehouse, available
 			conditions = append(conditions, "l.status IN ('in_transit_to_warehouse', 'at_warehouse', 'available')")
+		}
+
+		// Role-based filtering: Client users only see their company's laptops
+		if filter.UserRole == RoleClient && filter.ClientCompanyID != nil {
+			argCount++
+			conditions = append(conditions, fmt.Sprintf("l.client_company_id = $%d", argCount))
+			args = append(args, *filter.ClientCompanyID)
 		}
 
 		if filter.Status != "" {

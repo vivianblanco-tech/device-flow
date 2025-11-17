@@ -52,7 +52,7 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		// Client has limited access
 		nav.Dashboard = false
 		nav.Shipments = true
-		nav.Inventory = false
+		nav.Inventory = true // Client users can view their company's laptops
 		nav.Calendar = true
 		nav.PickupForms = true
 		nav.ReceptionReports = false

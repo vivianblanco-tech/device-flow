@@ -45,10 +45,11 @@ func (h *InventoryHandler) InventoryList(w http.ResponseWriter, r *http.Request)
 
 	// Build filter
 	filter := &models.LaptopFilter{
-		Search:    searchQuery,
-		UserRole:  user.Role, // Apply role-based filtering
-		SortBy:    sortBy,
-		SortOrder: sortOrder,
+		Search:          searchQuery,
+		UserRole:        user.Role, // Apply role-based filtering
+		ClientCompanyID: user.ClientCompanyID, // Apply client company filtering for client users
+		SortBy:          sortBy,
+		SortOrder:       sortOrder,
 	}
 
 	if statusFilter != "" {

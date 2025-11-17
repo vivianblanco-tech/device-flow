@@ -93,12 +93,12 @@ func TestNavbarComponentRendering(t *testing.T) {
 			currentPage: "shipments",
 			expectedLinks: []string{
 				`href="/shipments"`,
+				`href="/inventory"`, // Client users can now view their company's inventory
 				`href="/calendar"`,
 				`href="/pickup-forms"`,
 			},
 			unexpectedLinks: []string{
 				`href="/dashboard"`,
-				`href="/inventory"`,
 				`href="/reception-reports"`,
 			},
 			expectedStickyClass: true,
