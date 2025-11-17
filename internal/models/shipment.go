@@ -264,6 +264,43 @@ func IsValidCourier(courier string) bool {
 	return false
 }
 
+// GetStatusesForRoleFilter returns the list of statuses that should be shown in filters
+// for a given user role. Warehouse users only see warehouse-relevant statuses,
+// while other roles see all statuses.
+func GetStatusesForRoleFilter(role UserRole) []ShipmentStatus {
+	switch role {
+	case RoleWarehouse:
+		// Warehouse users only see statuses they can interact with
+		return []ShipmentStatus{
+			ShipmentStatusInTransitToWarehouse,
+			ShipmentStatusAtWarehouse,
+			ShipmentStatusReleasedFromWarehouse,
+		}
+	case RoleLogistics, RoleClient, RoleProjectManager:
+		// All other roles see all statuses
+		return []ShipmentStatus{
+			ShipmentStatusPendingPickup,
+			ShipmentStatusPickedUpFromClient,
+			ShipmentStatusInTransitToWarehouse,
+			ShipmentStatusAtWarehouse,
+			ShipmentStatusReleasedFromWarehouse,
+			ShipmentStatusInTransitToEngineer,
+			ShipmentStatusDelivered,
+		}
+	default:
+		// Default to all statuses for unknown roles
+		return []ShipmentStatus{
+			ShipmentStatusPendingPickup,
+			ShipmentStatusPickedUpFromClient,
+			ShipmentStatusInTransitToWarehouse,
+			ShipmentStatusAtWarehouse,
+			ShipmentStatusReleasedFromWarehouse,
+			ShipmentStatusInTransitToEngineer,
+			ShipmentStatusDelivered,
+		}
+	}
+}
+
 // GetNextAllowedStatuses returns the list of valid next statuses for the current shipment status
 // This enforces sequential status transitions and prevents skipping or going backwards
 // Now considers shipment type to restrict available statuses

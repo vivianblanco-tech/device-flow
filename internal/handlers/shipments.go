@@ -176,15 +176,7 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 		"SearchQuery":  searchQuery,
 		"SortBy":       sortBy,
 		"SortOrder":    sortOrder,
-		"AllStatuses": []models.ShipmentStatus{
-			models.ShipmentStatusPendingPickup,
-			models.ShipmentStatusPickedUpFromClient,
-			models.ShipmentStatusInTransitToWarehouse,
-			models.ShipmentStatusAtWarehouse,
-			models.ShipmentStatusReleasedFromWarehouse,
-			models.ShipmentStatusInTransitToEngineer,
-			models.ShipmentStatusDelivered,
-		},
+		"AllStatuses":  models.GetStatusesForRoleFilter(user.Role),
 		"AllShipmentTypes": []models.ShipmentType{
 			models.ShipmentTypeSingleFullJourney,
 			models.ShipmentTypeBulkToWarehouse,

@@ -89,6 +89,95 @@ func TestShipmentsList(t *testing.T) {
 		}
 	})
 
+	t.Run("warehouse users see only warehouse-relevant statuses in filter", func(t *testing.T) {
+		// Test the helper function that determines which statuses to show
+		statuses := models.GetStatusesForRoleFilter(models.RoleWarehouse)
+
+		expectedStatuses := []models.ShipmentStatus{
+			models.ShipmentStatusInTransitToWarehouse,
+			models.ShipmentStatusAtWarehouse,
+			models.ShipmentStatusReleasedFromWarehouse,
+		}
+
+		if len(statuses) != len(expectedStatuses) {
+			t.Errorf("Expected %d statuses for warehouse users, got %d", len(expectedStatuses), len(statuses))
+		}
+
+		// Verify each expected status is present
+		for _, expectedStatus := range expectedStatuses {
+			found := false
+			for _, status := range statuses {
+				if status == expectedStatus {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Expected status %s not found in warehouse user statuses", expectedStatus)
+			}
+		}
+	})
+
+	t.Run("logistics users see all statuses in filter", func(t *testing.T) {
+		// Test the helper function for logistics users
+		statuses := models.GetStatusesForRoleFilter(models.RoleLogistics)
+
+		// Logistics users should see all 7 statuses
+		expectedCount := 7
+
+		if len(statuses) != expectedCount {
+			t.Errorf("Expected %d statuses for logistics users, got %d", expectedCount, len(statuses))
+		}
+
+		// Verify all standard statuses are present
+		allStatuses := []models.ShipmentStatus{
+			models.ShipmentStatusPendingPickup,
+			models.ShipmentStatusPickedUpFromClient,
+			models.ShipmentStatusInTransitToWarehouse,
+			models.ShipmentStatusAtWarehouse,
+			models.ShipmentStatusReleasedFromWarehouse,
+			models.ShipmentStatusInTransitToEngineer,
+			models.ShipmentStatusDelivered,
+		}
+
+		for _, expectedStatus := range allStatuses {
+			found := false
+			for _, status := range statuses {
+				if status == expectedStatus {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Expected status %s not found in logistics user statuses", expectedStatus)
+			}
+		}
+	})
+
+	t.Run("client users see all statuses in filter", func(t *testing.T) {
+		// Test the helper function for client users
+		statuses := models.GetStatusesForRoleFilter(models.RoleClient)
+
+		// Client users should also see all statuses
+		expectedCount := 7
+
+		if len(statuses) != expectedCount {
+			t.Errorf("Expected %d statuses for client users, got %d", expectedCount, len(statuses))
+		}
+	})
+
+	t.Run("project manager users see all statuses in filter", func(t *testing.T) {
+		// Test the helper function for project manager users
+		statuses := models.GetStatusesForRoleFilter(models.RoleProjectManager)
+
+		// PM users should see all statuses
+		expectedCount := 7
+
+		if len(statuses) != expectedCount {
+			t.Errorf("Expected %d statuses for PM users, got %d", expectedCount, len(statuses))
+		}
+	})
+
 	t.Run("shipments list displays JIRA ticket numbers", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/shipments", nil)
 
