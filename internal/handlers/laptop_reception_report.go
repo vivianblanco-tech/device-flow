@@ -360,8 +360,12 @@ func (h *ReceptionReportHandler) LaptopBasedReceptionReportsList(w http.Response
 		return
 	}
 
+	// Get sort parameters
+	sortBy := r.URL.Query().Get("sort")
+	sortOrder := r.URL.Query().Get("order")
+
 	// Build query to fetch reception reports with related data
-	query := `
+	baseQuery := `
 		SELECT 
 			rr.id,
 			rr.laptop_id,
@@ -386,8 +390,11 @@ func (h *ReceptionReportHandler) LaptopBasedReceptionReportsList(w http.Response
 		LEFT JOIN client_companies cc ON cc.id = rr.client_company_id
 		JOIN users u ON u.id = rr.warehouse_user_id
 		LEFT JOIN users approver ON approver.id = rr.approved_by
-		ORDER BY rr.received_at DESC
 	`
+
+	// Build ORDER BY clause
+	orderBy := buildLaptopReceptionReportsOrderByClause(sortBy, sortOrder)
+	query := baseQuery + " " + orderBy
 
 	rows, err := h.DB.QueryContext(r.Context(), query)
 	if err != nil {
@@ -459,6 +466,8 @@ func (h *ReceptionReportHandler) LaptopBasedReceptionReportsList(w http.Response
 			"Nav":              views.GetNavigationLinks(user.Role),
 			"CurrentPage":      "reception-reports",
 			"ReceptionReports": receptionReports,
+			"SortBy":           sortBy,
+			"SortOrder":        sortOrder,
 		}
 		
 		err := h.Templates.ExecuteTemplate(w, "laptop-reception-reports-list.html", data)
@@ -471,5 +480,54 @@ func (h *ReceptionReportHandler) LaptopBasedReceptionReportsList(w http.Response
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "Laptop Reception Reports List\n")
 	}
+}
+
+// buildLaptopReceptionReportsOrderByClause builds the ORDER BY clause for laptop reception reports based on sort parameters
+func buildLaptopReceptionReportsOrderByClause(sortBy, sortOrder string) string {
+	// Map of allowed sort columns to their SQL equivalents
+	sortColumns := map[string]string{
+		"id":             "rr.id",
+		"laptop":         "l.serial_number",
+		"company":        "cc.name",
+		"tracking":       "rr.tracking_number",
+		"received_at":    "rr.received_at",
+		"warehouse_user": "u.email",
+		"status":         "(rr.status::text)",
+	}
+
+	// Columns that should use COLLATE (text columns only)
+	textColumns := map[string]bool{
+		"laptop":         true,
+		"company":        true,
+		"tracking":       true,
+		"warehouse_user": true,
+		"status":         true,
+	}
+
+	// Validate sort order
+	order := "ASC"
+	if sortOrder == "desc" {
+		order = "DESC"
+	}
+
+	// Default sort: received_at DESC
+	if sortBy == "" {
+		return "ORDER BY rr.received_at DESC"
+	}
+
+	// Get the SQL column name
+	sqlColumn, exists := sortColumns[sortBy]
+	if !exists {
+		// If invalid column, use default
+		return "ORDER BY rr.received_at DESC"
+	}
+
+	// Only apply COLLATE to text columns
+	if textColumns[sortBy] {
+		return fmt.Sprintf("ORDER BY %s COLLATE \"C\" %s", sqlColumn, order)
+	}
+
+	// For numeric and timestamp columns, don't use COLLATE
+	return fmt.Sprintf("ORDER BY %s %s", sqlColumn, order)
 }
 
