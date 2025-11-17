@@ -558,8 +558,35 @@
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                     <div class="space-y-3">
                         {{if eq .User.Role "logistics"}}
+                        <!-- Send Magic Link Form (only for pending_pickup_from_client or pickup_from_client_scheduled statuses) -->
+                        {{if or (eq .Shipment.Status "pending_pickup_from_client") (eq .Shipment.Status "pickup_from_client_scheduled")}}
+                        <form action="/auth/send-magic-link" method="POST" class="space-y-3">
+                            <div>
+                                <label for="magic_link_email" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Send Magic Link
+                                </label>
+                                <input 
+                                    type="email" 
+                                    id="magic_link_email" 
+                                    name="email" 
+                                    required
+                                    placeholder="project.manager@example.com"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                />
+                                <p class="mt-1 text-xs text-gray-500">Send pickup form link to PM or Client</p>
+                            </div>
+                            <input type="hidden" name="shipment_id" value="{{.Shipment.ID}}">
+                            <button 
+                                type="submit" 
+                                class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-sm font-medium"
+                            >
+                                📧 Send Magic Link
+                            </button>
+                        </form>
+                        {{end}}
+
                         <!-- Status Update Form -->
-                        <form action="/shipments/{{.Shipment.ID}}/status" method="POST" class="space-y-3" id="statusUpdateForm">
+                        <form action="/shipments/{{.Shipment.ID}}/status" method="POST" class="space-y-3 {{if or (eq .Shipment.Status "pending_pickup_from_client") (eq .Shipment.Status "pickup_from_client_scheduled")}}pt-3 border-t{{end}}" id="statusUpdateForm">
                             <div>
                                 <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
                                     Update Status
@@ -714,33 +741,6 @@
                                 class="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition text-sm font-medium"
                             >
                                 Assign Engineer
-                            </button>
-                        </form>
-                        {{end}}
-
-                        <!-- Send Magic Link Form (only for pending_pickup_from_client or pickup_from_client_scheduled statuses) -->
-                        {{if or (eq .Shipment.Status "pending_pickup_from_client") (eq .Shipment.Status "pickup_from_client_scheduled")}}
-                        <form action="/auth/send-magic-link" method="POST" class="space-y-3 pt-3 border-t">
-                            <div>
-                                <label for="magic_link_email" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Send Magic Link
-                                </label>
-                                <input 
-                                    type="email" 
-                                    id="magic_link_email" 
-                                    name="email" 
-                                    required
-                                    placeholder="project.manager@example.com"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                                />
-                                <p class="mt-1 text-xs text-gray-500">Send pickup form link to PM or Client</p>
-                            </div>
-                            <input type="hidden" name="shipment_id" value="{{.Shipment.ID}}">
-                            <button 
-                                type="submit" 
-                                class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-sm font-medium"
-                            >
-                                📧 Send Magic Link
                             </button>
                         </form>
                         {{end}}
