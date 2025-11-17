@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
@@ -384,12 +385,14 @@ func (h *ReceptionReportHandler) LaptopBasedReceptionReportsList(w http.Response
 			l.status as laptop_status,
 			cc.name as company_name,
 			u.email as warehouse_user_email,
-			approver.email as approver_email
+			approver.email as approver_email,
+			s.courier_name as courier_name
 		FROM reception_reports rr
 		JOIN laptops l ON l.id = rr.laptop_id
 		LEFT JOIN client_companies cc ON cc.id = rr.client_company_id
 		JOIN users u ON u.id = rr.warehouse_user_id
 		LEFT JOIN users approver ON approver.id = rr.approved_by
+		LEFT JOIN shipments s ON s.id = rr.shipment_id
 	`
 
 	// Build ORDER BY clause
@@ -422,6 +425,7 @@ func (h *ReceptionReportHandler) LaptopBasedReceptionReportsList(w http.Response
 		CompanyName         sql.NullString
 		WarehouseUserEmail  string
 		ApproverEmail       sql.NullString
+		CourierName         sql.NullString
 	}
 
 	var receptionReports []ReceptionReportRow
@@ -446,6 +450,7 @@ func (h *ReceptionReportHandler) LaptopBasedReceptionReportsList(w http.Response
 			&row.CompanyName,
 			&row.WarehouseUserEmail,
 			&row.ApproverEmail,
+			&row.CourierName,
 		)
 		if err != nil {
 			http.Error(w, "Failed to parse reception reports", http.StatusInternalServerError)
@@ -459,13 +464,31 @@ func (h *ReceptionReportHandler) LaptopBasedReceptionReportsList(w http.Response
 		return
 	}
 
+	// Generate tracking URLs for reports
+	type ReportWithURL struct {
+		ReceptionReportRow
+		TrackingURL string
+	}
+	
+	reportsWithURLs := make([]ReportWithURL, 0, len(receptionReports))
+	for _, report := range receptionReports {
+		trackingURL := ""
+		if report.TrackingNumber.Valid && report.CourierName.Valid {
+			trackingURL = generateTrackingURL(report.CourierName.String, report.TrackingNumber.String)
+		}
+		reportsWithURLs = append(reportsWithURLs, ReportWithURL{
+			ReceptionReportRow: report,
+			TrackingURL:        trackingURL,
+		})
+	}
+
 	// If templates are available, render the template
 	if h.Templates != nil {
 		data := map[string]interface{}{
 			"User":             user,
 			"Nav":              views.GetNavigationLinks(user.Role),
 			"CurrentPage":      "reception-reports",
-			"ReceptionReports": receptionReports,
+			"ReceptionReports": reportsWithURLs,
 			"SortBy":           sortBy,
 			"SortOrder":        sortOrder,
 		}
@@ -529,5 +552,29 @@ func buildLaptopReceptionReportsOrderByClause(sortBy, sortOrder string) string {
 
 	// For numeric and timestamp columns, don't use COLLATE
 	return fmt.Sprintf("ORDER BY %s %s", sqlColumn, order)
+}
+
+// generateTrackingURL generates a tracking URL based on the courier and tracking number
+func generateTrackingURL(courierName, trackingNumber string) string {
+	if courierName == "" || trackingNumber == "" {
+		return ""
+	}
+
+	// Normalize courier name to lowercase for comparison
+	courierLower := strings.ToLower(strings.TrimSpace(courierName))
+
+	// Check for courier name using substring matching to support service types
+	var baseURL string
+	if strings.Contains(courierLower, "ups") {
+		baseURL = "https://www.ups.com/track?tracknum="
+	} else if strings.Contains(courierLower, "dhl") {
+		baseURL = "http://www.dhl.com/en/express/tracking.html?AWB="
+	} else if strings.Contains(courierLower, "fedex") {
+		baseURL = "https://www.fedex.com/fedextrack/?tracknumbers="
+	} else {
+		return ""
+	}
+
+	return baseURL + trackingNumber
 }
 
