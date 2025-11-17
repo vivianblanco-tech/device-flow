@@ -3155,3 +3155,133 @@ func TestShipmentDetailClientPermissions(t *testing.T) {
 		}
 	})
 }
+
+// 🟥 RED: Test warehouse users should NOT see Quick Actions section when no actions available
+func TestShipmentDetailWarehouseQuickActionsVisibility(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create company
+	var companyID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create company: %v", err)
+	}
+
+	// Create warehouse user
+	var warehouseUserID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"warehouse@bairesdev.com", "hashedpassword", models.RoleWarehouse, time.Now(), time.Now(),
+	).Scan(&warehouseUserID)
+	if err != nil {
+		t.Fatalf("Failed to create warehouse user: %v", err)
+	}
+
+	// Create software engineer
+	var engineerID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO software_engineers (name, email, address, created_at)
+		VALUES ($1, $2, $3, $4) RETURNING id`,
+		"Jane Doe", "jane@engineer.com", "San Francisco, CA", time.Now(),
+	).Scan(&engineerID)
+	if err != nil {
+		t.Fatalf("Failed to create engineer: %v", err)
+	}
+
+	// Create shipment with status at_warehouse (no quick actions available for warehouse user)
+	var shipmentIDNoActions int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (client_company_id, software_engineer_id, status, shipment_type, laptop_count, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		companyID, engineerID, models.ShipmentStatusAtWarehouse, models.ShipmentTypeSingleFullJourney, 1, "WH-TEST-1", time.Now(), time.Now(),
+	).Scan(&shipmentIDNoActions)
+	if err != nil {
+		t.Fatalf("Failed to create shipment: %v", err)
+	}
+
+	// Create shipment with status in_transit_to_warehouse (quick action available: reception report)
+	var shipmentIDWithActions int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (client_company_id, software_engineer_id, status, shipment_type, laptop_count, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		companyID, engineerID, models.ShipmentStatusInTransitToWarehouse, models.ShipmentTypeSingleFullJourney, 1, "WH-TEST-2", time.Now(), time.Now(),
+	).Scan(&shipmentIDWithActions)
+	if err != nil {
+		t.Fatalf("Failed to create shipment: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	warehouseUser := &models.User{
+		ID:    warehouseUserID,
+		Email: "warehouse@bairesdev.com",
+		Role:  models.RoleWarehouse,
+	}
+
+	t.Run("warehouse user does NOT see Quick Actions section when no actions available", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/shipments/%d", shipmentIDNoActions), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", shipmentIDNoActions)})
+
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, warehouseUser)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Warehouse user should NOT see Quick Actions section when no actions are available
+		if strings.Contains(body, "Quick Actions") {
+			t.Error("Warehouse user should NOT see 'Quick Actions' section when no actions are available (status: at_warehouse)")
+		}
+
+		// Verify they don't see any action buttons
+		if strings.Contains(body, "Submit Reception Report") {
+			t.Error("Warehouse user should NOT see 'Submit Reception Report' link for status at_warehouse")
+		}
+	})
+
+	t.Run("warehouse user DOES see Quick Actions section when action is available", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/shipments/%d", shipmentIDWithActions), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", shipmentIDWithActions)})
+
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, warehouseUser)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Warehouse user SHOULD see Quick Actions section when action is available
+		if !strings.Contains(body, "Quick Actions") {
+			t.Error("Warehouse user SHOULD see 'Quick Actions' section when reception report action is available (status: in_transit_to_warehouse)")
+		}
+
+		// Verify they see the reception report link
+		if !strings.Contains(body, "Submit Reception Report") {
+			t.Error("Warehouse user SHOULD see 'Submit Reception Report' link for status in_transit_to_warehouse")
+		}
+	})
+}
