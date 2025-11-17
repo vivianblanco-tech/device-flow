@@ -744,6 +744,13 @@
                             </button>
                         </form>
                         {{end}}
+
+                        <!-- Edit Shipment Details Button -->
+                        {{if and (ne .Shipment.Status "delivered") (or (eq .Shipment.ShipmentType "warehouse_to_engineer") .PickupForm)}}
+                        <div class="pt-3 border-t">
+                            <a href="/shipments/{{.Shipment.ID}}/edit" class="block w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition text-sm font-medium text-center">✏️ Edit Shipment Details</a>
+                        </div>
+                        {{end}}
                         {{end}}
 
                         {{if eq .User.Role "client"}}

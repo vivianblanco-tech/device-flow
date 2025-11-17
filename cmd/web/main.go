@@ -376,6 +376,8 @@ func main() {
 	protected.HandleFunc("/shipments/{id:[0-9]+}", shipmentsHandler.ShipmentDetail).Methods("GET")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/status", shipmentsHandler.UpdateShipmentStatus).Methods("POST")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/assign-engineer", shipmentsHandler.AssignEngineer).Methods("POST")
+	protected.HandleFunc("/shipments/{id:[0-9]+}/edit", shipmentsHandler.EditShipmentGET).Methods("GET")
+	protected.HandleFunc("/shipments/{id:[0-9]+}/edit", shipmentsHandler.EditShipmentPOST).Methods("POST")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/form", shipmentsHandler.ShipmentPickupFormPage).Methods("GET")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/form", shipmentsHandler.ShipmentPickupFormSubmit).Methods("POST")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/complete-details", pickupFormHandler.CompleteShipmentDetails).Methods("POST")

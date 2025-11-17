@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Shipment #{{.Shipment.ID}} - Laptop Tracking System</title>
+    <link rel="stylesheet" href="/static/css/output.css" />
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {{template "navbar.html" .}}
+
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Back Button -->
+        <div class="mb-4">
+            <a href="/shipments/{{.Shipment.ID}}" class="text-sm text-blue-600 hover:text-blue-800">
+                ← Back to Shipment Details
+            </a>
+        </div>
+
+        <!-- Header -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">Edit Shipment #{{.Shipment.ID}}</h2>
+            <p class="mt-2 text-gray-600">Update shipment information and pickup form details</p>
+            <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p class="text-sm text-blue-800">
+                    <strong>JIRA Ticket:</strong> <span class="font-mono">{{.Shipment.JiraTicketNumber}}</span> | 
+                    <strong>Company:</strong> {{.CompanyName}} |
+                    <strong>Type:</strong> {{.Shipment.ShipmentType}}
+                </p>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        {{if .Error}}
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-red-600 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                <p class="text-sm text-red-800">{{.Error}}</p>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Form -->
+        <div class="bg-white shadow-md rounded-lg p-6 md:p-8">
+            <form action="/shipments/{{.Shipment.ID}}/edit" method="POST" class="space-y-8">
+                
+                <!-- Shipment Information Section -->
+                <div class="pb-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Shipment Information</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Software Engineer (not for bulk shipments) -->
+                        {{if ne .Shipment.ShipmentType "bulk_to_warehouse"}}
+                        <div>
+                            <label for="software_engineer_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                Software Engineer
+                            </label>
+                            <select 
+                                id="software_engineer_id" 
+                                name="software_engineer_id"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                                <option value="">Select engineer...</option>
+                                {{range .Engineers}}
+                                <option value="{{.ID}}" {{if eq .ID $.EngineerID.Int64}}selected{{end}}>{{.Name}} ({{.Email}})</option>
+                                {{end}}
+                            </select>
+                        </div>
+                        {{end}}
+
+                        <!-- Courier -->
+                        <div>
+                            <label for="courier_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                Courier
+                            </label>
+                            <select 
+                                id="courier_name" 
+                                name="courier_name"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                                <option value="">Select courier...</option>
+                                {{range .Couriers}}
+                                <option value="{{.}}" {{if eq . $.Shipment.CourierName}}selected{{end}}>{{.}}</option>
+                                {{end}}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pickup Form Details Section (if exists) -->
+                {{if .PickupFormData}}
+                <div class="pb-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Contact Name -->
+                        <div>
+                            <label for="contact_name" class="block text-sm font-medium text-gray-700 mb-2">
+                                Contact Name
+                            </label>
+                            <input 
+                                type="text" 
+                                id="contact_name" 
+                                name="contact_name" 
+                                value="{{index .PickupFormData "contact_name"}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- Contact Email -->
+                        <div>
+                            <label for="contact_email" class="block text-sm font-medium text-gray-700 mb-2">
+                                Contact Email
+                            </label>
+                            <input 
+                                type="email" 
+                                id="contact_email" 
+                                name="contact_email" 
+                                value="{{index .PickupFormData "contact_email"}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- Contact Phone -->
+                        <div>
+                            <label for="contact_phone" class="block text-sm font-medium text-gray-700 mb-2">
+                                Contact Phone
+                            </label>
+                            <input 
+                                type="tel" 
+                                id="contact_phone" 
+                                name="contact_phone" 
+                                value="{{index .PickupFormData "contact_phone"}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pickup Address Section -->
+                <div class="pb-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Pickup Address</h3>
+                    
+                    <div class="space-y-6">
+                        <!-- Street Address -->
+                        <div>
+                            <label for="pickup_address" class="block text-sm font-medium text-gray-700 mb-2">
+                                Street Address
+                            </label>
+                            <input 
+                                type="text" 
+                                id="pickup_address" 
+                                name="pickup_address" 
+                                value="{{index .PickupFormData "pickup_address"}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- City -->
+                            <div>
+                                <label for="pickup_city" class="block text-sm font-medium text-gray-700 mb-2">
+                                    City
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="pickup_city" 
+                                    name="pickup_city" 
+                                    value="{{index .PickupFormData "pickup_city"}}"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                >
+                            </div>
+
+                            <!-- State -->
+                            <div>
+                                <label for="pickup_state" class="block text-sm font-medium text-gray-700 mb-2">
+                                    State
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="pickup_state" 
+                                    name="pickup_state" 
+                                    value="{{index .PickupFormData "pickup_state"}}"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                >
+                            </div>
+
+                            <!-- ZIP Code -->
+                            <div>
+                                <label for="pickup_zip" class="block text-sm font-medium text-gray-700 mb-2">
+                                    ZIP Code
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="pickup_zip" 
+                                    name="pickup_zip" 
+                                    value="{{index .PickupFormData "pickup_zip"}}"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pickup Schedule Section -->
+                <div class="pb-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Pickup Schedule</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Pickup Date -->
+                        <div>
+                            <label for="pickup_date" class="block text-sm font-medium text-gray-700 mb-2">
+                                Pickup Date
+                            </label>
+                            <input 
+                                type="date" 
+                                id="pickup_date" 
+                                name="pickup_date" 
+                                value="{{index .PickupFormData "pickup_date"}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- Time Slot -->
+                        <div>
+                            <label for="pickup_time_slot" class="block text-sm font-medium text-gray-700 mb-2">
+                                Time Slot
+                            </label>
+                            <select 
+                                id="pickup_time_slot" 
+                                name="pickup_time_slot"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                                {{$currentSlot := index .PickupFormData "pickup_time_slot"}}
+                                {{range .TimeSlots}}
+                                <option value="{{.}}" {{if eq . $currentSlot}}selected{{end}}>{{. | title}}</option>
+                                {{end}}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipment Details Section -->
+                <div class="pb-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Shipment Details</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Number of Laptops -->
+                        <div>
+                            <label for="number_of_laptops" class="block text-sm font-medium text-gray-700 mb-2">
+                                Number of Laptops
+                            </label>
+                            <input 
+                                type="number" 
+                                id="number_of_laptops" 
+                                name="number_of_laptops" 
+                                min="1"
+                                value="{{index .PickupFormData "number_of_laptops"}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- Number of Boxes -->
+                        <div>
+                            <label for="number_of_boxes" class="block text-sm font-medium text-gray-700 mb-2">
+                                Number of Boxes
+                            </label>
+                            <input 
+                                type="number" 
+                                id="number_of_boxes" 
+                                name="number_of_boxes" 
+                                min="1"
+                                value="{{index .PickupFormData "number_of_boxes"}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Special Instructions -->
+                    <div class="mt-6">
+                        <label for="special_instructions" class="block text-sm font-medium text-gray-700 mb-2">
+                            Special Instructions
+                        </label>
+                        <textarea 
+                            id="special_instructions" 
+                            name="special_instructions" 
+                            rows="3"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        >{{index .PickupFormData "special_instructions"}}</textarea>
+                    </div>
+                </div>
+
+                <!-- Laptop Information Section (for single shipments) -->
+                {{if eq .Shipment.ShipmentType "single_full_journey"}}
+                <div class="pb-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Laptop Information</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Serial Number -->
+                        <div>
+                            <label for="laptop_serial_number" class="block text-sm font-medium text-gray-700 mb-2">
+                                Serial Number
+                            </label>
+                            <input 
+                                type="text" 
+                                id="laptop_serial_number" 
+                                name="laptop_serial_number" 
+                                value="{{index .PickupFormData "laptop_serial_number"}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- Model -->
+                        <div>
+                            <label for="laptop_model" class="block text-sm font-medium text-gray-700 mb-2">
+                                Model
+                            </label>
+                            <input 
+                                type="text" 
+                                id="laptop_model" 
+                                name="laptop_model" 
+                                value="{{index .PickupFormData "laptop_model"}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- RAM -->
+                        <div>
+                            <label for="laptop_ram_gb" class="block text-sm font-medium text-gray-700 mb-2">
+                                RAM (GB)
+                            </label>
+                            <input 
+                                type="text" 
+                                id="laptop_ram_gb" 
+                                name="laptop_ram_gb" 
+                                value="{{index .PickupFormData "laptop_ram_gb"}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+
+                        <!-- SSD -->
+                        <div>
+                            <label for="laptop_ssd_gb" class="block text-sm font-medium text-gray-700 mb-2">
+                                SSD (GB)
+                            </label>
+                            <input 
+                                type="text" 
+                                id="laptop_ssd_gb" 
+                                name="laptop_ssd_gb" 
+                                value="{{index .PickupFormData "laptop_ssd_gb"}}"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+                {{end}}
+
+                <!-- Action Buttons -->
+                <div class="flex items-center justify-between pt-6">
+                    <a href="/shipments/{{.Shipment.ID}}" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition">
+                        Cancel
+                    </a>
+                    <button 
+                        type="submit" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium"
+                    >
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+
