@@ -404,7 +404,7 @@
                 <!-- Timeline -->
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Tracking Timeline</h3>
-                    <div class="flow-root">
+                    <div class="flow-root max-h-96 overflow-y-auto pr-2 pb-8">
                         <ul class="-mb-8">
                             {{range $index, $item := .Timeline}}
                             <li>
@@ -503,6 +503,9 @@
                                 <div>
                                     <p class="font-medium text-gray-900">{{if .Brand}}{{.Brand}} {{end}}{{.Model}}</p>
                                     <p class="text-sm text-gray-500 font-mono">SN: {{.SerialNumber}}</p>
+                                    {{if .SKU}}
+                                    <p class="text-sm text-blue-600 font-mono">SKU: {{.SKU}}</p>
+                                    {{end}}
                                     {{if or .CPU .RAMGB .SSDGB}}
                                     <p class="text-sm text-gray-600 mt-1">
                                         {{if .CPU}}<span class="inline-flex items-center">

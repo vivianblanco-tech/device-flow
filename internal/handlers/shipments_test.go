@@ -172,7 +172,7 @@ func TestShipmentsList(t *testing.T) {
 		}
 
 		responseBody := w.Body.String()
-		
+
 		// Verify tracking number is displayed in the list
 		if !strings.Contains(responseBody, "TRACK-") {
 			t.Errorf("Expected response to contain tracking number (TRACK-), but not found")
@@ -716,12 +716,12 @@ func TestShipmentDetail(t *testing.T) {
 		t.Fatalf("Failed to create test shipment: %v", err)
 	}
 
-	// Create test laptop
+	// Create test laptop with SKU
 	var laptopID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-		"SN-12345", "Dell", "XPS 15", "16", "512", "available", time.Now(), time.Now(),
+		`INSERT INTO laptops (serial_number, sku, brand, model, ram_gb, ssd_gb, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+		"SN-12345", "D.XPS.I7.016.512", "Dell", "XPS 15", "16", "512", "available", time.Now(), time.Now(),
 	).Scan(&laptopID)
 	if err != nil {
 		t.Fatalf("Failed to create test laptop: %v", err)
@@ -1246,6 +1246,35 @@ func TestShipmentDetail(t *testing.T) {
 
 		if w.Code != http.StatusNotFound {
 			t.Errorf("Expected status 404, got %d", w.Code)
+		}
+	})
+
+	// 🟥 RED: Test laptop detail card displays SKU
+	t.Run("laptop detail card displays SKU", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+
+		// Verify SKU is displayed in the laptop detail card
+		if !strings.Contains(responseBody, "D.XPS.I7.016.512") {
+			t.Errorf("Expected laptop detail card to contain SKU 'D.XPS.I7.016.512', but it was not found")
+		}
+
+		// Verify SKU appears with appropriate label or in the same section as serial number
+		if !strings.Contains(responseBody, "SKU:") && !strings.Contains(responseBody, "D.XPS.I7.016.512") {
+			t.Errorf("Expected SKU to be labeled or displayed in laptop detail card")
 		}
 	})
 }
