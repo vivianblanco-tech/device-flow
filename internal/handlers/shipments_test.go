@@ -155,6 +155,35 @@ func TestShipmentsList(t *testing.T) {
 			t.Errorf("Expected status 200, got %d", w.Code)
 		}
 	})
+
+	// 🟥 RED: Test tracking number displayed as clickable link in shipments list
+	t.Run("tracking number displayed as clickable link", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments", nil)
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentsList(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		responseBody := w.Body.String()
+		
+		// Verify tracking number is displayed in the list
+		if !strings.Contains(responseBody, "TRACK-") {
+			t.Errorf("Expected response to contain tracking number (TRACK-), but not found")
+		}
+
+		// Verify tracking number appears as a link with proper structure
+		// Looking for pattern like: <a href="..." class="...">TRACK-...</a>
+		if !strings.Contains(responseBody, `href="`) || !strings.Contains(responseBody, `TRACK-`) {
+			t.Errorf("Expected tracking number to be rendered as a clickable link")
+		}
+	})
 }
 
 // 🟥 RED: Test client users can only see their company's shipments

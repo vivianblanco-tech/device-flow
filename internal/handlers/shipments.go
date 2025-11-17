@@ -155,6 +155,7 @@ func (h *ShipmentsHandler) ShipmentsList(w http.ResponseWriter, r *http.Request)
 			"Shipment":     s,
 			"CompanyName":  companyName,
 			"EngineerName": engineerName.String,
+			"TrackingURL":  s.GetTrackingURL(),
 		}
 		shipments = append(shipments, shipment)
 	}
