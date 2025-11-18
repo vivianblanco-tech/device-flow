@@ -19,14 +19,15 @@ const (
 
 // User represents a user in the system
 type User struct {
-	ID              int64     `json:"id" db:"id"`
-	Email           string    `json:"email" db:"email"`
-	PasswordHash    string    `json:"-" db:"password_hash"`
-	Role            UserRole  `json:"role" db:"role"`
-	ClientCompanyID *int64    `json:"client_company_id,omitempty" db:"client_company_id"`
-	GoogleID        *string   `json:"google_id,omitempty" db:"google_id"`
-	CreatedAt       time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
+	ID                int64     `json:"id" db:"id"`
+	Email             string    `json:"email" db:"email"`
+	PasswordHash      string    `json:"-" db:"password_hash"`
+	Role              UserRole  `json:"role" db:"role"`
+	ClientCompanyID   *int64    `json:"client_company_id,omitempty" db:"client_company_id"`
+	ClientCompanyName string    `json:"client_company_name,omitempty" db:"-"` // Populated via JOIN queries
+	GoogleID          *string   `json:"google_id,omitempty" db:"google_id"`
+	CreatedAt         time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // Email validation regex

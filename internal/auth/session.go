@@ -78,19 +78,23 @@ func ValidateSession(ctx context.Context, db *sql.DB, token string) (*models.Ses
 	session := &models.Session{}
 	user := &models.User{}
 
-	// Query session with user join
+	// Query session with user join and company name (for client users)
+	var companyName sql.NullString
 	err := db.QueryRowContext(
 		ctx,
 		`SELECT 
 			s.id, s.user_id, s.token, s.expires_at, s.created_at,
-			u.id, u.email, u.password_hash, u.role, u.client_company_id, u.google_id, u.created_at, u.updated_at
+			u.id, u.email, u.password_hash, u.role, u.client_company_id, u.google_id, u.created_at, u.updated_at,
+			cc.name as client_company_name
 		FROM sessions s
 		INNER JOIN users u ON s.user_id = u.id
+		LEFT JOIN client_companies cc ON cc.id = u.client_company_id
 		WHERE s.token = $1`,
 		token,
 	).Scan(
 		&session.ID, &session.UserID, &session.Token, &session.ExpiresAt, &session.CreatedAt,
 		&user.ID, &user.Email, &user.PasswordHash, &user.Role, &user.ClientCompanyID, &user.GoogleID, &user.CreatedAt, &user.UpdatedAt,
+		&companyName,
 	)
 
 	if err == sql.ErrNoRows {
@@ -105,6 +109,11 @@ func ValidateSession(ctx context.Context, db *sql.DB, token string) (*models.Ses
 		// Delete expired session
 		_ = DeleteSession(ctx, db, token)
 		return nil, nil
+	}
+
+	// Set company name if available
+	if companyName.Valid {
+		user.ClientCompanyName = companyName.String
 	}
 
 	session.User = user

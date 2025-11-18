@@ -2,6 +2,7 @@
 Reusable Navigation Bar Component
 Expected template data:
 - .User (models.User): Current user object
+  - For client users with ClientCompanyName set, displays company name instead of email
 - .Nav (views.NavigationLinks): Navigation links visibility
 - .CurrentPage (string): Current page identifier for active link highlighting
 */ -}}
@@ -45,7 +46,11 @@ Expected template data:
             <!-- User Info and Logout -->
             <div class="flex items-center">
                 {{if .User}}
+                {{if and (eq .User.Role "client") .User.ClientCompanyName}}
+                <span class="text-sm text-gray-600 mr-4">{{.User.ClientCompanyName}} ({{.User.Role | title}})</span>
+                {{else}}
                 <span class="text-sm text-gray-600 mr-4">{{.User.Email}} ({{.User.Role | title}})</span>
+                {{end}}
                 <a href="/logout" class="text-sm text-blue-600 hover:text-blue-700">Logout</a>
                 {{end}}
             </div>
