@@ -231,7 +231,8 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		`SELECT s.id, s.shipment_type, s.laptop_count, s.client_company_id, s.software_engineer_id, s.status, 
 		        COALESCE(s.jira_ticket_number, '') as jira_ticket_number,
 		        COALESCE(s.courier_name, '') as courier_name, 
-		        COALESCE(s.tracking_number, '') as tracking_number, 
+		        COALESCE(s.tracking_number, '') as tracking_number,
+		        COALESCE(s.second_tracking_number, '') as second_tracking_number,
 		        s.pickup_scheduled_date,
 		        s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, 
 		        s.eta_to_engineer, s.delivered_at, COALESCE(s.notes, '') as notes, 
@@ -244,7 +245,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		shipmentID,
 	).Scan(
 		&s.ID, &s.ShipmentType, &s.LaptopCount, &s.ClientCompanyID, &s.SoftwareEngineerID, &s.Status,
-		&s.JiraTicketNumber, &s.CourierName, &s.TrackingNumber, &s.PickupScheduledDate,
+		&s.JiraTicketNumber, &s.CourierName, &s.TrackingNumber, &s.SecondTrackingNumber, &s.PickupScheduledDate,
 		&s.PickedUpAt, &s.ArrivedWarehouseAt, &s.ReleasedWarehouseAt,
 		&s.ETAToEngineer, &s.DeliveredAt, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
 		&companyName, &engineerName, &engineerEmail,

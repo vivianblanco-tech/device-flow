@@ -329,6 +329,7 @@ func (h *PickupFormHandler) WarehouseToEngineerFormPage(w http.ResponseWriter, r
 		"Nav":          views.GetNavigationLinks(user.Role),
 		"CurrentPage":  "pickup-forms",
 		"Laptops":      laptops,
+		"LaptopCount":  len(laptops),
 		"ShipmentType": models.ShipmentTypeWarehouseToEngineer,
 	}
 

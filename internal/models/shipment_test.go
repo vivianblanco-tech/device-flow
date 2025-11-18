@@ -1271,6 +1271,49 @@ func TestShipment_SyncLaptopStatusOnUpdate(t *testing.T) {
 	}
 }
 
+// TestShipment_SecondTrackingNumber tests that second tracking number can be set and retrieved
+func TestShipment_SecondTrackingNumber(t *testing.T) {
+	tests := []struct {
+		name                  string
+		shipment              Shipment
+		expectedSecondTracking string
+	}{
+		{
+			name: "shipment with second tracking number",
+			shipment: Shipment{
+				ShipmentType:         ShipmentTypeSingleFullJourney,
+				ClientCompanyID:      1,
+				LaptopCount:          1,
+				Status:               ShipmentStatusInTransitToEngineer,
+				JiraTicketNumber:     "SCOP-12345",
+				TrackingNumber:       "TRACK123456",
+				SecondTrackingNumber:  "TRACK789012",
+			},
+			expectedSecondTracking: "TRACK789012",
+		},
+		{
+			name: "shipment without second tracking number",
+			shipment: Shipment{
+				ShipmentType:     ShipmentTypeSingleFullJourney,
+				ClientCompanyID:  1,
+				LaptopCount:      1,
+				Status:           ShipmentStatusInTransitToEngineer,
+				JiraTicketNumber: "SCOP-12345",
+				TrackingNumber:   "TRACK123456",
+			},
+			expectedSecondTracking: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.shipment.SecondTrackingNumber != tt.expectedSecondTracking {
+				t.Errorf("Expected second tracking number %s, got %s", tt.expectedSecondTracking, tt.shipment.SecondTrackingNumber)
+			}
+		})
+	}
+}
+
 // Helper function for creating int64 pointers
 func int64Ptr(i int64) *int64 {
 	return &i

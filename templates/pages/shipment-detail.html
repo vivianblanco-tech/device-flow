@@ -176,6 +176,12 @@
                             </dd>
                         </div>
                         {{end}}
+                        {{if .Shipment.SecondTrackingNumber}}
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Second Tracking Number</dt>
+                            <dd class="mt-1 text-sm text-gray-900 font-mono">{{.Shipment.SecondTrackingNumber}}</dd>
+                        </div>
+                        {{end}}
                         <div>
                             <dt class="text-sm font-medium text-gray-500">Created</dt>
                             <dd class="mt-1 text-sm text-gray-900">{{.Shipment.CreatedAt.Format "Jan 02, 2006 15:04"}}</dd>
@@ -467,6 +473,12 @@
                                                     {{else}}
                                                     <span class="font-mono">{{$item.TrackingNumber}}</span>
                                                     {{end}}
+                                                </p>
+                                                {{end}}
+                                                {{if $item.SecondTrackingNumber}}
+                                                <p class="text-xs text-gray-600 mt-1">
+                                                    <span class="font-medium">Second Tracking:</span> 
+                                                    <span class="font-mono">{{$item.SecondTrackingNumber}}</span>
                                                 </p>
                                                 {{end}}
                                             </div>

@@ -4,15 +4,16 @@ import "time"
 
 // TimelineItem represents a single item in a shipment's tracking timeline
 type TimelineItem struct {
-	Label          string     // Display label (e.g., "Pickup Scheduled")
-	Status         ShipmentStatus // The actual status value
-	Timestamp      *time.Time // When this status was reached (nil if not reached yet)
-	IsCompleted    bool       // Whether this status has been completed
-	IsCurrent      bool       // Whether this is the current status
-	IsPending      bool       // Whether this status is yet to be reached
-	IsTransit      bool       // Whether this is a transit status (for special coloring)
-	Icon           string     // Icon/emoji for the status
-	TrackingNumber string     // Tracking number associated with this status (if applicable)
+	Label               string     // Display label (e.g., "Pickup Scheduled")
+	Status              ShipmentStatus // The actual status value
+	Timestamp           *time.Time // When this status was reached (nil if not reached yet)
+	IsCompleted         bool       // Whether this status has been completed
+	IsCurrent           bool       // Whether this is the current status
+	IsPending           bool       // Whether this status is yet to be reached
+	IsTransit           bool       // Whether this is a transit status (for special coloring)
+	Icon                string     // Icon/emoji for the status
+	TrackingNumber      string     // Tracking number associated with this status (if applicable)
+	SecondTrackingNumber string    // Second tracking number (for in_transit_to_engineer status)
 }
 
 // BuildTimeline creates a complete timeline from the shipment's current state
@@ -130,6 +131,11 @@ func BuildTimeline(s *Shipment) []TimelineItem {
 		// Add tracking number for pickup scheduled status
 		if statusInfo.Status == ShipmentStatusPickupScheduled && s.TrackingNumber != "" {
 			item.TrackingNumber = s.TrackingNumber
+		}
+
+		// Add second tracking number for in_transit_to_engineer status
+		if statusInfo.Status == ShipmentStatusInTransitToEngineer && s.SecondTrackingNumber != "" {
+			item.SecondTrackingNumber = s.SecondTrackingNumber
 		}
 
 		// For in-transit statuses that are current but have no timestamp,

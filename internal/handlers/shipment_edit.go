@@ -54,7 +54,8 @@ func (h *ShipmentsHandler) EditShipmentGET(w http.ResponseWriter, r *http.Reques
 		`SELECT s.id, s.shipment_type, s.laptop_count, s.client_company_id, s.software_engineer_id, s.status, 
 		        COALESCE(s.jira_ticket_number, '') as jira_ticket_number,
 		        COALESCE(s.courier_name, '') as courier_name, 
-		        COALESCE(s.tracking_number, '') as tracking_number, 
+		        COALESCE(s.tracking_number, '') as tracking_number,
+		        COALESCE(s.second_tracking_number, '') as second_tracking_number,
 		        s.pickup_scheduled_date,
 		        s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, 
 		        s.eta_to_engineer, s.delivered_at, COALESCE(s.notes, '') as notes, 
@@ -67,7 +68,7 @@ func (h *ShipmentsHandler) EditShipmentGET(w http.ResponseWriter, r *http.Reques
 		shipmentID,
 	).Scan(
 		&s.ID, &s.ShipmentType, &s.LaptopCount, &s.ClientCompanyID, &s.SoftwareEngineerID, &s.Status,
-		&s.JiraTicketNumber, &s.CourierName, &s.TrackingNumber, &s.PickupScheduledDate,
+		&s.JiraTicketNumber, &s.CourierName, &s.TrackingNumber, &s.SecondTrackingNumber, &s.PickupScheduledDate,
 		&s.PickedUpAt, &s.ArrivedWarehouseAt, &s.ReleasedWarehouseAt,
 		&s.ETAToEngineer, &s.DeliveredAt, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
 		&companyName, &engineerID, &engineerName,
@@ -243,6 +244,18 @@ func (h *ShipmentsHandler) EditShipmentPOST(w http.ResponseWriter, r *http.Reque
 			http.Error(w, "Failed to update courier", http.StatusInternalServerError)
 			return
 		}
+	}
+
+	// Update second tracking number if provided
+	secondTrackingNumber := r.FormValue("second_tracking_number")
+	_, err = h.DB.ExecContext(r.Context(),
+		`UPDATE shipments SET second_tracking_number = $1, updated_at = $2 WHERE id = $3`,
+		secondTrackingNumber, time.Now(), shipmentID,
+	)
+	if err != nil {
+		fmt.Printf("Error updating second tracking number: %v\n", err)
+		http.Error(w, "Failed to update second tracking number", http.StatusInternalServerError)
+		return
 	}
 
 	// Update pickup form data if pickup form exists

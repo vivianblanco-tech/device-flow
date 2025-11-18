@@ -86,6 +86,7 @@
                             <option 
                                 value="{{.ID}}" 
                                 data-serial="{{.SerialNumber}}" 
+                                data-sku="{{.SKU}}"
                                 data-brand="{{.Brand}}" 
                                 data-model="{{.Model}}" 
                                 data-specs="{{if .CPU}}CPU: {{.CPU}}{{end}}{{if and .CPU .RAMGB}}, {{end}}{{if .RAMGB}}RAM: {{.RAMGB}}{{end}}{{if and .RAMGB .SSDGB}}, {{end}}{{if and .CPU (not .RAMGB) .SSDGB}}, {{end}}{{if .SSDGB}}SSD: {{.SSDGB}}{{end}}"
@@ -95,7 +96,7 @@
                             </option>
                             {{end}}
                         </select>
-                        <p class="mt-1 text-sm text-gray-500">{{len .Laptops}} laptop(s) available for shipment</p>
+                        <p class="mt-1 text-sm text-gray-500">{{.LaptopCount}} laptop(s) available for shipment</p>
                     </div>
 
                     <!-- Laptop Details Display (populated when laptop selected) -->
@@ -105,6 +106,10 @@
                             <div>
                                 <dt class="inline font-medium text-gray-700">Serial Number:</dt>
                                 <dd id="detail-serial" class="inline text-gray-900 ml-2"></dd>
+                            </div>
+                            <div id="sku-row">
+                                <dt class="inline font-medium text-gray-700">SKU:</dt>
+                                <dd id="detail-sku" class="inline text-gray-900 ml-2"></dd>
                             </div>
                             <div>
                                 <dt class="inline font-medium text-gray-700">Brand & Model:</dt>
@@ -578,6 +583,16 @@
             if (selectedOption.value) {
                 // Populate details
                 document.getElementById('detail-serial').textContent = selectedOption.dataset.serial || 'N/A';
+                
+                // Populate SKU
+                const skuRow = document.getElementById('sku-row');
+                if (selectedOption.dataset.sku) {
+                    document.getElementById('detail-sku').textContent = selectedOption.dataset.sku;
+                    skuRow.classList.remove('hidden');
+                } else {
+                    skuRow.classList.add('hidden');
+                }
+                
                 document.getElementById('detail-brand-model').textContent = 
                     (selectedOption.dataset.brand || '') + ' ' + (selectedOption.dataset.model || '');
                 

@@ -51,6 +51,7 @@ type Shipment struct {
 	JiraTicketNumber    string          `json:"jira_ticket_number" db:"jira_ticket_number"`
 	CourierName         string          `json:"courier_name,omitempty" db:"courier_name"`
 	TrackingNumber      string          `json:"tracking_number,omitempty" db:"tracking_number"`
+	SecondTrackingNumber string         `json:"second_tracking_number,omitempty" db:"second_tracking_number"`
 	
 	// Tracking dates for each step
 	PickupScheduledDate *time.Time      `json:"pickup_scheduled_date,omitempty" db:"pickup_scheduled_date"`
