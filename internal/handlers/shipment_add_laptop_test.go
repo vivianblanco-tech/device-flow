@@ -292,5 +292,55 @@ func TestAddLaptopToBulkShipment(t *testing.T) {
 			t.Errorf("Expected redirect with error message, got location: %s", location)
 		}
 	})
-}
 
+	t.Run("cannot add laptop with different client company to bulk shipment", func(t *testing.T) {
+		// Create another company
+		var otherCompanyID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO client_companies (name, contact_info, created_at)
+			VALUES ($1, $2, $3) RETURNING id`,
+			"Other Company", json.RawMessage(`{"email":"other@company.com"}`), time.Now(),
+		).Scan(&otherCompanyID)
+		if err != nil {
+			t.Fatalf("Failed to create other company: %v", err)
+		}
+
+		// Create laptop with different company (but correct status)
+		var laptopID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+			"DIFF-COMPANY-001", "Dell", "Latitude", "i7", "16", "512", models.LaptopStatusInTransitToWarehouse, otherCompanyID, time.Now(), time.Now(),
+		).Scan(&laptopID)
+		if err != nil {
+			t.Fatalf("Failed to create laptop: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("laptop_id", strconv.FormatInt(laptopID, 10))
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/"+strconv.FormatInt(shipmentID, 10)+"/laptops/add", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@test.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		w := httptest.NewRecorder()
+		handler.AddLaptopToBulkShipment(w, req)
+
+		// Handler redirects on error with error message in query string
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303 (redirect), got %d. Body: %s", w.Code, w.Body.String())
+		}
+		location := w.Header().Get("Location")
+		if location == "" || !strings.Contains(location, "error=") {
+			t.Errorf("Expected redirect with error message, got location: %s", location)
+		}
+		if !strings.Contains(location, "company") {
+			t.Errorf("Expected error message about company mismatch, got location: %s", location)
+		}
+	})
+}

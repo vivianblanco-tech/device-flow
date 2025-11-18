@@ -366,7 +366,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	// Get available laptops for bulk shipments (only for logistics users)
 	var availableLaptops []models.Laptop
 	if s.ShipmentType == models.ShipmentTypeBulkToWarehouse && user.Role == models.RoleLogistics {
-		availableLaptops, err = h.GetAvailableLaptopsForBulkShipment(r.Context())
+		availableLaptops, err = h.GetAvailableLaptopsForBulkShipment(r.Context(), s.ClientCompanyID)
 		if err != nil {
 			// Non-critical error, log but continue
 			fmt.Printf("Warning: Failed to load available laptops: %v\n", err)
@@ -1158,7 +1158,8 @@ func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *ht
 
 // GetAvailableLaptopsForBulkShipment returns laptops that can be added to a bulk shipment
 // Only laptops with status 'In Transit to Warehouse' that are not in any active shipment
-func (h *ShipmentsHandler) GetAvailableLaptopsForBulkShipment(ctx context.Context) ([]models.Laptop, error) {
+// and match the specified client company ID
+func (h *ShipmentsHandler) GetAvailableLaptopsForBulkShipment(ctx context.Context, companyID int64) ([]models.Laptop, error) {
 	query := `
 		SELECT DISTINCT l.id, l.serial_number, l.sku, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb,
 		       l.status, l.client_company_id, l.software_engineer_id,
@@ -1167,6 +1168,7 @@ func (h *ShipmentsHandler) GetAvailableLaptopsForBulkShipment(ctx context.Contex
 		FROM laptops l
 		LEFT JOIN client_companies cc ON cc.id = l.client_company_id
 		WHERE l.status = $1
+		  AND l.client_company_id = $2
 		  -- Must not be in any active shipment (excluding delivered)
 		  AND NOT EXISTS (
 		      SELECT 1 FROM shipment_laptops sl
@@ -1177,7 +1179,7 @@ func (h *ShipmentsHandler) GetAvailableLaptopsForBulkShipment(ctx context.Contex
 		ORDER BY l.created_at DESC
 	`
 	
-	rows, err := h.DB.QueryContext(ctx, query, models.LaptopStatusInTransitToWarehouse)
+	rows, err := h.DB.QueryContext(ctx, query, models.LaptopStatusInTransitToWarehouse, companyID)
 	if err != nil {
 		return nil, err
 	}
@@ -1233,12 +1235,13 @@ func (h *ShipmentsHandler) AddLaptopToBulkShipment(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// Verify shipment exists and is bulk type
+	// Verify shipment exists and is bulk type, get client company ID
 	var shipmentType models.ShipmentType
+	var shipmentCompanyID int64
 	err = h.DB.QueryRowContext(r.Context(),
-		`SELECT shipment_type FROM shipments WHERE id = $1`,
+		`SELECT shipment_type, client_company_id FROM shipments WHERE id = $1`,
 		shipmentID,
-	).Scan(&shipmentType)
+	).Scan(&shipmentType, &shipmentCompanyID)
 	if err == sql.ErrNoRows {
 		http.Error(w, "Shipment not found", http.StatusNotFound)
 		return
@@ -1283,12 +1286,13 @@ func (h *ShipmentsHandler) AddLaptopToBulkShipment(w http.ResponseWriter, r *htt
 	}
 	defer tx.Rollback()
 
-	// Verify laptop exists and has correct status
+	// Verify laptop exists, has correct status, and matches shipment company
 	var laptopStatus models.LaptopStatus
+	var laptopCompanyID sql.NullInt64
 	err = tx.QueryRowContext(r.Context(),
-		`SELECT status FROM laptops WHERE id = $1`,
+		`SELECT status, client_company_id FROM laptops WHERE id = $1`,
 		laptopID,
-	).Scan(&laptopStatus)
+	).Scan(&laptopStatus, &laptopCompanyID)
 	if err == sql.ErrNoRows {
 		redirectURL := fmt.Sprintf("/shipments/%d?error=Laptop+not+found", shipmentID)
 		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
@@ -1302,6 +1306,13 @@ func (h *ShipmentsHandler) AddLaptopToBulkShipment(w http.ResponseWriter, r *htt
 	// Verify laptop has correct status
 	if laptopStatus != models.LaptopStatusInTransitToWarehouse {
 		redirectURL := fmt.Sprintf("/shipments/%d?error=Laptop+must+have+status+In+Transit+to+Warehouse", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Verify laptop's client company matches shipment's client company
+	if !laptopCompanyID.Valid || laptopCompanyID.Int64 != shipmentCompanyID {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Laptop+client+company+must+match+shipment+client+company", shipmentID)
 		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 		return
 	}
