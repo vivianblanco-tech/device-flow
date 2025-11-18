@@ -597,14 +597,16 @@
                                             View Laptop →
                                         </a>
                                         {{if eq $.Shipment.ShipmentType "bulk_to_warehouse"}}
-                                        {{if eq $.User.Role "warehouse"}}
                                         {{if eq .Status "at_warehouse"}}
                                         {{$reportID := index $.ReceptionReportMap (printf "%d" .ID)}}
                                         {{if $reportID}}
+                                        {{if or (eq $.User.Role "warehouse") (eq $.User.Role "logistics")}}
                                         <a href="/reception-reports/{{$reportID}}" class="text-sm text-purple-600 hover:text-purple-800 font-medium">
                                             View Reception Report →
                                         </a>
+                                        {{end}}
                                         {{else}}
+                                        {{if eq $.User.Role "warehouse"}}
                                         <a href="/laptops/{{.ID}}/reception-report" class="text-sm text-green-600 hover:text-green-800 font-medium">
                                             Create Reception Report →
                                         </a>

@@ -3715,6 +3715,82 @@ func TestBulkShipmentLaptopReceptionReportLink(t *testing.T) {
 		}
 	})
 
+	t.Run("logistics user sees View Reception Report link when report exists", func(t *testing.T) {
+		// Create bulk shipment
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, shipment_type, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+			companyID, models.ShipmentStatusAtWarehouse, models.ShipmentTypeBulkToWarehouse, "TEST-BULK-6", time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		// Create laptop with at_warehouse status
+		var laptopID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+			"TEST-LAPTOP-006", "Dell", "XPS 15", "Intel i7", "16GB", "512GB", models.LaptopStatusAtWarehouse, companyID, time.Now(), time.Now(),
+		).Scan(&laptopID)
+		if err != nil {
+			t.Fatalf("Failed to create test laptop: %v", err)
+		}
+
+		// Link laptop to shipment
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO shipment_laptops (shipment_id, laptop_id) VALUES ($1, $2)`,
+			shipmentID, laptopID,
+		)
+		if err != nil {
+			t.Fatalf("Failed to link laptop to shipment: %v", err)
+		}
+
+		// Create reception report for the laptop
+		var reportID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO reception_reports (laptop_id, shipment_id, client_company_id, warehouse_user_id, received_at, notes, photo_serial_number, photo_external_condition, photo_working_condition, status, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+			laptopID, shipmentID, companyID, warehouseUserID, time.Now(), "Test notes", "/uploads/test1.jpg", "/uploads/test2.jpg", "/uploads/test3.jpg", "pending_approval", time.Now(), time.Now(),
+		).Scan(&reportID)
+		if err != nil {
+			t.Fatalf("Failed to create reception report: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Should see "View Reception Report" link
+		if !strings.Contains(body, "View Reception Report") {
+			t.Error("Expected 'View Reception Report' link to be visible for logistics user when reception report exists")
+		}
+
+		// Should NOT see "Create Reception Report" link
+		if strings.Contains(body, "Create Reception Report") {
+			t.Error("Expected 'Create Reception Report' link to NOT be visible for logistics user")
+		}
+
+		// Should link to the reception report detail page
+		expectedURL := fmt.Sprintf("/reception-reports/%d", reportID)
+		if !strings.Contains(body, expectedURL) {
+			t.Errorf("Expected link to '%s', but it was not found in response", expectedURL)
+		}
+	})
+
 	t.Run("warehouse user does NOT see link for laptop without at_warehouse status", func(t *testing.T) {
 		// Create bulk shipment
 		var shipmentID int64
