@@ -13,8 +13,9 @@ type WarehouseToEngineerFormInput struct {
 	EngineerEmail       string
 	EngineerAddress     string
 	EngineerCity        string
-	EngineerState       string
-	EngineerZip         string
+	EngineerCountry     string // Required for international addresses
+	EngineerState       string // Optional for international addresses
+	EngineerZip         string // Optional for international addresses (postal code)
 	CourierName         string
 	TrackingNumber      string
 	JiraTicketNumber    string
@@ -33,8 +34,8 @@ func ValidateWarehouseToEngineerForm(input WarehouseToEngineerFormInput) error {
 		return errors.New("software engineer is required")
 	}
 
-	// Engineer address validation
-	if err := validateAddress(input.EngineerAddress, input.EngineerCity, input.EngineerState, input.EngineerZip); err != nil {
+	// Engineer address validation (international format for warehouse-to-engineer)
+	if err := validateInternationalAddress(input.EngineerAddress, input.EngineerCity, input.EngineerCountry, input.EngineerState, input.EngineerZip); err != nil {
 		return err
 	}
 
@@ -45,6 +46,31 @@ func ValidateWarehouseToEngineerForm(input WarehouseToEngineerFormInput) error {
 	if err := validateJiraTicket(input.JiraTicketNumber); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+// validateInternationalAddress validates international address fields
+// Required: address, city, country
+// Optional: state, postal code
+func validateInternationalAddress(address, city, country, state, postalCode string) error {
+	// Validate address (REQUIRED)
+	if strings.TrimSpace(address) == "" {
+		return errors.New("address is required")
+	}
+
+	// Validate city (REQUIRED)
+	if strings.TrimSpace(city) == "" {
+		return errors.New("city is required")
+	}
+
+	// Validate country (REQUIRED)
+	if strings.TrimSpace(country) == "" {
+		return errors.New("country is required")
+	}
+
+	// State and postal code are optional for international addresses
+	// No validation needed for these fields
 
 	return nil
 }

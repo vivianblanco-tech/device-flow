@@ -824,6 +824,7 @@ func TestPickupFormHandler_SubmitWarehouseToEngineer(t *testing.T) {
 			"engineer_email":       {"jane@test.com"},
 			"engineer_address":     {"456 Engineer Ave"},
 			"engineer_city":        {"San Francisco"},
+			"engineer_country":     {"United States"},
 			"engineer_state":       {"CA"},
 			"engineer_zip":         {"94102"},
 			"jira_ticket_number":   {"SCOP-12351"},
@@ -957,6 +958,7 @@ func TestPickupFormHandler_SubmitWarehouseToEngineer(t *testing.T) {
 			"engineer_email":       {"jane@test.com"},
 			"engineer_address":     {"456 Engineer Ave"},
 			"engineer_city":        {"San Francisco"},
+			"engineer_country":     {"United States"},
 			"engineer_state":       {"CA"},
 			"engineer_zip":         {"94102"},
 			"jira_ticket_number":   {"SCOP-12353"},
@@ -1185,6 +1187,9 @@ func TestWarehouseToEngineerFormPage(t *testing.T) {
 		}
 		if !strings.Contains(body, "engineer_address") {
 			t.Error("Expected form to contain engineer_address field")
+		}
+		if !strings.Contains(body, "engineer_country") {
+			t.Error("Expected form to contain engineer_country field")
 		}
 		if !strings.Contains(body, "warehouse_to_engineer") {
 			t.Error("Expected form to have shipment_type set to warehouse_to_engineer")
@@ -2287,6 +2292,7 @@ func TestWarehouseToEngineerFormSubmitWithoutCompanyID(t *testing.T) {
 		formData.Set("engineer_email", "john.doe@bairesdev.com")
 		formData.Set("engineer_address", "123 Main St")
 		formData.Set("engineer_city", "San Francisco")
+		formData.Set("engineer_country", "United States")
 		formData.Set("engineer_state", "CA")
 		formData.Set("engineer_zip", "94102")
 		formData.Set("jira_ticket_number", "SCOP-12345")
@@ -2396,6 +2402,7 @@ func TestWarehouseToEngineerFormSubmitWithoutCompanyID(t *testing.T) {
 		formData.Set("engineer_email", "jane.smith@bairesdev.com")
 		formData.Set("engineer_address", "456 Tech St")
 		formData.Set("engineer_city", "Austin")
+		formData.Set("engineer_country", "United States")
 		formData.Set("engineer_state", "TX")
 		formData.Set("engineer_zip", "78701")
 		formData.Set("jira_ticket_number", "SCOP-67890")

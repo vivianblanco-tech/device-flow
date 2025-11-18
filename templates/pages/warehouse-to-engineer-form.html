@@ -182,7 +182,7 @@
 
                 <!-- Delivery Address Section -->
                 <div class="border-t pt-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Delivery Address</h3>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Delivery Address (International Format)</h3>
                     
                     <!-- Delivery Address -->
                     <div class="mb-6">
@@ -199,8 +199,8 @@
                         >
                     </div>
 
-                    <!-- City, State, ZIP -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- City and Country (Required) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
                             <label for="engineer_city" class="block text-sm font-medium text-gray-700 mb-2">
                                 City <span class="text-red-600">*</span>
@@ -210,40 +210,54 @@
                                 id="engineer_city" 
                                 name="engineer_city" 
                                 required
-                                placeholder="San Francisco"
+                                placeholder="London"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                             >
                         </div>
 
                         <div>
+                            <label for="engineer_country" class="block text-sm font-medium text-gray-700 mb-2">
+                                Country <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="engineer_country" 
+                                name="engineer_country" 
+                                required
+                                placeholder="United Kingdom"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- State and Postal Code (Optional) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
                             <label for="engineer_state" class="block text-sm font-medium text-gray-700 mb-2">
-                                State <span class="text-red-600">*</span>
+                                State/Province <span class="text-gray-500 text-xs">(Optional)</span>
                             </label>
                             <input 
                                 type="text" 
                                 id="engineer_state" 
                                 name="engineer_state" 
-                                required
-                                placeholder="CA"
-                                maxlength="2"
+                                placeholder="Buenos Aires"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                             >
+                            <p class="mt-1 text-sm text-gray-500">Not required for all countries</p>
                         </div>
 
                         <div>
                             <label for="engineer_zip" class="block text-sm font-medium text-gray-700 mb-2">
-                                ZIP Code <span class="text-red-600">*</span>
+                                Postal Code <span class="text-gray-500 text-xs">(Optional)</span>
                             </label>
                             <input 
                                 type="text" 
                                 id="engineer_zip" 
                                 name="engineer_zip" 
-                                required
-                                placeholder="94102"
-                                maxlength="5"
-                                pattern="[0-9]{5}"
+                                placeholder="C1000ABC"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                             >
+                            <p class="mt-1 text-sm text-gray-500">Format varies by country</p>
                         </div>
                     </div>
                 </div>
