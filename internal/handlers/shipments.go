@@ -274,6 +274,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	defer laptopRows.Close()
 
 	laptops := []models.Laptop{}
+	laptopIDs := []int64{}
 	for laptopRows.Next() {
 		var laptop models.Laptop
 		err := laptopRows.Scan(
@@ -284,6 +285,32 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 			continue
 		}
 		laptops = append(laptops, laptop)
+		laptopIDs = append(laptopIDs, laptop.ID)
+	}
+
+	// Get reception report IDs for laptops in this shipment
+	// Use string keys for template compatibility
+	receptionReportMap := make(map[string]int64) // laptop_id (string) -> reception_report_id
+	if len(laptopIDs) > 0 {
+		// Build query with IN clause
+		placeholders := make([]string, len(laptopIDs))
+		args := make([]interface{}, len(laptopIDs))
+		for i, id := range laptopIDs {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			args[i] = id
+		}
+		query := fmt.Sprintf(`SELECT laptop_id, id FROM reception_reports WHERE laptop_id IN (%s)`, strings.Join(placeholders, ","))
+		
+		reportRows, err := h.DB.QueryContext(r.Context(), query, args...)
+		if err == nil {
+			defer reportRows.Close()
+			for reportRows.Next() {
+				var laptopID, reportID int64
+				if err := reportRows.Scan(&laptopID, &reportID); err == nil {
+					receptionReportMap[fmt.Sprintf("%d", laptopID)] = reportID
+				}
+			}
+		}
 	}
 
 	// Get pickup form if exists
@@ -386,6 +413,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		"EngineerName":        engineerName.String,
 		"EngineerEmail":       engineerEmail.String,
 		"Laptops":             laptops,
+		"ReceptionReportMap":  receptionReportMap, // Map of laptop_id -> reception_report_id
 		"AvailableLaptops":    availableLaptops,
 		"PickupForm":          pickupForm,
 		"PickupFormData":      pickupFormData,

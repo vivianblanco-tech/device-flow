@@ -161,6 +161,7 @@ func loadTestTemplates(t *testing.T) *template.Template {
 				return "Unknown"
 			}
 		},
+		"printf": fmt.Sprintf,
 	}
 
 	templates, err := template.New("").Funcs(funcMap).ParseGlob("../../templates/pages/*.html")

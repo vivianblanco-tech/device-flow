@@ -187,6 +187,7 @@ func main() {
 				return "Unknown"
 			}
 		},
+		"printf": fmt.Sprintf,
 	}
 
 	templates, err := template.New("").Funcs(funcMap).ParseGlob("templates/pages/*.html")
