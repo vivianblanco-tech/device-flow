@@ -492,3 +492,30 @@ func (s *Shipment) GetTrackingURL() string {
 	return baseURL + s.TrackingNumber
 }
 
+// GetSecondTrackingURL returns the courier's tracking URL for the second tracking number
+// Uses the same courier as the first tracking number
+// Returns an empty string if the courier is not recognized, courier name is empty, or second tracking number is empty
+func (s *Shipment) GetSecondTrackingURL() string {
+	if s.CourierName == "" || s.SecondTrackingNumber == "" {
+		return ""
+	}
+
+	// Normalize courier name to lowercase for comparison
+	courierLower := strings.ToLower(strings.TrimSpace(s.CourierName))
+
+	// Check for courier name using substring matching to support service types
+	// e.g., "FedEx Express", "UPS Next Day Air", "DHL Express"
+	var baseURL string
+	if strings.Contains(courierLower, "ups") {
+		baseURL = "https://www.ups.com/track?tracknum="
+	} else if strings.Contains(courierLower, "dhl") {
+		baseURL = "http://www.dhl.com/en/express/tracking.html?AWB="
+	} else if strings.Contains(courierLower, "fedex") {
+		baseURL = "https://www.fedex.com/fedextrack/?tracknumbers="
+	} else {
+		return ""
+	}
+
+	return baseURL + s.SecondTrackingNumber
+}
+

@@ -382,8 +382,9 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	successMsg := r.URL.Query().Get("success")
 	warningMsg := r.URL.Query().Get("warning")
 
-	// Generate tracking URL if courier and tracking number are present
+	// Generate tracking URLs if courier and tracking numbers are present
 	trackingURL := s.GetTrackingURL()
+	secondTrackingURL := s.GetSecondTrackingURL()
 
 	// Build complete timeline for the shipment
 	timeline := models.BuildTimeline(&s)
@@ -410,6 +411,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		"CurrentPage":         "shipments",
 		"Shipment":            s,
 		"TrackingURL":         trackingURL,
+		"SecondTrackingURL":   secondTrackingURL,
 		"CompanyName":         companyName,
 		"EngineerName":        engineerName.String,
 		"EngineerEmail":       engineerEmail.String,

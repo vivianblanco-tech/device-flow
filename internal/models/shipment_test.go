@@ -463,6 +463,77 @@ func TestShipment_GetTrackingURL(t *testing.T) {
 	}
 }
 
+func TestShipment_GetSecondTrackingURL(t *testing.T) {
+	tests := []struct {
+		name                  string
+		courierName           string
+		secondTrackingNumber  string
+		expectedURL           string
+	}{
+		{
+			name:                 "UPS second tracking URL",
+			courierName:          "UPS",
+			secondTrackingNumber: "1Z8888888888888888",
+			expectedURL:          "https://www.ups.com/track?tracknum=1Z8888888888888888",
+		},
+		{
+			name:                 "DHL second tracking URL",
+			courierName:          "DHL",
+			secondTrackingNumber: "9876543210",
+			expectedURL:          "http://www.dhl.com/en/express/tracking.html?AWB=9876543210",
+		},
+		{
+			name:                 "FedEx second tracking URL",
+			courierName:          "FedEx",
+			secondTrackingNumber: "888888888888",
+			expectedURL:          "https://www.fedex.com/fedextrack/?tracknumbers=888888888888",
+		},
+		{
+			name:                 "Case insensitive - ups (lowercase)",
+			courierName:          "ups",
+			secondTrackingNumber: "1Z8888888888888888",
+			expectedURL:          "https://www.ups.com/track?tracknum=1Z8888888888888888",
+		},
+		{
+			name:                 "FedEx with service type - FedEx Express",
+			courierName:          "FedEx Express",
+			secondTrackingNumber: "888888888888",
+			expectedURL:          "https://www.fedex.com/fedextrack/?tracknumbers=888888888888",
+		},
+		{
+			name:                 "Unknown courier returns empty string",
+			courierName:          "Unknown Courier",
+			secondTrackingNumber: "TRACK456",
+			expectedURL:          "",
+		},
+		{
+			name:                 "Empty courier name returns empty string",
+			courierName:          "",
+			secondTrackingNumber: "TRACK456",
+			expectedURL:          "",
+		},
+		{
+			name:                 "Empty second tracking number returns empty string",
+			courierName:          "UPS",
+			secondTrackingNumber: "",
+			expectedURL:          "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shipment := Shipment{
+				CourierName:         tt.courierName,
+				SecondTrackingNumber: tt.secondTrackingNumber,
+			}
+			got := shipment.GetSecondTrackingURL()
+			if got != tt.expectedURL {
+				t.Errorf("Shipment.GetSecondTrackingURL() = %v, want %v", got, tt.expectedURL)
+			}
+		})
+	}
+}
+
 // TestShipment_UpdateStatus_WithETA tests that UpdateStatus properly handles ETA for in_transit_to_engineer status
 func TestShipment_UpdateStatus_WithETA(t *testing.T) {
 	shipment := &Shipment{

@@ -179,7 +179,18 @@
                         {{if .Shipment.SecondTrackingNumber}}
                         <div>
                             <dt class="text-sm font-medium text-gray-500">Second Tracking Number</dt>
-                            <dd class="mt-1 text-sm text-gray-900 font-mono">{{.Shipment.SecondTrackingNumber}}</dd>
+                            <dd class="mt-1 text-sm text-gray-900 font-mono">
+                                {{if ne .SecondTrackingURL ""}}
+                                <a href="{{.SecondTrackingURL}}" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   class="text-blue-600 hover:text-blue-800 hover:underline">
+                                    {{.Shipment.SecondTrackingNumber}} ↗
+                                </a>
+                                {{else}}
+                                {{.Shipment.SecondTrackingNumber}}
+                                {{end}}
+                            </dd>
                         </div>
                         {{end}}
                         <div>
@@ -478,7 +489,16 @@
                                                 {{if $item.SecondTrackingNumber}}
                                                 <p class="text-xs text-gray-600 mt-1">
                                                     <span class="font-medium">Second Tracking:</span> 
+                                                    {{if ne $.SecondTrackingURL ""}}
+                                                    <a href="{{$.SecondTrackingURL}}" 
+                                                       target="_blank" 
+                                                       rel="noopener noreferrer"
+                                                       class="font-mono text-blue-600 hover:text-blue-800 hover:underline">
+                                                        {{$item.SecondTrackingNumber}} ↗
+                                                    </a>
+                                                    {{else}}
                                                     <span class="font-mono">{{$item.SecondTrackingNumber}}</span>
+                                                    {{end}}
                                                 </p>
                                                 {{end}}
                                             </div>
