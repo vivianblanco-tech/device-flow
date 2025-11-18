@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/yourusername/laptop-tracking-system/internal/auth"
 	"github.com/yourusername/laptop-tracking-system/internal/database"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
@@ -2950,6 +2951,82 @@ func TestShipmentPickupFormSubmit(t *testing.T) {
 		}
 		if formData["contact_email"] != "updated@company.com" {
 			t.Errorf("Expected contact_email to be 'updated@company.com', got %v", formData["contact_email"])
+		}
+	})
+
+	t.Run("magic link should be marked as used when shipment pickup form is submitted", func(t *testing.T) {
+		// Create a new shipment for this test
+		var shipmentID3 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "SCOP-77777", time.Now(), time.Now(),
+		).Scan(&shipmentID3)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		// Create magic link associated with shipment
+		magicLink, err := auth.CreateMagicLink(ctx, db, userID, &shipmentID3, auth.DefaultMagicLinkDuration)
+		if err != nil {
+			t.Fatalf("Failed to create magic link: %v", err)
+		}
+
+		// Verify magic link is not used yet
+		validatedLink, err := auth.ValidateMagicLink(ctx, db, magicLink.Token)
+		if err != nil {
+			t.Fatalf("Failed to validate magic link: %v", err)
+		}
+		if validatedLink == nil || validatedLink.IsUsed() {
+			t.Fatal("Magic link should be valid and not used before form submission")
+		}
+
+		// Create session (simulating magic link login)
+		session, err := auth.CreateSession(ctx, db, userID, auth.DefaultSessionDuration)
+		if err != nil {
+			t.Fatalf("Failed to create session: %v", err)
+		}
+
+		// Submit pickup form
+		formData := url.Values{}
+		formData.Set("contact_name", "Jane Doe")
+		formData.Set("contact_email", "jane@company.com")
+		formData.Set("contact_phone", "+1-555-5678")
+		formData.Set("pickup_address", "456 Oak Ave")
+		formData.Set("pickup_city", "Boston")
+		formData.Set("pickup_state", "MA")
+		formData.Set("pickup_zip", "02101")
+		formData.Set("pickup_date", time.Now().Add(24*time.Hour).Format("2006-01-02"))
+		formData.Set("pickup_time_slot", "afternoon")
+		formData.Set("number_of_laptops", "3")
+		formData.Set("special_instructions", "Ring doorbell")
+		formData.Set("number_of_boxes", "2")
+		formData.Set("assignment_type", "single")
+
+		req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/shipments/%d/form", shipmentID3),
+			strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID3, 10)})
+
+		user := &models.User{ID: userID, Email: "client@example.com", Role: models.RoleClient}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		reqCtx = context.WithValue(reqCtx, middleware.SessionContextKey, session)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentPickupFormSubmit(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify magic link is now marked as used
+		validatedLink, err = auth.ValidateMagicLink(ctx, db, magicLink.Token)
+		if err != nil {
+			t.Fatalf("Failed to validate magic link: %v", err)
+		}
+		if validatedLink != nil && !validatedLink.IsUsed() {
+			t.Error("Magic link should be marked as used after form submission")
 		}
 	})
 }

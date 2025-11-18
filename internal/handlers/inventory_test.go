@@ -165,6 +165,26 @@ func TestUpdateLaptopAutoRegeneratesSKUWhenFieldsChange(t *testing.T) {
 		Templates: tmpl,
 	}
 
+	// Create a reception report for the laptop (required for "available" status)
+	var warehouseUserID int64
+	err = db.QueryRow(
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id`,
+		"warehouse@test.com", "hashed_password", models.RoleWarehouse,
+	).Scan(&warehouseUserID)
+	if err != nil {
+		t.Fatalf("Failed to create warehouse user: %v", err)
+	}
+
+	_, err = db.Exec(
+		`INSERT INTO reception_reports (laptop_id, warehouse_user_id, photo_serial_number, photo_external_condition, photo_working_condition, status, shipment_id, client_company_id, tracking_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NULL, NULL, NULL, NOW(), NOW())`,
+		laptop.ID, warehouseUserID, "SN-UPDATE-SKU-001", "http://example.com/ext.jpg", "http://example.com/work.jpg", "approved",
+	)
+	if err != nil {
+		t.Fatalf("Failed to create reception report: %v", err)
+	}
+
 	// Create form data updating CPU to i7 and RAM to 32GB (SKU should remain as-is since we provide it)
 	form := url.Values{}
 	form.Add("serial_number", "SN-UPDATE-SKU-001")
@@ -224,15 +244,27 @@ func TestUpdateLaptopWithSoftwareEngineerAssignment(t *testing.T) {
 		t.Fatalf("Failed to create software engineer: %v", err)
 	}
 
+	// Create a test company
+	var companyID int64
+	err := db.QueryRow(
+		`INSERT INTO client_companies (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW()) RETURNING id`,
+		"Test Company", "test@company.com",
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
 	// Create a test laptop
 	laptop := &models.Laptop{
-		SerialNumber: "SN-TEST-001",
-		Brand:        "Dell",
-		Model:        "XPS 15",
-		CPU:          "Intel Core i7",
-		RAMGB:        "16GB",
-		SSDGB:        "512GB",
-		Status:       models.LaptopStatusAvailable,
+		SerialNumber:    "SN-TEST-001",
+		Brand:           "Dell",
+		Model:           "XPS 15",
+		CPU:             "Intel Core i7",
+		RAMGB:           "16GB",
+		SSDGB:           "512GB",
+		Status:          models.LaptopStatusDelivered, // Use delivered status to avoid reception report requirement
+		ClientCompanyID: &companyID,
 	}
 	if err := models.CreateLaptop(db, laptop); err != nil {
 		t.Fatalf("Failed to create laptop: %v", err)
@@ -240,7 +272,7 @@ func TestUpdateLaptopWithSoftwareEngineerAssignment(t *testing.T) {
 
 	// Create a test user (logistics role can update laptops)
 	var logisticsUserID int64
-	err := db.QueryRow(
+	err = db.QueryRow(
 		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
 		VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id`,
 		"logistics@bairesdev.com", "hashed_password", models.RoleLogistics,
@@ -265,11 +297,33 @@ func TestUpdateLaptopWithSoftwareEngineerAssignment(t *testing.T) {
 		Templates: tmpl,
 	}
 
+	// Create a reception report for the laptop (required for "available" status)
+	var warehouseUserID int64
+	err = db.QueryRow(
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id`,
+		"warehouse2@test.com", "hashed_password", models.RoleWarehouse,
+	).Scan(&warehouseUserID)
+	if err != nil {
+		t.Fatalf("Failed to create warehouse user: %v", err)
+	}
+
+	_, err = db.Exec(
+		`INSERT INTO reception_reports (laptop_id, warehouse_user_id, photo_serial_number, photo_external_condition, photo_working_condition, status, shipment_id, client_company_id, tracking_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NULL, NULL, NULL, NOW(), NOW())`,
+		laptop.ID, warehouseUserID, laptop.SerialNumber, "http://example.com/ext.jpg", "http://example.com/work.jpg", "approved",
+	)
+	if err != nil {
+		t.Fatalf("Failed to create reception report: %v", err)
+	}
+
 	// Create form data with software engineer assignment
 	formData := url.Values{}
 	formData.Set("serial_number", "SN-TEST-001-UPDATED")
+	formData.Set("client_company_id", strconv.FormatInt(companyID, 10))
 	formData.Set("brand", "Dell")
 	formData.Set("model", "XPS 15")
+	formData.Set("cpu", "Intel Core i7")
 	formData.Set("ram_gb", "32GB") // Updated RAM
 	formData.Set("ssd_gb", "1TB")  // Updated SSD
 	formData.Set("status", string(models.LaptopStatusAvailable))
@@ -297,10 +351,11 @@ func TestUpdateLaptopWithSoftwareEngineerAssignment(t *testing.T) {
 		t.Errorf("Expected status code %d, got %d", http.StatusSeeOther, rr.Code)
 	}
 
-	// Verify redirect location
-	expectedLocation := "/inventory/" + strconv.FormatInt(laptop.ID, 10)
-	if location := rr.Header().Get("Location"); location != expectedLocation {
-		t.Errorf("Expected redirect to %s, got %s", expectedLocation, location)
+	// Verify redirect location (may include success message)
+	expectedLocationPrefix := "/inventory/" + strconv.FormatInt(laptop.ID, 10)
+	location := rr.Header().Get("Location")
+	if !strings.HasPrefix(location, expectedLocationPrefix) {
+		t.Errorf("Expected redirect to start with %s, got %s", expectedLocationPrefix, location)
 	}
 
 	// Verify laptop was updated in database
@@ -344,6 +399,17 @@ func TestUpdateLaptopRemoveSoftwareEngineerAssignment(t *testing.T) {
 		t.Fatalf("Failed to create software engineer: %v", err)
 	}
 
+	// Create a test company
+	var companyID int64
+	err := db.QueryRow(
+		`INSERT INTO client_companies (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW()) RETURNING id`,
+		"Test Company", "test@company.com",
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
 	// Create a test laptop with software engineer assigned
 	laptop := &models.Laptop{
 		SerialNumber:       "SN-TEST-002",
@@ -353,6 +419,7 @@ func TestUpdateLaptopRemoveSoftwareEngineerAssignment(t *testing.T) {
 		RAMGB:              "16GB",
 		SSDGB:              "512GB",
 		Status:             models.LaptopStatusDelivered,
+		ClientCompanyID:    &companyID,
 		SoftwareEngineerID: &engineer.ID,
 	}
 	if err := models.CreateLaptop(db, laptop); err != nil {
@@ -361,7 +428,7 @@ func TestUpdateLaptopRemoveSoftwareEngineerAssignment(t *testing.T) {
 
 	// Create a test user
 	var logisticsUserID int64
-	err := db.QueryRow(
+	err = db.QueryRow(
 		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
 		VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id`,
 		"logistics2@bairesdev.com", "hashed_password", models.RoleLogistics,
@@ -389,8 +456,10 @@ func TestUpdateLaptopRemoveSoftwareEngineerAssignment(t *testing.T) {
 	// Create form data without software engineer (empty string to clear assignment)
 	formData := url.Values{}
 	formData.Set("serial_number", "SN-TEST-002")
+	formData.Set("client_company_id", strconv.FormatInt(companyID, 10))
 	formData.Set("brand", "HP")
 	formData.Set("model", "EliteBook")
+	formData.Set("cpu", "Intel Core i5")
 	formData.Set("ram_gb", "16GB")
 	formData.Set("ssd_gb", "512GB")
 	formData.Set("status", string(models.LaptopStatusDelivered))
@@ -504,11 +573,11 @@ func TestInventoryListWithSorting(t *testing.T) {
 		Role:         models.RoleLogistics,
 	}
 
-	// Setup handler
-	tmpl := template.New("test")
+	// Setup handler with proper templates
+	templates := loadTestTemplates(t)
 	handler := &InventoryHandler{
 		DB:        db,
-		Templates: tmpl,
+		Templates: templates,
 	}
 
 	// Test cases for different sorting combinations

@@ -3,6 +3,7 @@ package validator
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestValidateBulkToWarehouseForm(t *testing.T) {
@@ -23,7 +24,7 @@ func TestValidateBulkToWarehouseForm(t *testing.T) {
 				PickupCity:       "New York",
 				PickupState:      "NY",
 				PickupZip:        "10001",
-				PickupDate:       "2025-11-15",
+				PickupDate:       time.Now().AddDate(0, 0, 2).Format("2006-01-02"),
 				PickupTimeSlot:   "morning",
 				JiraTicketNumber: "SCOP-12345",
 				NumberOfLaptops:  5,
@@ -45,7 +46,7 @@ func TestValidateBulkToWarehouseForm(t *testing.T) {
 				PickupCity:       "New York",
 				PickupState:      "NY",
 				PickupZip:        "10001",
-				PickupDate:       "2025-11-15",
+				PickupDate:       time.Now().AddDate(0, 0, 2).Format("2006-01-02"),
 				PickupTimeSlot:   "morning",
 				JiraTicketNumber: "SCOP-12345",
 				NumberOfLaptops:  1, // Too low for bulk
@@ -68,7 +69,7 @@ func TestValidateBulkToWarehouseForm(t *testing.T) {
 				PickupCity:       "New York",
 				PickupState:      "NY",
 				PickupZip:        "10001",
-				PickupDate:       "2025-11-15",
+				PickupDate:       time.Now().AddDate(0, 0, 2).Format("2006-01-02"),
 				PickupTimeSlot:   "morning",
 				JiraTicketNumber: "SCOP-12345",
 				NumberOfLaptops:  5,
@@ -91,7 +92,7 @@ func TestValidateBulkToWarehouseForm(t *testing.T) {
 				PickupCity:       "New York",
 				PickupState:      "NY",
 				PickupZip:        "10001",
-				PickupDate:       "2025-11-15",
+				PickupDate:       time.Now().AddDate(0, 0, 2).Format("2006-01-02"),
 				PickupTimeSlot:   "morning",
 				JiraTicketNumber: "SCOP-12345",
 				NumberOfLaptops:  5,
@@ -114,7 +115,7 @@ func TestValidateBulkToWarehouseForm(t *testing.T) {
 				PickupCity:       "New York",
 				PickupState:      "NY",
 				PickupZip:        "10001",
-				PickupDate:       "2025-11-15",
+				PickupDate:       time.Now().AddDate(0, 0, 2).Format("2006-01-02"),
 				PickupTimeSlot:   "morning",
 				JiraTicketNumber: "SCOP-12345",
 				NumberOfLaptops:  5,
@@ -137,7 +138,7 @@ func TestValidateBulkToWarehouseForm(t *testing.T) {
 				PickupCity:       "New York",
 				PickupState:      "NY",
 				PickupZip:        "10001",
-				PickupDate:       "2025-11-15",
+				PickupDate:       time.Now().AddDate(0, 0, 2).Format("2006-01-02"),
 				PickupTimeSlot:   "morning",
 				JiraTicketNumber: "SCOP-12345",
 				NumberOfLaptops:  5,
@@ -160,7 +161,7 @@ func TestValidateBulkToWarehouseForm(t *testing.T) {
 				PickupCity:       "New York",
 				PickupState:      "NY",
 				PickupZip:        "10001",
-				PickupDate:       "2025-11-15",
+				PickupDate:       time.Now().AddDate(0, 0, 2).Format("2006-01-02"),
 				PickupTimeSlot:   "morning",
 				JiraTicketNumber: "SCOP-12345",
 				NumberOfLaptops:  5,
@@ -183,7 +184,7 @@ func TestValidateBulkToWarehouseForm(t *testing.T) {
 				PickupCity:             "New York",
 				PickupState:            "NY",
 				PickupZip:              "10001",
-				PickupDate:             "2025-11-15",
+				PickupDate:             time.Now().AddDate(0, 0, 2).Format("2006-01-02"),
 				PickupTimeSlot:         "morning",
 				JiraTicketNumber:       "SCOP-12345",
 				NumberOfLaptops:        10,
@@ -207,7 +208,7 @@ func TestValidateBulkToWarehouseForm(t *testing.T) {
 				PickupCity:             "New York",
 				PickupState:            "NY",
 				PickupZip:              "10001",
-				PickupDate:             "2025-11-15",
+				PickupDate:             time.Now().AddDate(0, 0, 2).Format("2006-01-02"),
 				PickupTimeSlot:         "morning",
 				JiraTicketNumber:       "SCOP-12345",
 				NumberOfLaptops:        5,
@@ -232,7 +233,7 @@ func TestValidateBulkToWarehouseForm(t *testing.T) {
 				PickupCity:       "New York",
 				PickupState:      "NY",
 				PickupZip:        "10001",
-				PickupDate:       "2025-11-15",
+				PickupDate:       time.Now().AddDate(0, 0, 2).Format("2006-01-02"),
 				PickupTimeSlot:   "morning",
 				JiraTicketNumber: "SCOP-12345",
 				NumberOfLaptops:  5,
@@ -262,4 +263,3 @@ func TestValidateBulkToWarehouseForm(t *testing.T) {
 		})
 	}
 }
-

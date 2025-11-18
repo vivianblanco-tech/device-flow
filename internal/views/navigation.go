@@ -49,7 +49,7 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		nav.MagicLinks = false
 
 	case models.RoleClient:
-		// Client has limited access
+		// Client has limited access - can see inventory but only their company's laptops
 		nav.Dashboard = false
 		nav.Shipments = true
 		nav.Inventory = true // Client users can view their company's laptops

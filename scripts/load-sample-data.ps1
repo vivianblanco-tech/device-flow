@@ -55,15 +55,15 @@ if (-Not $containerRunning) {
     exit 1
 }
 
-# Load comprehensive sample data (v2)
-Write-Host "Loading comprehensive sample data..." -ForegroundColor Cyan
+# Load comprehensive sample data (v3.0)
+Write-Host "Loading comprehensive sample data (v3.0)..." -ForegroundColor Cyan
 Write-Host "Container: $containerName" -ForegroundColor Yellow
 Write-Host ""
 
 # Step 1: Load base data (users, companies, engineers, laptops)
 Write-Host "[1/2] Loading base data (users, companies, engineers, laptops)..." -ForegroundColor Yellow
-$tempFileBase = "/tmp/comprehensive-sample-data-v2.sql"
-docker cp "scripts\comprehensive-sample-data-v2.sql" "${containerName}:${tempFileBase}" 2>&1 | Out-Null
+$tempFileBase = "/tmp/comprehensive-sample-data-v3.sql"
+docker cp "scripts\comprehensive-sample-data-v3.sql" "${containerName}:${tempFileBase}" 2>&1 | Out-Null
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Failed to copy base data SQL file to container!" -ForegroundColor Red
@@ -85,8 +85,8 @@ docker exec $containerName rm $tempFileBase 2>&1 | Out-Null
 
 # Step 2: Load shipments data (shipments, forms, reports, audit logs)
 Write-Host "[2/2] Loading shipments data (shipments, forms, reports)..." -ForegroundColor Yellow
-$tempFileShipments = "/tmp/comprehensive-shipments-data-v2.sql"
-docker cp "scripts\comprehensive-shipments-data-v2.sql" "${containerName}:${tempFileShipments}" 2>&1 | Out-Null
+$tempFileShipments = "/tmp/comprehensive-shipments-data-v3.sql"
+docker cp "scripts\comprehensive-shipments-data-v3.sql" "${containerName}:${tempFileShipments}" 2>&1 | Out-Null
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Failed to copy shipments data SQL file to container!" -ForegroundColor Red
@@ -115,10 +115,13 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "  - 30+ users across all 4 roles" -ForegroundColor White
     Write-Host "  - 15 client companies" -ForegroundColor White
     Write-Host "  - 35+ software engineers (with address confirmations)" -ForegroundColor White
-    Write-Host "  - 40+ laptops (Dell, HP, Lenovo, Apple)" -ForegroundColor White
+    Write-Host "  - 80+ laptops (Dell, HP, Lenovo, Apple) with AUTO-GENERATED SKUs" -ForegroundColor White
+    Write-Host "  - ALL laptops assigned to client companies" -ForegroundColor White
     Write-Host "  - 7+ shipments (all three types: single, bulk, warehouse-to-engineer)" -ForegroundColor White
     Write-Host "  - Complete pickup forms with detailed JSON data" -ForegroundColor White
     Write-Host "  - Laptop-based reception reports with approval workflow" -ForegroundColor White
+    Write-Host "  - All reception reports have complete photo data" -ForegroundColor White
+    Write-Host "  - All shipments have complete field data (courier, tracking, timestamps)" -ForegroundColor White
     Write-Host "  - Delivery forms with photos" -ForegroundColor White
     Write-Host "  - Audit logs tracking all activities" -ForegroundColor White
     Write-Host "  - Magic links for secure delivery confirmation" -ForegroundColor White

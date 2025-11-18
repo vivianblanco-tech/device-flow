@@ -112,12 +112,12 @@ func TestNavbarConsistencyAcrossPages(t *testing.T) {
 			shouldHaveSticky: true,
 			expectedLinks: []string{
 				`href="/shipments"`,
+				`href="/inventory"`,
 				`href="/calendar"`,
 				`href="/pickup-forms"`,
 			},
 			unexpectedLinks: []string{
 				`href="/dashboard"`,
-				`href="/inventory"`,
 				`href="/reception-reports"`,
 			},
 		},

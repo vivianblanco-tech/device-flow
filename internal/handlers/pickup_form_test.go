@@ -333,6 +333,7 @@ func TestPickupFormHandler_SubmitSingleFullJourney(t *testing.T) {
 		"pickup_time_slot":     {"morning"},
 		"jira_ticket_number":   {"SCOP-12345"},
 		"laptop_serial_number": {"ABC123456"},
+		"laptop_brand":         {"Dell"}, // Required field
 		"laptop_model":         {"Dell XPS 15"},
 		"laptop_cpu":           {"Intel Core i7"},
 		"laptop_ram_gb":        {"16"},
@@ -417,6 +418,7 @@ func TestPickupFormHandler_SubmitSingleFullJourney(t *testing.T) {
 		"pickup_time_slot":     {"morning"},
 		"jira_ticket_number":   {"SCOP-12346"},
 		"laptop_serial_number": {"DEF789012"},
+		"laptop_brand":         {"Lenovo"}, // Required field
 		"laptop_model":         {"Lenovo ThinkPad"},
 		"laptop_cpu":           {"AMD Ryzen 7"},
 		"laptop_ram_gb":        {"16"},
@@ -802,9 +804,9 @@ func TestPickupFormHandler_SubmitWarehouseToEngineer(t *testing.T) {
 
 	// Create reception report for the laptop
 	_, err = db.ExecContext(ctx,
-		`INSERT INTO reception_reports (shipment_id, warehouse_user_id, received_at)
-		VALUES ($1, $2, $3)`,
-		dummyShipmentID, userID, time.Now(),
+		`INSERT INTO reception_reports (laptop_id, warehouse_user_id, photo_serial_number, photo_external_condition, photo_working_condition, status, received_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		laptopID, userID, "http://example.com/serial.jpg", "http://example.com/ext.jpg", "http://example.com/work.jpg", "approved", time.Now(),
 	)
 	if err != nil {
 		t.Fatalf("Failed to create reception report: %v", err)
@@ -1147,9 +1149,9 @@ func TestWarehouseToEngineerFormPage(t *testing.T) {
 
 	// Create reception report for the laptop
 	_, err = db.ExecContext(ctx,
-		`INSERT INTO reception_reports (shipment_id, warehouse_user_id, notes, received_at)
-		VALUES ($1, $2, $3, $4)`,
-		shipmentID, userID, "Test reception", time.Now(),
+		`INSERT INTO reception_reports (laptop_id, warehouse_user_id, photo_serial_number, photo_external_condition, photo_working_condition, status, notes, received_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		laptopID, userID, "http://example.com/serial.jpg", "http://example.com/ext.jpg", "http://example.com/work.jpg", "approved", "Test reception", time.Now(),
 	)
 	if err != nil {
 		t.Fatalf("Failed to create reception report: %v", err)
@@ -1474,6 +1476,7 @@ func TestCompleteShipmentDetailsViaMagicLink(t *testing.T) {
 	formData := url.Values{}
 	formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 	formData.Set("laptop_serial_number", "ABC123456789")
+	formData.Set("laptop_brand", "Dell") // Required field
 	formData.Set("laptop_model", "Dell XPS 15")
 	formData.Set("laptop_cpu", "Intel Core i7")
 	formData.Set("laptop_ram_gb", "16GB")
@@ -1715,6 +1718,7 @@ func TestCompleteShipmentDetailsRequiresLaptopModel(t *testing.T) {
 	formData := url.Values{}
 	formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 	formData.Set("laptop_serial_number", "ABC123456789")
+	formData.Set("laptop_brand", "Dell") // Required field
 	// Missing laptop_model
 	formData.Set("laptop_cpu", "Intel Core i7")
 	formData.Set("laptop_ram_gb", "16GB")
@@ -1808,6 +1812,7 @@ func TestCompleteShipmentDetailsRequiresLaptopRAM(t *testing.T) {
 	formData := url.Values{}
 	formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 	formData.Set("laptop_serial_number", "ABC123456789")
+	formData.Set("laptop_brand", "Dell") // Required field
 	formData.Set("laptop_model", "Dell XPS 15")
 	formData.Set("laptop_cpu", "Intel Core i7")
 	// Missing laptop_ram_gb
@@ -1901,6 +1906,7 @@ func TestCompleteShipmentDetailsRequiresLaptopSSD(t *testing.T) {
 	formData := url.Values{}
 	formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 	formData.Set("laptop_serial_number", "ABC123456789")
+	formData.Set("laptop_brand", "Dell") // Required field
 	formData.Set("laptop_model", "Dell XPS 15")
 	formData.Set("laptop_cpu", "Intel Core i7")
 	formData.Set("laptop_ram_gb", "16GB")
@@ -2262,9 +2268,9 @@ func TestWarehouseToEngineerFormSubmitWithoutCompanyID(t *testing.T) {
 
 	// Create reception report for the laptop
 	_, err = db.ExecContext(ctx,
-		`INSERT INTO reception_reports (shipment_id, warehouse_user_id, notes, received_at)
-		VALUES ($1, $2, $3, $4)`,
-		shipmentID, userID, "Test reception", time.Now(),
+		`INSERT INTO reception_reports (laptop_id, warehouse_user_id, photo_serial_number, photo_external_condition, photo_working_condition, status, notes, received_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		laptopID, userID, "http://example.com/serial.jpg", "http://example.com/ext.jpg", "http://example.com/work.jpg", "approved", "Test reception", time.Now(),
 	)
 	if err != nil {
 		t.Fatalf("Failed to create reception report: %v", err)
@@ -2374,9 +2380,9 @@ func TestWarehouseToEngineerFormSubmitWithoutCompanyID(t *testing.T) {
 
 		// Create reception report
 		_, err = db.ExecContext(ctx,
-			`INSERT INTO reception_reports (shipment_id, warehouse_user_id, notes, received_at)
-			VALUES ($1, $2, $3, $4)`,
-			bulkShipmentID, userID, "Bulk reception", time.Now(),
+			`INSERT INTO reception_reports (laptop_id, warehouse_user_id, photo_serial_number, photo_external_condition, photo_working_condition, status, notes, received_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			nullCompanyLaptopID, userID, "http://example.com/serial.jpg", "http://example.com/ext.jpg", "http://example.com/work.jpg", "approved", "Bulk reception", time.Now(),
 		)
 		if err != nil {
 			t.Fatalf("Failed to create reception report: %v", err)

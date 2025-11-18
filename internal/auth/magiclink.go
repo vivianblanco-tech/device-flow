@@ -15,7 +15,7 @@ const (
 	// MagicLinkTokenLength is the length of the magic link token in bytes
 	MagicLinkTokenLength = 32
 	// DefaultMagicLinkDuration is the default magic link expiration duration in hours
-	DefaultMagicLinkDuration = 24
+	DefaultMagicLinkDuration = 72
 )
 
 // GenerateMagicLinkToken generates a cryptographically secure random token
@@ -194,6 +194,37 @@ func CleanupExpiredMagicLinks(ctx context.Context, db *sql.DB) (int, error) {
 	}
 
 	return int(rowsAffected), nil
+}
+
+// GetMagicLinkByShipmentAndUser retrieves a valid magic link for a specific shipment and user
+// Returns the token if found, empty string if not found
+func GetMagicLinkByShipmentAndUser(ctx context.Context, db *sql.DB, shipmentID int64, userID int64) (string, error) {
+	var token string
+	var usedAt sql.NullTime
+
+	err := db.QueryRowContext(
+		ctx,
+		`SELECT token, used_at
+		FROM magic_links
+		WHERE shipment_id = $1 AND user_id = $2 AND expires_at > $3
+		ORDER BY created_at DESC
+		LIMIT 1`,
+		shipmentID, userID, time.Now(),
+	).Scan(&token, &usedAt)
+
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to get magic link: %w", err)
+	}
+
+	// Check if already used
+	if usedAt.Valid {
+		return "", nil
+	}
+
+	return token, nil
 }
 
 // GetMagicLinksByUser retrieves all valid magic links for a user

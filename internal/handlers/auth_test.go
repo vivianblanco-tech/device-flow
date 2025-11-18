@@ -740,6 +740,60 @@ func TestMagicLinkLogin(t *testing.T) {
 			t.Errorf("Expected error in redirect URL, got: %s", location)
 		}
 	})
+
+	t.Run("magic link should NOT be marked as used when clicked", func(t *testing.T) {
+		// Create a new magic link for this test
+		magicLink, err := auth.CreateMagicLink(ctx, db, userID, nil, auth.DefaultMagicLinkDuration)
+		if err != nil {
+			t.Fatalf("Failed to create magic link: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/auth/magic-link?token="+magicLink.Token, nil)
+		w := httptest.NewRecorder()
+
+		handler.MagicLinkLogin(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify magic link is still valid (not marked as used)
+		validatedLink, err := auth.ValidateMagicLink(ctx, db, magicLink.Token)
+		if err != nil {
+			t.Fatalf("Failed to validate magic link: %v", err)
+		}
+		if validatedLink == nil {
+			t.Error("Magic link should still be valid after clicking, but it was marked as used or expired")
+		}
+		if validatedLink.IsUsed() {
+			t.Error("Magic link should NOT be marked as used when clicked")
+		}
+	})
+
+	t.Run("magic link expiration duration should be 72 hours", func(t *testing.T) {
+		// Create a magic link with default duration
+		magicLink, err := auth.CreateMagicLink(ctx, db, userID, nil, auth.DefaultMagicLinkDuration)
+		if err != nil {
+			t.Fatalf("Failed to create magic link: %v", err)
+		}
+
+		// Verify DefaultMagicLinkDuration is 72 hours
+		if auth.DefaultMagicLinkDuration != 72 {
+			t.Errorf("Expected DefaultMagicLinkDuration to be 72 hours, got %d", auth.DefaultMagicLinkDuration)
+		}
+
+		// Verify expiration is approximately 72 hours from now
+		expectedExpiration := time.Now().Add(72 * time.Hour)
+		actualExpiration := magicLink.ExpiresAt
+		diff := expectedExpiration.Sub(actualExpiration)
+		if diff < 0 {
+			diff = -diff
+		}
+		// Allow 1 minute tolerance for test execution time
+		if diff > time.Minute {
+			t.Errorf("Expected expiration to be approximately 72 hours from now, got %v (diff: %v)", actualExpiration, diff)
+		}
+	})
 }
 
 func TestSendMagicLink(t *testing.T) {

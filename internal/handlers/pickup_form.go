@@ -1157,8 +1157,7 @@ func (h *PickupFormHandler) handleWarehouseToEngineerForm(r *http.Request, user 
 	err = tx.QueryRowContext(r.Context(),
 		`SELECT EXISTS(
 			SELECT 1 FROM reception_reports rr
-			JOIN shipment_laptops sl ON sl.shipment_id = rr.shipment_id
-			WHERE sl.laptop_id = $1
+			WHERE rr.laptop_id = $1
 		)`,
 		laptopID,
 	).Scan(&hasReceptionReport)

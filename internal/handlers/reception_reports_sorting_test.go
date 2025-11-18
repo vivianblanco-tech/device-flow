@@ -12,6 +12,7 @@ import (
 
 // TestReceptionReportsListWithSorting tests that the reception reports list can be sorted by different columns
 func TestReceptionReportsListWithSorting(t *testing.T) {
+	t.Skip("Skipping deprecated shipment-based reception report handler tests - use laptop-based handler tests instead")
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}

@@ -84,21 +84,21 @@ func TestEditShipmentGET(t *testing.T) {
 
 	// Create pickup form
 	formData := map[string]interface{}{
-		"contact_name":       "Jane Smith",
-		"contact_email":      "jane@example.com",
-		"contact_phone":      "555-1234",
-		"pickup_address":     "123 Main St",
-		"pickup_city":        "New York",
-		"pickup_state":       "NY",
-		"pickup_zip":         "10001",
-		"pickup_date":        "2024-12-01",
-		"pickup_time_slot":   "morning",
-		"number_of_laptops":  1,
+		"contact_name":         "Jane Smith",
+		"contact_email":        "jane@example.com",
+		"contact_phone":        "555-1234",
+		"pickup_address":       "123 Main St",
+		"pickup_city":          "New York",
+		"pickup_state":         "NY",
+		"pickup_zip":           "10001",
+		"pickup_date":          "2024-12-01",
+		"pickup_time_slot":     "morning",
+		"number_of_laptops":    1,
 		"laptop_serial_number": "SN12345",
-		"laptop_model":       "Dell XPS 15",
+		"laptop_model":         "Dell XPS 15",
 	}
 	formDataJSON, _ := json.Marshal(formData)
-	
+
 	_, err = db.ExecContext(ctx,
 		`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
 		VALUES ($1, $2, $3, $4)`,
@@ -209,19 +209,19 @@ func TestEditShipmentPOST(t *testing.T) {
 
 	// Create pickup form
 	formData := map[string]interface{}{
-		"contact_name":       "Jane Smith",
-		"contact_email":      "jane@example.com",
-		"contact_phone":      "555-1234",
-		"pickup_address":     "123 Main St",
-		"pickup_city":        "New York",
-		"pickup_state":       "NY",
-		"pickup_zip":         "10001",
-		"pickup_date":        "2024-12-01",
-		"pickup_time_slot":   "morning",
-		"number_of_laptops":  1,
+		"contact_name":      "Jane Smith",
+		"contact_email":     "jane@example.com",
+		"contact_phone":     "555-1234",
+		"pickup_address":    "123 Main St",
+		"pickup_city":       "New York",
+		"pickup_state":      "NY",
+		"pickup_zip":        "10001",
+		"pickup_date":       "2024-12-01",
+		"pickup_time_slot":  "morning",
+		"number_of_laptops": 1,
 	}
 	formDataJSON, _ := json.Marshal(formData)
-	
+
 	_, err = db.ExecContext(ctx,
 		`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
 		VALUES ($1, $2, $3, $4)`,
@@ -437,7 +437,7 @@ func TestEditShipmentAvailability(t *testing.T) {
 		// Create pickup form
 		formData := map[string]interface{}{"contact_name": "Test"}
 		formDataJSON, _ := json.Marshal(formData)
-		
+
 		_, err = db.ExecContext(ctx,
 			`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
 			VALUES ($1, $2, $3, $4)`,
@@ -516,4 +516,3 @@ func TestEditShipmentAvailability(t *testing.T) {
 		}
 	})
 }
-

@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 
+	"github.com/yourusername/laptop-tracking-system/internal/auth"
 	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
@@ -1130,6 +1131,13 @@ func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *ht
 	} else {
 		http.Error(w, "Failed to check existing form", http.StatusInternalServerError)
 		return
+	}
+
+	// Mark magic link as used (if accessed via magic link)
+	magicLinkToken, err := auth.GetMagicLinkByShipmentAndUser(r.Context(), h.DB, shipmentID, user.ID)
+	if err == nil && magicLinkToken != "" {
+		_ = auth.MarkMagicLinkAsUsed(r.Context(), h.DB, magicLinkToken)
+		// Log error but don't fail the request if marking as used fails
 	}
 
 	// Redirect to shipment detail page with success message

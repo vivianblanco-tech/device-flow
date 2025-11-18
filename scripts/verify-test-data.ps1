@@ -148,16 +148,16 @@ Write-Host "================================================" -ForegroundColor G
 Write-Host ""
 
 Write-Host "Key Features in Sample Data:" -ForegroundColor Cyan
-Write-Host "  ✓ Three shipment types (single, bulk, warehouse-to-engineer)" -ForegroundColor Green
-Write-Host "  ✓ All eight shipment statuses represented" -ForegroundColor Green
-Write-Host "  ✓ Multiple bulk shipments (2-5 laptops each)" -ForegroundColor Green
-Write-Host "  ✓ High-end workstations and premium laptops" -ForegroundColor Green
-Write-Host "  ✓ Complete pickup forms with detailed JSON data" -ForegroundColor Green
-Write-Host "  ✓ Laptop-based reception reports with approval workflow" -ForegroundColor Green
-Write-Host "  ✓ Delivery forms with photo documentation" -ForegroundColor Green
-Write-Host "  ✓ Audit logs tracking all system activity" -ForegroundColor Green
-Write-Host "  ✓ Magic links for secure delivery confirmation" -ForegroundColor Green
-Write-Host "  ✓ Address confirmation tracking for engineers" -ForegroundColor Green
+Write-Host "  [OK] Three shipment types (single, bulk, warehouse-to-engineer)" -ForegroundColor Green
+Write-Host "  [OK] All eight shipment statuses represented" -ForegroundColor Green
+Write-Host "  [OK] Multiple bulk shipments (2-5 laptops each)" -ForegroundColor Green
+Write-Host "  [OK] High-end workstations and premium laptops" -ForegroundColor Green
+Write-Host "  [OK] Complete pickup forms with detailed JSON data" -ForegroundColor Green
+Write-Host "  [OK] Laptop-based reception reports with approval workflow" -ForegroundColor Green
+Write-Host "  [OK] Delivery forms with photo documentation" -ForegroundColor Green
+Write-Host "  [OK] Audit logs tracking all system activity" -ForegroundColor Green
+Write-Host "  [OK] Magic links for secure delivery confirmation" -ForegroundColor Green
+Write-Host "  [OK] Address confirmation tracking for engineers" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Data Quality Indicators:" -ForegroundColor Cyan
@@ -186,6 +186,56 @@ FROM shipments WHERE laptop_count > 1;
 SELECT 
     '  Active magic links: ' || COUNT(*) as active_links
 FROM magic_links WHERE used = false AND expires_at > NOW();
+" -t
+
+Write-Host ""
+Write-Host "SKU and Client Assignment Verification:" -ForegroundColor Cyan
+docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "
+SELECT 
+    '  Laptops with SKUs: ' || COUNT(*) || ' / ' || (SELECT COUNT(*) FROM laptops) as sku_coverage
+FROM laptops WHERE sku IS NOT NULL AND sku != '';
+
+SELECT 
+    '  Laptops assigned to clients: ' || COUNT(*) || ' / ' || (SELECT COUNT(*) FROM laptops) as client_coverage
+FROM laptops WHERE client_company_id IS NOT NULL;
+
+SELECT 
+    '  Laptops missing SKUs: ' || COUNT(*) as missing_skus
+FROM laptops WHERE sku IS NULL OR sku = '';
+
+SELECT 
+    '  Laptops missing client assignment: ' || COUNT(*) as missing_clients
+FROM laptops WHERE client_company_id IS NULL;
+" -t
+
+Write-Host ""
+Write-Host "Shipment Field Completeness:" -ForegroundColor Cyan
+docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "
+SELECT 
+    '  Shipments with courier & tracking: ' || COUNT(*) || ' / ' || (SELECT COUNT(*) FROM shipments) as complete_courier_data
+FROM shipments WHERE courier_name IS NOT NULL AND tracking_number IS NOT NULL;
+
+SELECT 
+    '  Shipments missing courier/tracking: ' || COUNT(*) as incomplete_courier_data
+FROM shipments WHERE courier_name IS NULL OR tracking_number IS NULL;
+" -t
+
+Write-Host ""
+Write-Host "Reception Report Field Completeness:" -ForegroundColor Cyan
+docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "
+SELECT 
+    '  Reports with all photos: ' || COUNT(*) || ' / ' || (SELECT COUNT(*) FROM reception_reports) as complete_photos
+FROM reception_reports 
+WHERE photo_serial_number IS NOT NULL 
+  AND photo_external_condition IS NOT NULL 
+  AND photo_working_condition IS NOT NULL;
+
+SELECT 
+    '  Reports missing photos: ' || COUNT(*) as missing_photos
+FROM reception_reports 
+WHERE photo_serial_number IS NULL 
+   OR photo_external_condition IS NULL 
+   OR photo_working_condition IS NULL;
 " -t
 
 Write-Host ""

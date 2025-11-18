@@ -292,14 +292,7 @@ func (h *AuthHandler) MagicLinkLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Mark magic link as used
-	err = auth.MarkMagicLinkAsUsed(r.Context(), h.DB, token)
-	if err != nil {
-		http.Error(w, "Failed to use magic link", http.StatusInternalServerError)
-		return
-	}
-
-	// Create session
+	// Create session (magic link will be marked as used when form is submitted)
 	session, err := auth.CreateSession(r.Context(), h.DB, magicLink.UserID, auth.DefaultSessionDuration)
 	if err != nil {
 		http.Error(w, "Failed to create session", http.StatusInternalServerError)

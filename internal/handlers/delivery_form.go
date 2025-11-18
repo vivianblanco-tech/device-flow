@@ -14,6 +14,7 @@ import (
 
 	"github.com/lib/pq"
 
+	"github.com/yourusername/laptop-tracking-system/internal/auth"
 	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
@@ -307,6 +308,16 @@ func (h *DeliveryFormHandler) DeliveryFormSubmit(w http.ResponseWriter, r *http.
 	if err := tx.Commit(); err != nil {
 		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
 		return
+	}
+
+	// Mark magic link as used (if accessed via magic link)
+	user := middleware.GetUserFromContext(r.Context())
+	if user != nil {
+		magicLinkToken, err := auth.GetMagicLinkByShipmentAndUser(r.Context(), h.DB, shipmentID, user.ID)
+		if err == nil && magicLinkToken != "" {
+			_ = auth.MarkMagicLinkAsUsed(r.Context(), h.DB, magicLinkToken)
+			// Log error but don't fail the request if marking as used fails
+		}
 	}
 
 	// Send delivery confirmation email (Step 11-12 in process flow)

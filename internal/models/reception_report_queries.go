@@ -19,29 +19,56 @@ func GetLaptopReceptionReport(ctx context.Context, db *sql.DB, laptopID int64) (
 	`
 
 	report := &ReceptionReport{}
+	var shipmentID sql.NullInt64
+	var clientCompanyID sql.NullInt64
+	var trackingNumber sql.NullString
+	var notes sql.NullString
+	var approvedBy sql.NullInt64
+	var approvedAt sql.NullTime
+	
 	err := db.QueryRowContext(ctx, query, laptopID).Scan(
 		&report.ID,
 		&report.LaptopID,
-		&report.ShipmentID,
-		&report.ClientCompanyID,
-		&report.TrackingNumber,
+		&shipmentID,
+		&clientCompanyID,
+		&trackingNumber,
 		&report.WarehouseUserID,
 		&report.ReceivedAt,
-		&report.Notes,
+		&notes,
 		&report.PhotoSerialNumber,
 		&report.PhotoExternalCondition,
 		&report.PhotoWorkingCondition,
 		&report.Status,
-		&report.ApprovedBy,
-		&report.ApprovedAt,
+		&approvedBy,
+		&approvedAt,
 		&report.CreatedAt,
 		&report.UpdatedAt,
 	)
-
-	if err == sql.ErrNoRows {
-		return nil, nil // No reception report found (not an error)
+	
+	// Handle nullable fields
+	if shipmentID.Valid {
+		report.ShipmentID = &shipmentID.Int64
 	}
+	if clientCompanyID.Valid {
+		report.ClientCompanyID = &clientCompanyID.Int64
+	}
+	if trackingNumber.Valid {
+		report.TrackingNumber = trackingNumber.String
+	}
+	if notes.Valid {
+		report.Notes = notes.String
+	}
+	if approvedBy.Valid {
+		report.ApprovedBy = &approvedBy.Int64
+	}
+	if approvedAt.Valid {
+		report.ApprovedAt = &approvedAt.Time
+	}
+
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No reception report found (not an error)
+		}
 		return nil, err
 	}
 

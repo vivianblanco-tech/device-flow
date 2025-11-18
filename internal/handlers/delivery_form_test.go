@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yourusername/laptop-tracking-system/internal/auth"
 	"github.com/yourusername/laptop-tracking-system/internal/database"
+	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 )
 
@@ -47,11 +49,27 @@ func TestDeliveryFormPage(t *testing.T) {
 		t.Fatalf("Failed to create test shipment: %v", err)
 	}
 
+	// Create test user
+	var userID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"test@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
 	templates := loadTestTemplates(t)
 	handler := NewDeliveryFormHandler(db, templates, nil)
 
 	t.Run("GET request displays form", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/delivery-form?shipment_id="+strconv.FormatInt(shipmentID, 10), nil)
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    userID,
+			Email: "test@example.com",
+			Role:  models.RoleLogistics,
+		}))
 		w := httptest.NewRecorder()
 
 		handler.DeliveryFormPage(w, req)
@@ -63,6 +81,11 @@ func TestDeliveryFormPage(t *testing.T) {
 
 	t.Run("missing shipment ID returns error", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/delivery-form", nil)
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    userID,
+			Email: "test@example.com",
+			Role:  models.RoleLogistics,
+		}))
 		w := httptest.NewRecorder()
 
 		handler.DeliveryFormPage(w, req)
@@ -74,6 +97,11 @@ func TestDeliveryFormPage(t *testing.T) {
 
 	t.Run("invalid shipment ID returns error", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/delivery-form?shipment_id=invalid", nil)
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    userID,
+			Email: "test@example.com",
+			Role:  models.RoleLogistics,
+		}))
 		w := httptest.NewRecorder()
 
 		handler.DeliveryFormPage(w, req)
@@ -85,6 +113,11 @@ func TestDeliveryFormPage(t *testing.T) {
 
 	t.Run("non-existent shipment returns not found", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/delivery-form?shipment_id=99999", nil)
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    userID,
+			Email: "test@example.com",
+			Role:  models.RoleLogistics,
+		}))
 		w := httptest.NewRecorder()
 
 		handler.DeliveryFormPage(w, req)
@@ -208,6 +241,71 @@ func TestDeliveryFormSubmit(t *testing.T) {
 
 		if w.Code != http.StatusSeeOther {
 			t.Errorf("Expected status 303 (redirect with error), got %d", w.Code)
+		}
+	})
+
+	t.Run("magic link should be marked as used when delivery form is submitted", func(t *testing.T) {
+		// Create test user
+		var userID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			"engineer@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+		).Scan(&userID)
+		if err != nil {
+			t.Fatalf("Failed to create test user: %v", err)
+		}
+
+		// Create magic link associated with shipment
+		magicLink, err := auth.CreateMagicLink(ctx, db, userID, &shipmentID, auth.DefaultMagicLinkDuration)
+		if err != nil {
+			t.Fatalf("Failed to create magic link: %v", err)
+		}
+
+		// Verify magic link is not used yet
+		validatedLink, err := auth.ValidateMagicLink(ctx, db, magicLink.Token)
+		if err != nil {
+			t.Fatalf("Failed to validate magic link: %v", err)
+		}
+		if validatedLink == nil || validatedLink.IsUsed() {
+			t.Fatal("Magic link should be valid and not used before form submission")
+		}
+
+		// Create session (simulating magic link login)
+		session, err := auth.CreateSession(ctx, db, userID, auth.DefaultSessionDuration)
+		if err != nil {
+			t.Fatalf("Failed to create session: %v", err)
+		}
+
+		// Submit delivery form
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("engineer_id", strconv.FormatInt(engineerID, 10))
+		formData.Set("notes", "Delivered successfully")
+
+		req := httptest.NewRequest(http.MethodPost, "/delivery-form", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    userID,
+			Email: "engineer@example.com",
+			Role:  models.RoleLogistics,
+		}))
+		req = req.WithContext(context.WithValue(req.Context(), middleware.SessionContextKey, session))
+
+		w := httptest.NewRecorder()
+		handler.DeliveryFormSubmit(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify magic link is now marked as used
+		validatedLink, err = auth.ValidateMagicLink(ctx, db, magicLink.Token)
+		if err != nil {
+			t.Fatalf("Failed to validate magic link: %v", err)
+		}
+		if validatedLink != nil && !validatedLink.IsUsed() {
+			t.Error("Magic link should be marked as used after form submission")
 		}
 	})
 }
