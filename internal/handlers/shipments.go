@@ -363,6 +363,16 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	// Get next allowed statuses for sequential validation
 	nextAllowedStatuses := s.GetNextAllowedStatuses()
 
+	// Get available laptops for bulk shipments (only for logistics users)
+	var availableLaptops []models.Laptop
+	if s.ShipmentType == models.ShipmentTypeBulkToWarehouse && user.Role == models.RoleLogistics {
+		availableLaptops, err = h.GetAvailableLaptopsForBulkShipment(r.Context())
+		if err != nil {
+			// Non-critical error, log but continue
+			fmt.Printf("Warning: Failed to load available laptops: %v\n", err)
+		}
+	}
+
 	data := map[string]interface{}{
 		"Error":               errorMsg,
 		"Success":             successMsg,
@@ -376,6 +386,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		"EngineerName":        engineerName.String,
 		"EngineerEmail":       engineerEmail.String,
 		"Laptops":             laptops,
+		"AvailableLaptops":    availableLaptops,
 		"PickupForm":          pickupForm,
 		"PickupFormData":      pickupFormData,
 		"ReceptionReport":     receptionReport,
@@ -1142,6 +1153,214 @@ func (h *ShipmentsHandler) ShipmentPickupFormSubmit(w http.ResponseWriter, r *ht
 
 	// Redirect to shipment detail page with success message
 	redirectURL := fmt.Sprintf("/shipments/%d?success=Pickup+form+submitted+successfully", shipmentID)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// GetAvailableLaptopsForBulkShipment returns laptops that can be added to a bulk shipment
+// Only laptops with status 'In Transit to Warehouse' that are not in any active shipment
+func (h *ShipmentsHandler) GetAvailableLaptopsForBulkShipment(ctx context.Context) ([]models.Laptop, error) {
+	query := `
+		SELECT DISTINCT l.id, l.serial_number, l.sku, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb,
+		       l.status, l.client_company_id, l.software_engineer_id,
+		       l.created_at, l.updated_at,
+		       cc.name as client_company_name
+		FROM laptops l
+		LEFT JOIN client_companies cc ON cc.id = l.client_company_id
+		WHERE l.status = $1
+		  -- Must not be in any active shipment (excluding delivered)
+		  AND NOT EXISTS (
+		      SELECT 1 FROM shipment_laptops sl
+		      JOIN shipments s ON s.id = sl.shipment_id
+		      WHERE sl.laptop_id = l.id
+		        AND s.status != 'delivered'
+		  )
+		ORDER BY l.created_at DESC
+	`
+	
+	rows, err := h.DB.QueryContext(ctx, query, models.LaptopStatusInTransitToWarehouse)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var laptops []models.Laptop
+	for rows.Next() {
+		var laptop models.Laptop
+		var clientCompanyName sql.NullString
+		err := rows.Scan(
+			&laptop.ID, &laptop.SerialNumber, &laptop.SKU, &laptop.Brand, &laptop.Model, &laptop.CPU,
+			&laptop.RAMGB, &laptop.SSDGB, &laptop.Status, &laptop.ClientCompanyID, &laptop.SoftwareEngineerID,
+			&laptop.CreatedAt, &laptop.UpdatedAt, &clientCompanyName,
+		)
+		if err != nil {
+			continue
+		}
+		if clientCompanyName.Valid {
+			laptop.ClientCompanyName = clientCompanyName.String
+		}
+		laptops = append(laptops, laptop)
+	}
+	
+	return laptops, rows.Err()
+}
+
+// AddLaptopToBulkShipment handles adding an existing laptop to a bulk shipment
+func (h *ShipmentsHandler) AddLaptopToBulkShipment(w http.ResponseWriter, r *http.Request) {
+	// Get user from context
+	user := middleware.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	// Only logistics users can add laptops to bulk shipments
+	if user.Role != models.RoleLogistics {
+		http.Error(w, "Forbidden: Only logistics users can add laptops to bulk shipments", http.StatusForbidden)
+		return
+	}
+
+	// Get shipment ID from URL
+	vars := mux.Vars(r)
+	shipmentIDStr := vars["id"]
+	if shipmentIDStr == "" {
+		http.Error(w, "Shipment ID is required", http.StatusBadRequest)
+		return
+	}
+
+	shipmentID, err := strconv.ParseInt(shipmentIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid shipment ID", http.StatusBadRequest)
+		return
+	}
+
+	// Verify shipment exists and is bulk type
+	var shipmentType models.ShipmentType
+	err = h.DB.QueryRowContext(r.Context(),
+		`SELECT shipment_type FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&shipmentType)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Shipment not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Failed to query shipment", http.StatusInternalServerError)
+		return
+	}
+
+	if shipmentType != models.ShipmentTypeBulkToWarehouse {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Can+only+add+laptops+to+bulk+shipments", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Parse form
+	if err := r.ParseForm(); err != nil {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Invalid+form+data", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	laptopIDStr := r.FormValue("laptop_id")
+	if laptopIDStr == "" {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Laptop+ID+is+required", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	laptopID, err := strconv.ParseInt(laptopIDStr, 10, 64)
+	if err != nil {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Invalid+laptop+ID", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Start transaction
+	tx, err := h.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	// Verify laptop exists and has correct status
+	var laptopStatus models.LaptopStatus
+	err = tx.QueryRowContext(r.Context(),
+		`SELECT status FROM laptops WHERE id = $1`,
+		laptopID,
+	).Scan(&laptopStatus)
+	if err == sql.ErrNoRows {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Laptop+not+found", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Failed to query laptop", http.StatusInternalServerError)
+		return
+	}
+
+	// Verify laptop has correct status
+	if laptopStatus != models.LaptopStatusInTransitToWarehouse {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Laptop+must+have+status+In+Transit+to+Warehouse", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Verify laptop is not already in an active shipment
+	var existingShipmentCount int
+	err = tx.QueryRowContext(r.Context(),
+		`SELECT COUNT(*) FROM shipment_laptops sl
+		JOIN shipments s ON s.id = sl.shipment_id
+		WHERE sl.laptop_id = $1 AND s.status != 'delivered'`,
+		laptopID,
+	).Scan(&existingShipmentCount)
+	if err != nil {
+		http.Error(w, "Failed to check laptop availability", http.StatusInternalServerError)
+		return
+	}
+	if existingShipmentCount > 0 {
+		redirectURL := fmt.Sprintf("/shipments/%d?error=Laptop+is+already+in+an+active+shipment", shipmentID)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Link laptop to shipment
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at)
+		VALUES ($1, $2, $3)`,
+		shipmentID, laptopID, time.Now(),
+	)
+	if err != nil {
+		// Check for duplicate key error
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			redirectURL := fmt.Sprintf("/shipments/%d?error=Laptop+is+already+linked+to+this+shipment", shipmentID)
+			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+			return
+		}
+		http.Error(w, "Failed to link laptop to shipment", http.StatusInternalServerError)
+		return
+	}
+
+	// Update shipment laptop_count
+	_, err = tx.ExecContext(r.Context(),
+		`UPDATE shipments SET laptop_count = (
+			SELECT COUNT(*) FROM shipment_laptops WHERE shipment_id = $1
+		), updated_at = $2 WHERE id = $1`,
+		shipmentID, time.Now(),
+	)
+	if err != nil {
+		http.Error(w, "Failed to update shipment laptop count", http.StatusInternalServerError)
+		return
+	}
+
+	// Commit transaction
+	if err = tx.Commit(); err != nil {
+		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect with success message
+	redirectURL := fmt.Sprintf("/shipments/%d?success=Laptop+added+to+shipment+successfully", shipmentID)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 

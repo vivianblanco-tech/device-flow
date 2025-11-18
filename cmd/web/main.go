@@ -382,6 +382,7 @@ func main() {
 	protected.HandleFunc("/shipments/{id:[0-9]+}/form", shipmentsHandler.ShipmentPickupFormSubmit).Methods("POST")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/complete-details", pickupFormHandler.CompleteShipmentDetails).Methods("POST")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/edit-details", pickupFormHandler.EditShipmentDetails).Methods("POST")
+	protected.HandleFunc("/shipments/{id:[0-9]+}/laptops/add", shipmentsHandler.AddLaptopToBulkShipment).Methods("POST")
 
 	// Serve static files
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/",

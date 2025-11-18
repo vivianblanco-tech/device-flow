@@ -282,11 +282,12 @@ func GetLaptopStatusesInOrder() []LaptopStatus {
 }
 
 // GetLaptopStatusesForNewLaptop returns statuses appropriate for newly added laptops
-// Only "Received at Warehouse" is allowed to ensure all laptops go through
-// the reception report process before becoming available
+// Allows "In Transit to Warehouse" for laptops being added to bulk shipments
+// and "Received at Warehouse" for laptops that have already arrived
 func GetLaptopStatusesForNewLaptop() []LaptopStatus {
 	return []LaptopStatus{
-		LaptopStatusAtWarehouse, // "Received at Warehouse" - the only status for new laptops
+		LaptopStatusInTransitToWarehouse, // "In Transit to Warehouse" - for bulk shipments
+		LaptopStatusAtWarehouse,           // "Received at Warehouse" - for laptops already at warehouse
 	}
 }
 

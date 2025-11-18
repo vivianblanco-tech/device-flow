@@ -79,11 +79,11 @@ func TestGetLaptopStatusesInOrder(t *testing.T) {
 
 // TestGetLaptopStatusesForNewLaptop tests that only appropriate statuses are shown when adding a new laptop
 func TestGetLaptopStatusesForNewLaptop(t *testing.T) {
-	// Only "Received at Warehouse" should be available for new laptops
-	// This ensures warehouse users must create a reception report for every laptop
-	// before it becomes "Available at Warehouse"
+	// Should include "In Transit to Warehouse" and "Received at Warehouse"
+	// for laptops being added to bulk shipments or already at warehouse
 	expectedStatuses := []LaptopStatus{
-		LaptopStatusAtWarehouse, // "Received at Warehouse" - the only status for new laptops
+		LaptopStatusInTransitToWarehouse, // "In Transit to Warehouse" - for bulk shipments
+		LaptopStatusAtWarehouse,           // "Received at Warehouse" - for laptops already at warehouse
 	}
 
 	got := GetLaptopStatusesForNewLaptop()
