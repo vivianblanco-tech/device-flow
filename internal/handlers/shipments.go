@@ -402,6 +402,23 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	// Get list of client companies (for magic link form - logistics users only)
+	companies := []models.ClientCompany{}
+	if user.Role == models.RoleLogistics {
+		companyRows, err := h.DB.QueryContext(r.Context(),
+			`SELECT id, name, contact_info, created_at FROM client_companies ORDER BY name`,
+		)
+		if err == nil {
+			defer companyRows.Close()
+			for companyRows.Next() {
+				var company models.ClientCompany
+				if err := companyRows.Scan(&company.ID, &company.Name, &company.ContactInfo, &company.CreatedAt); err == nil {
+					companies = append(companies, company)
+				}
+			}
+		}
+	}
+
 	data := map[string]interface{}{
 		"Error":               errorMsg,
 		"Success":             successMsg,
@@ -421,10 +438,11 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		"PickupForm":          pickupForm,
 		"PickupFormData":      pickupFormData,
 		"ReceptionReport":     receptionReport,
-		"DeliveryForm":        deliveryForm,
+		"DeliveryForm":         deliveryForm,
 		"Engineers":           engineers,
 		"Timeline":            timeline,
 		"NextAllowedStatuses": nextAllowedStatuses,
+		"Companies":           companies,
 	}
 
 	if h.Templates != nil {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -845,7 +846,7 @@ func TestSendMagicLink(t *testing.T) {
 
 	t.Run("logistics user can send magic link with valid shipment", func(t *testing.T) {
 		formData := url.Values{}
-		formData.Set("email", "newclient@example.com")
+		formData.Set("client_company_name", "Test Company")
 		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 
 		req := httptest.NewRequest(http.MethodPost, "/auth/send-magic-link", strings.NewReader(formData.Encode()))
@@ -873,7 +874,7 @@ func TestSendMagicLink(t *testing.T) {
 
 	t.Run("cannot send magic link without shipment ID", func(t *testing.T) {
 		formData := url.Values{}
-		formData.Set("email", "newclient@example.com")
+		formData.Set("client_company_name", "Test Company")
 
 		req := httptest.NewRequest(http.MethodPost, "/auth/send-magic-link", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -892,7 +893,7 @@ func TestSendMagicLink(t *testing.T) {
 
 	t.Run("cannot send magic link with non-existent shipment", func(t *testing.T) {
 		formData := url.Values{}
-		formData.Set("email", "newclient@example.com")
+		formData.Set("client_company_name", "Test Company")
 		formData.Set("shipment_id", "99999")
 
 		req := httptest.NewRequest(http.MethodPost, "/auth/send-magic-link", strings.NewReader(formData.Encode()))
@@ -912,7 +913,7 @@ func TestSendMagicLink(t *testing.T) {
 
 	t.Run("non-logistics user cannot send magic link", func(t *testing.T) {
 		formData := url.Values{}
-		formData.Set("email", "newclient@example.com")
+		formData.Set("client_company_name", "Test Company")
 
 		req := httptest.NewRequest(http.MethodPost, "/auth/send-magic-link", strings.NewReader(formData.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -926,6 +927,85 @@ func TestSendMagicLink(t *testing.T) {
 
 		if w.Code != http.StatusForbidden {
 			t.Errorf("Expected status 403, got %d", w.Code)
+		}
+	})
+
+	t.Run("logistics user can send magic link with company name instead of email", func(t *testing.T) {
+		// Create a separate company for this test to avoid conflicts
+		var testCompanyID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO client_companies (name, contact_info, created_at)
+			VALUES ($1, $2, $3) RETURNING id`,
+			"Test Company For Magic Link", json.RawMessage(`{"email":"test2@company.com"}`), time.Now(),
+		).Scan(&testCompanyID)
+		if err != nil {
+			t.Fatalf("Failed to create test company: %v", err)
+		}
+
+		// Create a separate shipment for this test
+		var testShipmentID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			testCompanyID, models.ShipmentStatusPendingPickup, "TEST-MAGIC-LINK", time.Now(), time.Now(),
+		).Scan(&testShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("client_company_name", "Test Company For Magic Link")
+		formData.Set("shipment_id", strconv.FormatInt(testShipmentID, 10))
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/send-magic-link", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.SendMagicLink(w, req)
+
+		// Should redirect successfully
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303 (SeeOther), got %d", w.Code)
+		}
+
+		// Verify redirect location contains the shipment ID
+		location := w.Header().Get("Location")
+		expectedPath := fmt.Sprintf("/shipments/%d", testShipmentID)
+		if !strings.Contains(location, expectedPath) {
+			t.Errorf("Expected redirect to contain %s, got %s", expectedPath, location)
+		}
+
+		// Verify user was created for the company
+		var createdUserID int64
+		var createdUserEmail string
+		var createdUserCompanyID sql.NullInt64
+		err = db.QueryRowContext(ctx,
+			`SELECT id, email, client_company_id FROM users WHERE client_company_id = $1 ORDER BY created_at DESC LIMIT 1`,
+			testCompanyID,
+		).Scan(&createdUserID, &createdUserEmail, &createdUserCompanyID)
+		if err != nil {
+			t.Fatalf("Failed to verify created user: %v", err)
+		}
+
+		if !createdUserCompanyID.Valid || createdUserCompanyID.Int64 != testCompanyID {
+			t.Errorf("Expected user to be associated with company ID %d, got %v", testCompanyID, createdUserCompanyID)
+		}
+
+		// Verify magic link was created for this user
+		var magicLinkCount int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM magic_links WHERE user_id = $1 AND shipment_id = $2`,
+			createdUserID, testShipmentID,
+		).Scan(&magicLinkCount)
+		if err != nil {
+			t.Fatalf("Failed to verify magic link: %v", err)
+		}
+		if magicLinkCount != 1 {
+			t.Errorf("Expected 1 magic link to be created, got %d", magicLinkCount)
 		}
 	})
 }

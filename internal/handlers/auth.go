@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -342,11 +343,11 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email := r.FormValue("email")
+	clientCompanyName := r.FormValue("client_company_name")
 	shipmentIDStr := r.FormValue("shipment_id")
 
-	if email == "" {
-		http.Error(w, "Email is required", http.StatusBadRequest)
+	if clientCompanyName == "" {
+		http.Error(w, "Client company name is required", http.StatusBadRequest)
 		return
 	}
 
@@ -384,24 +385,40 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find or create user by email
+	// Find company by name (case-insensitive)
+	var companyID int64
+	err = h.DB.QueryRowContext(
+		r.Context(),
+		`SELECT id FROM client_companies WHERE LOWER(name) = LOWER($1)`,
+		clientCompanyName,
+	).Scan(&companyID)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Client company not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Failed to find client company", http.StatusInternalServerError)
+		return
+	}
+
+	// Find or create user by company ID
 	var userID int64
 	err = h.DB.QueryRowContext(
 		r.Context(),
-		`SELECT id FROM users WHERE email = $1`,
-		email,
+		`SELECT id FROM users WHERE client_company_id = $1 LIMIT 1`,
+		companyID,
 	).Scan(&userID)
 
 	if err == sql.ErrNoRows {
-		// User doesn't exist, create a client user with a placeholder password
-		// (they'll authenticate via magic link)
+		// User doesn't exist for this company, create a client user
+		// Generate email from company name (sanitize for email format)
+		email := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(clientCompanyName, " ", "."), "&", "and")) + "@magiclink.local"
 		placeholderPassword := "MAGIC_LINK_USER" // Placeholder to satisfy the auth_method constraint
 		err = h.DB.QueryRowContext(
 			r.Context(),
-			`INSERT INTO users (email, password_hash, role, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5)
+			`INSERT INTO users (email, password_hash, role, client_company_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id`,
-			email, placeholderPassword, models.RoleClient, time.Now(), time.Now(),
+			email, placeholderPassword, models.RoleClient, companyID, time.Now(), time.Now(),
 		).Scan(&userID)
 		if err != nil {
 			http.Error(w, "Failed to create user", http.StatusInternalServerError)
@@ -429,7 +446,7 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 
 	// Redirect back to shipment detail with success message including the URL
 	redirectURL := fmt.Sprintf("/shipments/%d?success=Magic+link+sent+to+%s.+URL:+%s", 
-		sid, email, url.QueryEscape(magicLinkURL))
+		sid, clientCompanyName, url.QueryEscape(magicLinkURL))
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
