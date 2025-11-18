@@ -305,10 +305,10 @@ func TestNavbarClientUserCompanyName(t *testing.T) {
 		{
 			name: "client user with company_id displays company name",
 			user: &models.User{
-				ID:              1,
-				Email:           userEmail,
-				Role:            models.RoleClient,
-				ClientCompanyID: &companyID,
+				ID:                1,
+				Email:             userEmail,
+				Role:              models.RoleClient,
+				ClientCompanyID:   &companyID,
 				ClientCompanyName: companyName,
 			},
 			expectedDisplayText: companyName,
@@ -317,9 +317,9 @@ func TestNavbarClientUserCompanyName(t *testing.T) {
 		{
 			name: "client user without company_id displays email",
 			user: &models.User{
-				ID:    2,
-				Email: userEmail,
-				Role:  models.RoleClient,
+				ID:              2,
+				Email:           userEmail,
+				Role:            models.RoleClient,
 				ClientCompanyID: nil,
 			},
 			expectedDisplayText: userEmail,
@@ -373,4 +373,3 @@ func TestNavbarClientUserCompanyName(t *testing.T) {
 		})
 	}
 }
-

@@ -1008,4 +1008,78 @@ func TestSendMagicLink(t *testing.T) {
 			t.Errorf("Expected 1 magic link to be created, got %d", magicLinkCount)
 		}
 	})
+
+	t.Run("logistics user can send magic link without company name when shipment has company", func(t *testing.T) {
+		// Create a company for this test
+		var testCompanyID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO client_companies (name, contact_info, created_at)
+			VALUES ($1, $2, $3) RETURNING id`,
+			"Auto Company Test", json.RawMessage(`{"email":"auto@company.com"}`), time.Now(),
+		).Scan(&testCompanyID)
+		if err != nil {
+			t.Fatalf("Failed to create test company: %v", err)
+		}
+
+		// Create a shipment WITH client_company_id
+		var testShipmentID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			testCompanyID, models.ShipmentStatusPendingPickup, "TEST-AUTO-COMPANY", time.Now(), time.Now(),
+		).Scan(&testShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		// Send magic link WITHOUT client_company_name parameter
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(testShipmentID, 10))
+		// Note: client_company_name is NOT set
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/send-magic-link", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.SendMagicLink(w, req)
+
+		// Should redirect successfully
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303 (SeeOther), got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		// Verify redirect location contains the shipment ID
+		location := w.Header().Get("Location")
+		expectedPath := fmt.Sprintf("/shipments/%d", testShipmentID)
+		if !strings.Contains(location, expectedPath) {
+			t.Errorf("Expected redirect to contain %s, got %s", expectedPath, location)
+		}
+
+		// Verify user was created or found for the company
+		var createdUserID int64
+		err = db.QueryRowContext(ctx,
+			`SELECT id FROM users WHERE client_company_id = $1 ORDER BY created_at DESC LIMIT 1`,
+			testCompanyID,
+		).Scan(&createdUserID)
+		if err != nil {
+			t.Fatalf("Failed to verify created user: %v", err)
+		}
+
+		// Verify magic link was created for this user
+		var magicLinkCount int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM magic_links WHERE user_id = $1 AND shipment_id = $2`,
+			createdUserID, testShipmentID,
+		).Scan(&magicLinkCount)
+		if err != nil {
+			t.Fatalf("Failed to verify magic link: %v", err)
+		}
+		if magicLinkCount != 1 {
+			t.Errorf("Expected 1 magic link to be created, got %d", magicLinkCount)
+		}
+	})
 }

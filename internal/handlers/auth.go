@@ -343,13 +343,7 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientCompanyName := r.FormValue("client_company_name")
 	shipmentIDStr := r.FormValue("shipment_id")
-
-	if clientCompanyName == "" {
-		http.Error(w, "Client company name is required", http.StatusBadRequest)
-		return
-	}
 
 	// Shipment ID is required
 	if shipmentIDStr == "" {
@@ -365,13 +359,18 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify shipment exists and has a JIRA ticket
+	// Get shipment with company information and verify it exists and has a JIRA ticket
 	var jiraTicket string
+	var companyID sql.NullInt64
+	var clientCompanyName string
 	err = h.DB.QueryRowContext(
 		r.Context(),
-		`SELECT jira_ticket_number FROM shipments WHERE id = $1`,
+		`SELECT s.jira_ticket_number, s.client_company_id, cc.name
+		FROM shipments s
+		LEFT JOIN client_companies cc ON cc.id = s.client_company_id
+		WHERE s.id = $1`,
 		sid,
-	).Scan(&jiraTicket)
+	).Scan(&jiraTicket, &companyID, &clientCompanyName)
 	if err == sql.ErrNoRows {
 		http.Error(w, "Shipment not found", http.StatusNotFound)
 		return
@@ -385,18 +384,13 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find company by name (case-insensitive)
-	var companyID int64
-	err = h.DB.QueryRowContext(
-		r.Context(),
-		`SELECT id FROM client_companies WHERE LOWER(name) = LOWER($1)`,
-		clientCompanyName,
-	).Scan(&companyID)
-	if err == sql.ErrNoRows {
-		http.Error(w, "Client company not found", http.StatusNotFound)
+	if !companyID.Valid {
+		http.Error(w, "Shipment must have a client company assigned", http.StatusBadRequest)
 		return
-	} else if err != nil {
-		http.Error(w, "Failed to find client company", http.StatusInternalServerError)
+	}
+
+	if clientCompanyName == "" {
+		http.Error(w, "Client company name not found for shipment", http.StatusInternalServerError)
 		return
 	}
 
@@ -405,7 +399,7 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 	err = h.DB.QueryRowContext(
 		r.Context(),
 		`SELECT id FROM users WHERE client_company_id = $1 LIMIT 1`,
-		companyID,
+		companyID.Int64,
 	).Scan(&userID)
 
 	if err == sql.ErrNoRows {
@@ -418,7 +412,7 @@ func (h *AuthHandler) SendMagicLink(w http.ResponseWriter, r *http.Request) {
 			`INSERT INTO users (email, password_hash, role, client_company_id, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id`,
-			email, placeholderPassword, models.RoleClient, companyID, time.Now(), time.Now(),
+			email, placeholderPassword, models.RoleClient, companyID.Int64, time.Now(), time.Now(),
 		).Scan(&userID)
 		if err != nil {
 			http.Error(w, "Failed to create user", http.StatusInternalServerError)
