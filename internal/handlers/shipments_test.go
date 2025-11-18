@@ -3070,9 +3070,9 @@ func TestSendMagicLinkVisibility(t *testing.T) {
 		// Create shipment with status pending_pickup_from_client
 		var shipmentID int64
 		err := db.QueryRowContext(ctx,
-			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			companyID, models.ShipmentStatusPendingPickup, "TEST-MAGIC-1", time.Now(), time.Now(),
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, shipment_type, laptop_count, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			companyID, models.ShipmentStatusPendingPickup, "TEST-MAGIC-1", models.ShipmentTypeBulkToWarehouse, 1, time.Now(), time.Now(),
 		).Scan(&shipmentID)
 		if err != nil {
 			t.Fatalf("Failed to create test shipment: %v", err)
@@ -3089,7 +3089,7 @@ func TestSendMagicLinkVisibility(t *testing.T) {
 		handler.ShipmentDetail(w, req)
 
 		if w.Code != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", w.Code)
+			t.Errorf("Expected status 200, got %d. Response body: %s", w.Code, w.Body.String())
 		}
 
 		responseBody := w.Body.String()
@@ -3102,9 +3102,9 @@ func TestSendMagicLinkVisibility(t *testing.T) {
 		// Create shipment with status pickup_from_client_scheduled
 		var shipmentID int64
 		err := db.QueryRowContext(ctx,
-			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			companyID, models.ShipmentStatusPickupScheduled, "TEST-MAGIC-2", time.Now(), time.Now(),
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, shipment_type, laptop_count, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			companyID, models.ShipmentStatusPickupScheduled, "TEST-MAGIC-2", models.ShipmentTypeBulkToWarehouse, 1, time.Now(), time.Now(),
 		).Scan(&shipmentID)
 		if err != nil {
 			t.Fatalf("Failed to create test shipment: %v", err)
@@ -3121,7 +3121,7 @@ func TestSendMagicLinkVisibility(t *testing.T) {
 		handler.ShipmentDetail(w, req)
 
 		if w.Code != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", w.Code)
+			t.Errorf("Expected status 200, got %d. Response body: %s", w.Code, w.Body.String())
 		}
 
 		responseBody := w.Body.String()
@@ -3134,9 +3134,9 @@ func TestSendMagicLinkVisibility(t *testing.T) {
 		// Create shipment with status picked_up_from_client
 		var shipmentID int64
 		err := db.QueryRowContext(ctx,
-			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			companyID, models.ShipmentStatusPickedUpFromClient, "TEST-MAGIC-3", time.Now(), time.Now(),
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, shipment_type, laptop_count, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			companyID, models.ShipmentStatusPickedUpFromClient, "TEST-MAGIC-3", models.ShipmentTypeBulkToWarehouse, 1, time.Now(), time.Now(),
 		).Scan(&shipmentID)
 		if err != nil {
 			t.Fatalf("Failed to create test shipment: %v", err)
@@ -3153,7 +3153,7 @@ func TestSendMagicLinkVisibility(t *testing.T) {
 		handler.ShipmentDetail(w, req)
 
 		if w.Code != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", w.Code)
+			t.Errorf("Expected status 200, got %d. Response body: %s", w.Code, w.Body.String())
 		}
 
 		responseBody := w.Body.String()
@@ -3166,9 +3166,9 @@ func TestSendMagicLinkVisibility(t *testing.T) {
 		// Create shipment with status at_warehouse
 		var shipmentID int64
 		err := db.QueryRowContext(ctx,
-			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			companyID, models.ShipmentStatusAtWarehouse, "TEST-MAGIC-4", time.Now(), time.Now(),
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, shipment_type, laptop_count, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			companyID, models.ShipmentStatusAtWarehouse, "TEST-MAGIC-4", models.ShipmentTypeBulkToWarehouse, 1, time.Now(), time.Now(),
 		).Scan(&shipmentID)
 		if err != nil {
 			t.Fatalf("Failed to create test shipment: %v", err)
@@ -3185,7 +3185,7 @@ func TestSendMagicLinkVisibility(t *testing.T) {
 		handler.ShipmentDetail(w, req)
 
 		if w.Code != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", w.Code)
+			t.Errorf("Expected status 200, got %d. Response body: %s", w.Code, w.Body.String())
 		}
 
 		responseBody := w.Body.String()
@@ -3198,9 +3198,9 @@ func TestSendMagicLinkVisibility(t *testing.T) {
 		// Create shipment with status delivered
 		var shipmentID int64
 		err := db.QueryRowContext(ctx,
-			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-			companyID, models.ShipmentStatusDelivered, "TEST-MAGIC-5", time.Now(), time.Now(),
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, shipment_type, laptop_count, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			companyID, models.ShipmentStatusDelivered, "TEST-MAGIC-5", models.ShipmentTypeBulkToWarehouse, 1, time.Now(), time.Now(),
 		).Scan(&shipmentID)
 		if err != nil {
 			t.Fatalf("Failed to create test shipment: %v", err)
@@ -3217,7 +3217,7 @@ func TestSendMagicLinkVisibility(t *testing.T) {
 		handler.ShipmentDetail(w, req)
 
 		if w.Code != http.StatusOK {
-			t.Errorf("Expected status 200, got %d", w.Code)
+			t.Errorf("Expected status 200, got %d. Response body: %s", w.Code, w.Body.String())
 		}
 
 		responseBody := w.Body.String()
