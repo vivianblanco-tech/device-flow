@@ -1,7 +1,6 @@
 package models
 
 import (
-	"database/sql"
 	"testing"
 
 	"github.com/yourusername/laptop-tracking-system/internal/database"
@@ -550,49 +549,7 @@ func TestGetLaptopByIDWithJoins(t *testing.T) {
 	}
 }
 
-// Helper functions for creating test data with new fields
-
-// CreateClientCompany creates a client company using the public API
-func CreateClientCompany(db *sql.DB, c *ClientCompany) error {
-	if err := c.Validate(); err != nil {
-		return err
-	}
-	c.BeforeCreate()
-
-	query := `
-		INSERT INTO client_companies (name, contact_info, created_at, updated_at)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id
-	`
-
-	return db.QueryRow(query, c.Name, c.ContactInfo, c.CreatedAt, c.UpdatedAt).Scan(&c.ID)
-}
-
-// CreateSoftwareEngineer creates a software engineer using validation
-func CreateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
-	if err := engineer.Validate(); err != nil {
-		return err
-	}
-
-	engineer.BeforeCreate()
-
-	query := `
-		INSERT INTO software_engineers (name, email, address, phone, address_confirmed, address_confirmation_at, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id
-	`
-	return db.QueryRow(
-		query,
-		engineer.Name,
-		engineer.Email,
-		engineer.Address,
-		engineer.Phone,
-		engineer.AddressConfirmed,
-		engineer.AddressConfirmationAt,
-		engineer.CreatedAt,
-		engineer.UpdatedAt,
-	).Scan(&engineer.ID)
-}
+// Helper functions removed - using actual model functions from client_company.go and software_engineer.go
 
 // TestGetAllLaptopsHandlesNullFields tests that GetAllLaptops can handle NULL values in optional fields like brand and sku
 func TestGetAllLaptopsHandlesNullFields(t *testing.T) {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -262,7 +263,8 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 
 	// Get associated laptops
 	laptopRows, err := h.DB.QueryContext(r.Context(),
-		`SELECT l.id, l.serial_number, l.sku, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb, l.status, l.created_at
+		`SELECT l.id, l.serial_number, COALESCE(l.sku, '') as sku, COALESCE(l.brand, '') as brand, 
+		l.model, l.cpu, l.ram_gb, l.ssd_gb, l.status, l.created_at
 		FROM laptops l
 		JOIN shipment_laptops sl ON sl.laptop_id = l.id
 		WHERE sl.shipment_id = $1`,
@@ -283,6 +285,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 			&laptop.RAMGB, &laptop.SSDGB, &laptop.Status, &laptop.CreatedAt,
 		)
 		if err != nil {
+			log.Printf("Error scanning laptop row: %v", err)
 			continue
 		}
 		laptops = append(laptops, laptop)
