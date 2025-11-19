@@ -74,6 +74,23 @@ func TestSoftwareEngineer_Validate(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "valid - engineer with employee number",
+			engineer: SoftwareEngineer{
+				Name:          "John Doe",
+				Email:         "john@bairesdev.com",
+				EmployeeNumber: "EMP-12345",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid - engineer without employee number (optional field)",
+			engineer: SoftwareEngineer{
+				Name:  "Jane Smith",
+				Email: "jane@bairesdev.com",
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {

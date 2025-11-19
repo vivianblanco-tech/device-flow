@@ -14,6 +14,7 @@ type SoftwareEngineer struct {
 	Email                 string     `json:"email" db:"email"`
 	Address               string     `json:"address,omitempty" db:"address"`
 	Phone                 string     `json:"phone,omitempty" db:"phone"`
+	EmployeeNumber        string     `json:"employee_number,omitempty" db:"employee_number"`
 	AddressConfirmed      bool       `json:"address_confirmed" db:"address_confirmed"`
 	AddressConfirmationAt *time.Time `json:"address_confirmation_at,omitempty" db:"address_confirmation_at"`
 	CreatedAt             time.Time  `json:"created_at" db:"created_at"`
@@ -70,7 +71,7 @@ func (s *SoftwareEngineer) ConfirmAddress() {
 // GetAllSoftwareEngineers retrieves all software engineers from the database sorted by name
 func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface{}) (*sql.Rows, error) }) ([]SoftwareEngineer, error) {
 	query := `
-		SELECT id, name, email, phone, address, address_confirmed, address_confirmation_at, created_at, updated_at
+		SELECT id, name, email, phone, address, employee_number, address_confirmed, address_confirmation_at, created_at, updated_at
 		FROM software_engineers
 		ORDER BY name ASC
 	`
@@ -86,6 +87,7 @@ func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface
 		var engineer SoftwareEngineer
 		var phone sql.NullString
 		var address sql.NullString
+		var employeeNumber sql.NullString
 		var addressConfirmationAt sql.NullTime
 
 		err := rows.Scan(
@@ -94,6 +96,7 @@ func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface
 			&engineer.Email,
 			&phone,
 			&address,
+			&employeeNumber,
 			&engineer.AddressConfirmed,
 			&addressConfirmationAt,
 			&engineer.CreatedAt,
@@ -109,6 +112,9 @@ func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface
 		}
 		if address.Valid {
 			engineer.Address = address.String
+		}
+		if employeeNumber.Valid {
+			engineer.EmployeeNumber = employeeNumber.String
 		}
 		if addressConfirmationAt.Valid {
 			engineer.AddressConfirmationAt = &addressConfirmationAt.Time
@@ -127,7 +133,7 @@ func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface
 // GetSoftwareEngineerByID retrieves a software engineer by its ID
 func GetSoftwareEngineerByID(db *sql.DB, id int64) (*SoftwareEngineer, error) {
 	query := `
-		SELECT id, name, email, phone, address, address_confirmed, address_confirmation_at, created_at, updated_at
+		SELECT id, name, email, phone, address, employee_number, address_confirmed, address_confirmation_at, created_at, updated_at
 		FROM software_engineers
 		WHERE id = $1
 	`
@@ -135,6 +141,7 @@ func GetSoftwareEngineerByID(db *sql.DB, id int64) (*SoftwareEngineer, error) {
 	var engineer SoftwareEngineer
 	var phone sql.NullString
 	var address sql.NullString
+	var employeeNumber sql.NullString
 	var addressConfirmationAt sql.NullTime
 
 	err := db.QueryRow(query, id).Scan(
@@ -143,6 +150,7 @@ func GetSoftwareEngineerByID(db *sql.DB, id int64) (*SoftwareEngineer, error) {
 		&engineer.Email,
 		&phone,
 		&address,
+		&employeeNumber,
 		&engineer.AddressConfirmed,
 		&addressConfirmationAt,
 		&engineer.CreatedAt,
@@ -163,6 +171,9 @@ func GetSoftwareEngineerByID(db *sql.DB, id int64) (*SoftwareEngineer, error) {
 	if address.Valid {
 		engineer.Address = address.String
 	}
+	if employeeNumber.Valid {
+		engineer.EmployeeNumber = employeeNumber.String
+	}
 	if addressConfirmationAt.Valid {
 		engineer.AddressConfirmationAt = &addressConfirmationAt.Time
 	}
@@ -181,8 +192,8 @@ func CreateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
 	engineer.BeforeCreate()
 
 	query := `
-		INSERT INTO software_engineers (name, email, address, phone, address_confirmed, address_confirmation_at, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO software_engineers (name, email, address, phone, employee_number, address_confirmed, address_confirmation_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id
 	`
 
@@ -192,6 +203,7 @@ func CreateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
 		engineer.Email,
 		engineer.Address,
 		engineer.Phone,
+		engineer.EmployeeNumber,
 		engineer.AddressConfirmed,
 		engineer.AddressConfirmationAt,
 		engineer.CreatedAt,
@@ -217,8 +229,8 @@ func UpdateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
 
 	query := `
 		UPDATE software_engineers
-		SET name = $1, email = $2, address = $3, phone = $4, address_confirmed = $5, address_confirmation_at = $6, updated_at = $7
-		WHERE id = $8
+		SET name = $1, email = $2, address = $3, phone = $4, employee_number = $5, address_confirmed = $6, address_confirmation_at = $7, updated_at = $8
+		WHERE id = $9
 	`
 
 	result, err := db.Exec(
@@ -227,6 +239,7 @@ func UpdateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
 		engineer.Email,
 		engineer.Address,
 		engineer.Phone,
+		engineer.EmployeeNumber,
 		engineer.AddressConfirmed,
 		engineer.AddressConfirmationAt,
 		engineer.UpdatedAt,

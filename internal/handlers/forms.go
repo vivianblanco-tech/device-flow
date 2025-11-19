@@ -513,10 +513,11 @@ func (h *FormsHandler) SoftwareEngineerAddSubmit(w http.ResponseWriter, r *http.
 
 	addressConfirmed := r.FormValue("address_confirmed") == "on"
 	engineer := &models.SoftwareEngineer{
-		Name:     r.FormValue("name"),
-		Email:    r.FormValue("email"),
-		Address:  r.FormValue("address"),
-		Phone:    r.FormValue("phone"),
+		Name:           r.FormValue("name"),
+		Email:          r.FormValue("email"),
+		Address:        r.FormValue("address"),
+		Phone:          r.FormValue("phone"),
+		EmployeeNumber: r.FormValue("employee_number"),
 		AddressConfirmed: addressConfirmed,
 	}
 
@@ -601,6 +602,7 @@ func (h *FormsHandler) SoftwareEngineerEditSubmit(w http.ResponseWriter, r *http
 	engineer.Email = r.FormValue("email")
 	engineer.Address = r.FormValue("address")
 	engineer.Phone = r.FormValue("phone")
+	engineer.EmployeeNumber = r.FormValue("employee_number")
 	
 	addressConfirmed := r.FormValue("address_confirmed") == "on"
 	wasConfirmed := engineer.AddressConfirmed
