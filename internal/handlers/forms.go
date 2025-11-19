@@ -511,12 +511,18 @@ func (h *FormsHandler) SoftwareEngineerAddSubmit(w http.ResponseWriter, r *http.
 		return
 	}
 
+	addressConfirmed := r.FormValue("address_confirmed") == "on"
 	engineer := &models.SoftwareEngineer{
 		Name:     r.FormValue("name"),
 		Email:    r.FormValue("email"),
 		Address:  r.FormValue("address"),
 		Phone:    r.FormValue("phone"),
-		AddressConfirmed: r.FormValue("address_confirmed") == "on",
+		AddressConfirmed: addressConfirmed,
+	}
+
+	// Set address confirmation timestamp when checkbox is checked
+	if addressConfirmed {
+		engineer.ConfirmAddress()
 	}
 
 	if err := models.CreateSoftwareEngineer(h.DB, engineer); err != nil {
@@ -595,7 +601,22 @@ func (h *FormsHandler) SoftwareEngineerEditSubmit(w http.ResponseWriter, r *http
 	engineer.Email = r.FormValue("email")
 	engineer.Address = r.FormValue("address")
 	engineer.Phone = r.FormValue("phone")
-	engineer.AddressConfirmed = r.FormValue("address_confirmed") == "on"
+	
+	addressConfirmed := r.FormValue("address_confirmed") == "on"
+	wasConfirmed := engineer.AddressConfirmed
+	engineer.AddressConfirmed = addressConfirmed
+
+	// Handle address confirmation timestamp
+	if addressConfirmed {
+		// If changing from unchecked to checked, set timestamp
+		if !wasConfirmed {
+			engineer.ConfirmAddress()
+		}
+		// If already checked, preserve existing timestamp (do nothing)
+	} else {
+		// If unchecked, clear timestamp
+		engineer.AddressConfirmationAt = nil
+	}
 
 	if err := models.UpdateSoftwareEngineer(h.DB, engineer); err != nil {
 		log.Printf("Error updating software engineer: %v", err)

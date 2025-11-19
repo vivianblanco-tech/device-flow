@@ -57,6 +57,9 @@
                                 class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
                             <span class="ml-2 text-sm text-gray-700">Address Confirmed</span>
                         </label>
+                        {{if and .IsEdit .Engineer.AddressConfirmationAt}}
+                        <p class="mt-1 ml-8 text-sm text-gray-600">Address Confirmed on: {{.Engineer.AddressConfirmationAt.Format "2006-01-02 15:04:05"}}</p>
+                        {{end}}
                     </div>
 
                     <div class="flex gap-4">

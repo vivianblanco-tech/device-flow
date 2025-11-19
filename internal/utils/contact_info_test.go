@@ -6,10 +6,10 @@ import (
 
 func TestFormatContactInfoForForm(t *testing.T) {
 	tests := []struct {
-		name         string
-		contactInfo  string
-		expected     string
-		description  string
+		name        string
+		contactInfo string
+		expected    string
+		description string
 	}{
 		{
 			name:        "empty contact info",
@@ -64,4 +64,3 @@ func TestFormatContactInfoForForm(t *testing.T) {
 		})
 	}
 }
-
