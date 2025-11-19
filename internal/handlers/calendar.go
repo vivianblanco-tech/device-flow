@@ -65,12 +65,12 @@ func (h *CalendarHandler) Calendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Group events by date for easier rendering
-	eventsByDate := make(map[string][]models.CalendarEvent)
-	for _, event := range events {
-		dateKey := event.Date.Format("2006-01-02")
-		eventsByDate[dateKey] = append(eventsByDate[dateKey], event)
-	}
+	// Generate calendar grid with events
+	calendarGrid := models.GenerateCalendarGridWithEvents(
+		startDate.Year(),
+		startDate.Month(),
+		events,
+	)
 
 	// Prepare template data
 	data := map[string]interface{}{
@@ -78,7 +78,7 @@ func (h *CalendarHandler) Calendar(w http.ResponseWriter, r *http.Request) {
 		"Nav":          views.GetNavigationLinks(user.Role),
 		"CurrentPage":  "calendar",
 		"Events":       events,
-		"EventsByDate": eventsByDate,
+		"CalendarGrid": calendarGrid,
 		"StartDate":    startDate,
 		"EndDate":      endDate,
 		"CurrentMonth": startDate.Format("January 2006"),

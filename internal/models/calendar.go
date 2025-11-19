@@ -151,7 +151,7 @@ func GetCalendarEvents(db *sql.DB, startDate, endDate time.Time) ([]CalendarEven
 			event := CalendarEvent{
 				ID:          eventID,
 				Type:        CalendarEventTypeAtWarehouse,
-				Title:       fmt.Sprintf("Arrived at warehouse"),
+				Title:       "Arrived at warehouse",
 				Date:        arrivedWarehouseAt.Time,
 				ShipmentID:  shipmentID,
 				Description: "Shipment at warehouse",
@@ -202,5 +202,88 @@ func getStringOrDefault(ns sql.NullString, defaultValue string) string {
 		return ns.String
 	}
 	return defaultValue
+}
+
+// CalendarDay represents a single day in the calendar grid
+type CalendarDay struct {
+	Date           time.Time       `json:"date"`
+	IsCurrentMonth bool            `json:"is_current_month"`
+	Events         []CalendarEvent `json:"events"`
+}
+
+// GenerateCalendarGrid creates a calendar grid for the given month
+// Returns a 2D array where each inner array represents a week (7 days)
+func GenerateCalendarGrid(year int, month time.Month) [][]CalendarDay {
+	// Get the first day of the month
+	firstOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
+	
+	// Get the last day of the month
+	lastOfMonth := firstOfMonth.AddDate(0, 1, 0).Add(-24 * time.Hour)
+	
+	// Calculate the starting Sunday (may be in previous month)
+	// If first day is Sunday (0), start there; otherwise go back to previous Sunday
+	startDate := firstOfMonth
+	for startDate.Weekday() != time.Sunday {
+		startDate = startDate.Add(-24 * time.Hour)
+	}
+	
+	// Calculate the ending Saturday (may be in next month)
+	endDate := lastOfMonth
+	for endDate.Weekday() != time.Saturday {
+		endDate = endDate.Add(24 * time.Hour)
+	}
+	
+	// Build the grid
+	var grid [][]CalendarDay
+	var currentWeek []CalendarDay
+	
+	currentDate := startDate
+	for !currentDate.After(endDate) {
+		day := CalendarDay{
+			Date:           currentDate,
+			IsCurrentMonth: currentDate.Month() == month,
+			Events:         []CalendarEvent{},
+		}
+		currentWeek = append(currentWeek, day)
+		
+		// If we've completed a week (7 days), add it to the grid
+		if len(currentWeek) == 7 {
+			grid = append(grid, currentWeek)
+			currentWeek = []CalendarDay{}
+		}
+		
+		currentDate = currentDate.Add(24 * time.Hour)
+	}
+	
+	// Add any remaining days (shouldn't happen with proper calculation)
+	if len(currentWeek) > 0 {
+		grid = append(grid, currentWeek)
+	}
+	
+	return grid
+}
+
+// GenerateCalendarGridWithEvents creates a calendar grid and populates it with events
+func GenerateCalendarGridWithEvents(year int, month time.Month, events []CalendarEvent) [][]CalendarDay {
+	grid := GenerateCalendarGrid(year, month)
+	
+	// Create a map of date strings to events for faster lookup
+	eventsByDate := make(map[string][]CalendarEvent)
+	for _, event := range events {
+		dateKey := event.Date.Format("2006-01-02")
+		eventsByDate[dateKey] = append(eventsByDate[dateKey], event)
+	}
+	
+	// Add events to the appropriate days
+	for i := range grid {
+		for j := range grid[i] {
+			dateKey := grid[i][j].Date.Format("2006-01-02")
+			if dayEvents, exists := eventsByDate[dateKey]; exists {
+				grid[i][j].Events = dayEvents
+			}
+		}
+	}
+	
+	return grid
 }
 
