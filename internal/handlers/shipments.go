@@ -227,6 +227,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	var companyName string
 	var engineerName sql.NullString
 	var engineerEmail sql.NullString
+	var engineerEmployeeNumber sql.NullString
 
 	err = h.DB.QueryRowContext(r.Context(),
 		`SELECT s.id, s.shipment_type, s.laptop_count, s.client_company_id, s.software_engineer_id, s.status, 
@@ -238,7 +239,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		        s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, 
 		        s.eta_to_engineer, s.delivered_at, COALESCE(s.notes, '') as notes, 
 		        s.created_at, s.updated_at,
-		        c.name, se.name, se.email
+		        c.name, se.name, se.email, se.employee_number
 		FROM shipments s
 		JOIN client_companies c ON c.id = s.client_company_id
 		LEFT JOIN software_engineers se ON se.id = s.software_engineer_id
@@ -249,7 +250,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		&s.JiraTicketNumber, &s.CourierName, &s.TrackingNumber, &s.SecondTrackingNumber, &s.PickupScheduledDate,
 		&s.PickedUpAt, &s.ArrivedWarehouseAt, &s.ReleasedWarehouseAt,
 		&s.ETAToEngineer, &s.DeliveredAt, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
-		&companyName, &engineerName, &engineerEmail,
+		&companyName, &engineerName, &engineerEmail, &engineerEmployeeNumber,
 	)
 
 	if err == sql.ErrNoRows {
@@ -423,29 +424,30 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	}
 
 	data := map[string]interface{}{
-		"Error":               errorMsg,
-		"Success":             successMsg,
-		"Warning":             warningMsg,
-		"User":                user,
-		"Nav":                 views.GetNavigationLinks(user.Role),
-		"CurrentPage":         "shipments",
-		"Shipment":            s,
-		"TrackingURL":         trackingURL,
-		"SecondTrackingURL":   secondTrackingURL,
-		"CompanyName":         companyName,
-		"EngineerName":        engineerName.String,
-		"EngineerEmail":       engineerEmail.String,
-		"Laptops":             laptops,
-		"ReceptionReportMap":  receptionReportMap, // Map of laptop_id -> reception_report_id
-		"AvailableLaptops":    availableLaptops,
-		"PickupForm":          pickupForm,
-		"PickupFormData":      pickupFormData,
-		"ReceptionReport":     receptionReport,
-		"DeliveryForm":         deliveryForm,
-		"Engineers":           engineers,
-		"Timeline":            timeline,
-		"NextAllowedStatuses": nextAllowedStatuses,
-		"Companies":           companies,
+		"Error":                 errorMsg,
+		"Success":               successMsg,
+		"Warning":               warningMsg,
+		"User":                  user,
+		"Nav":                   views.GetNavigationLinks(user.Role),
+		"CurrentPage":           "shipments",
+		"Shipment":              s,
+		"TrackingURL":           trackingURL,
+		"SecondTrackingURL":     secondTrackingURL,
+		"CompanyName":           companyName,
+		"EngineerName":          engineerName.String,
+		"EngineerEmail":         engineerEmail.String,
+		"EngineerEmployeeNumber": engineerEmployeeNumber.String,
+		"Laptops":               laptops,
+		"ReceptionReportMap":    receptionReportMap, // Map of laptop_id -> reception_report_id
+		"AvailableLaptops":      availableLaptops,
+		"PickupForm":            pickupForm,
+		"PickupFormData":        pickupFormData,
+		"ReceptionReport":       receptionReport,
+		"DeliveryForm":          deliveryForm,
+		"Engineers":             engineers,
+		"Timeline":              timeline,
+		"NextAllowedStatuses":   nextAllowedStatuses,
+		"Companies":             companies,
 	}
 
 	if h.Templates != nil {

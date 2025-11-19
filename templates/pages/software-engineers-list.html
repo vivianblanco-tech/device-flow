@@ -44,7 +44,12 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         {{range .Engineers}}
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{.Name}}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <div>{{.Name}}</div>
+                                {{if .EmployeeNumber}}
+                                <div class="text-xs text-gray-500 mt-1">Employee #: {{.EmployeeNumber}}</div>
+                                {{end}}
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{.Email}}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{if .Phone}}{{.Phone}}{{else}}-{{end}}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

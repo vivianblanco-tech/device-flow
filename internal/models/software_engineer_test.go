@@ -77,8 +77,8 @@ func TestSoftwareEngineer_Validate(t *testing.T) {
 		{
 			name: "valid - engineer with employee number",
 			engineer: SoftwareEngineer{
-				Name:          "John Doe",
-				Email:         "john@bairesdev.com",
+				Name:           "John Doe",
+				Email:          "john@bairesdev.com",
 				EmployeeNumber: "EMP-12345",
 			},
 			wantErr: false,
@@ -219,4 +219,3 @@ func TestSoftwareEngineer_ConfirmAddress(t *testing.T) {
 func timePtr(t time.Time) *time.Time {
 	return &t
 }
-

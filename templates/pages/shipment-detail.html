@@ -146,7 +146,10 @@
                             <dt class="text-sm font-medium text-gray-500">Software Engineer</dt>
                             <dd class="mt-1 text-sm text-gray-900">
                                 {{if .EngineerName}}
-                                {{.EngineerName}}
+                                <div>{{.EngineerName}}</div>
+                                {{if .EngineerEmployeeNumber}}
+                                <div class="text-xs text-gray-500 mt-1">Employee #: {{.EngineerEmployeeNumber}}</div>
+                                {{end}}
                                 {{else}}
                                 <span class="text-gray-400">Not assigned</span>
                                 {{end}}
@@ -896,6 +899,9 @@
                         <div>
                             <p class="text-gray-500 mb-1">Software Engineer</p>
                             <p class="text-gray-900 font-medium">{{.EngineerName}}</p>
+                            {{if .EngineerEmployeeNumber}}
+                            <p class="text-xs text-gray-500 mt-1">Employee #: {{.EngineerEmployeeNumber}}</p>
+                            {{end}}
                             {{if .EngineerEmail}}
                             <p class="text-gray-600">{{.EngineerEmail}}</p>
                             {{end}}
