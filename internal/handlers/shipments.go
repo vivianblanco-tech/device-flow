@@ -423,6 +423,16 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	// Get list of couriers (for courier dropdown - logistics users only)
+	couriers := []models.Courier{}
+	if user.Role == models.RoleLogistics {
+		couriers, err = models.GetAllCouriers(h.DB)
+		if err != nil {
+			// Non-critical error, log but continue
+			fmt.Printf("Warning: Failed to load couriers: %v\n", err)
+		}
+	}
+
 	data := map[string]interface{}{
 		"Error":                 errorMsg,
 		"Success":               successMsg,
@@ -448,6 +458,7 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		"Timeline":              timeline,
 		"NextAllowedStatuses":   nextAllowedStatuses,
 		"Companies":             companies,
+		"Couriers":              couriers,
 	}
 
 	if h.Templates != nil {

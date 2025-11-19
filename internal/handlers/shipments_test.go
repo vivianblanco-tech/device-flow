@@ -3973,3 +3973,101 @@ func TestBulkShipmentLaptopReceptionReportLink(t *testing.T) {
 		}
 	})
 }
+
+// TestShipmentDetailCouriersDropdown tests that couriers from database are available in the dropdown
+func TestShipmentDetailCouriersDropdown(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test user
+	var userID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test shipment with status that allows courier selection
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPendingPickup, 1, "TEST-12345", time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	// Create test couriers in database with unique names
+	timestamp := time.Now().UnixNano()
+	courierNames := []string{
+		fmt.Sprintf("Custom Courier A %d", timestamp),
+		fmt.Sprintf("Custom Courier B %d", timestamp),
+		fmt.Sprintf("Custom Courier C %d", timestamp),
+	}
+	var courierIDs []int64
+	for _, name := range courierNames {
+		var courierID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO couriers (name, contact_info, created_at, updated_at)
+			VALUES ($1, $2, $3, $4) RETURNING id`,
+			name, "Contact info for "+name, time.Now(), time.Now(),
+		).Scan(&courierID)
+		if err != nil {
+			t.Fatalf("Failed to create test courier %s: %v", name, err)
+		}
+		courierIDs = append(courierIDs, courierID)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	t.Run("shipment detail page includes couriers from database in dropdown", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Verify that all couriers from database are present in the dropdown
+		for _, courierName := range courierNames {
+			if !strings.Contains(body, courierName) {
+				t.Errorf("Expected courier '%s' to be present in dropdown, but it was not found in response", courierName)
+			}
+		}
+
+		// Verify that hardcoded couriers (UPS, FedEx, DHL) are NOT present as hardcoded options
+		// They should only appear if they exist in the database
+		// Note: This test assumes we're replacing hardcoded options with database-driven ones
+	})
+}

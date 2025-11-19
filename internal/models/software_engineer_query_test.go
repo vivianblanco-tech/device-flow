@@ -91,9 +91,9 @@ func TestGetAllSoftwareEngineers_WithSearchFilter(t *testing.T) {
 		Phone: "+1-555-0002",
 	}
 	engineer3 := &SoftwareEngineer{
-		Name:  "Charlie Brown",
-		Email: "charlie.brown@example.com",
-		Phone: "+1-555-0003",
+		Name:           "Charlie Brown",
+		Email:          "charlie.brown@example.com",
+		Phone:          "+1-555-0003",
 		EmployeeNumber: "EMP001",
 	}
 
