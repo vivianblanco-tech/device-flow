@@ -97,8 +97,9 @@ func (e *CalendarEvent) GetShipmentLink() string {
 
 // GetCalendarEvents retrieves calendar events within a date range
 // If clientCompanyID is provided (non-nil), only events for that company are returned
-// If clientCompanyID is nil, all events are returned
-func GetCalendarEvents(db *sql.DB, startDate, endDate time.Time, clientCompanyID *int64) ([]CalendarEvent, error) {
+// If userRole is RoleWarehouse, only events for warehouse-related shipments are returned
+// If both are nil, all events are returned
+func GetCalendarEvents(db *sql.DB, startDate, endDate time.Time, clientCompanyID *int64, userRole *UserRole) ([]CalendarEvent, error) {
 	query := `
 		SELECT 
 			s.id,
@@ -123,22 +124,29 @@ func GetCalendarEvents(db *sql.DB, startDate, endDate time.Time, clientCompanyID
 
 	var rows *sql.Rows
 	var err error
+	argCount := 3
+	args := []interface{}{startDate, endDate}
 
 	// Add client company filter if provided
 	if clientCompanyID != nil {
-		query += ` AND s.client_company_id = $3`
-		query += `
-		ORDER BY 
-			COALESCE(s.pickup_scheduled_date, s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, s.delivered_at)
-		`
-		rows, err = db.Query(query, startDate, endDate, *clientCompanyID)
-	} else {
-		query += `
-		ORDER BY 
-			COALESCE(s.pickup_scheduled_date, s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, s.delivered_at)
-		`
-		rows, err = db.Query(query, startDate, endDate)
+		query += fmt.Sprintf(" AND s.client_company_id = $%d", argCount)
+		args = append(args, *clientCompanyID)
+		argCount++
 	}
+
+	// Add warehouse role filter if provided
+	if userRole != nil && *userRole == RoleWarehouse {
+		query += fmt.Sprintf(" AND s.status IN ($%d, $%d, $%d)", argCount, argCount+1, argCount+2)
+		args = append(args, string(ShipmentStatusInTransitToWarehouse), string(ShipmentStatusAtWarehouse), string(ShipmentStatusReleasedFromWarehouse))
+		argCount += 3
+	}
+
+	query += `
+		ORDER BY 
+			COALESCE(s.pickup_scheduled_date, s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, s.delivered_at)
+	`
+
+	rows, err = db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query calendar events: %w", err)
 	}
