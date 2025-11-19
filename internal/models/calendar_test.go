@@ -396,11 +396,11 @@ func TestGetCalendarEventsWithWarehouseRoleFilter(t *testing.T) {
 
 	// Shipment 3: Released from warehouse (warehouse users should see)
 	shipment3 := &Shipment{
-		ClientCompanyID:      clientCompany.ID,
-		SoftwareEngineerID:   &engineer.ID,
-		Status:               ShipmentStatusReleasedFromWarehouse,
+		ClientCompanyID:     clientCompany.ID,
+		SoftwareEngineerID:  &engineer.ID,
+		Status:              ShipmentStatusReleasedFromWarehouse,
 		JiraTicketNumber:    "TEST-802",
-		PickupScheduledDate:  &tomorrow,
+		PickupScheduledDate: &tomorrow,
 		ReleasedWarehouseAt: &now,
 	}
 	shipment3.BeforeCreate()

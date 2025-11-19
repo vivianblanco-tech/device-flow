@@ -92,3 +92,122 @@ func GetAllClientCompanies(db interface{ Query(query string, args ...interface{}
 	return companies, nil
 }
 
+// GetClientCompanyByID retrieves a client company by its ID
+func GetClientCompanyByID(db *sql.DB, id int64) (*ClientCompany, error) {
+	query := `
+		SELECT id, name, contact_info, created_at, updated_at
+		FROM client_companies
+		WHERE id = $1
+	`
+
+	var company ClientCompany
+	err := db.QueryRow(query, id).Scan(
+		&company.ID,
+		&company.Name,
+		&company.ContactInfo,
+		&company.CreatedAt,
+		&company.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("client company not found with id %d", id)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client company: %w", err)
+	}
+
+	return &company, nil
+}
+
+// CreateClientCompany creates a new client company in the database
+func CreateClientCompany(db *sql.DB, company *ClientCompany) error {
+	// Validate company
+	if err := company.Validate(); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	// Set timestamps
+	company.BeforeCreate()
+
+	query := `
+		INSERT INTO client_companies (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
+	`
+
+	err := db.QueryRow(
+		query,
+		company.Name,
+		company.ContactInfo,
+		company.CreatedAt,
+		company.UpdatedAt,
+	).Scan(&company.ID)
+
+	if err != nil {
+		return fmt.Errorf("failed to create client company: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateClientCompany updates an existing client company in the database
+func UpdateClientCompany(db *sql.DB, company *ClientCompany) error {
+	// Validate company
+	if err := company.Validate(); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	// Update timestamp
+	company.BeforeUpdate()
+
+	query := `
+		UPDATE client_companies
+		SET name = $1, contact_info = $2, updated_at = $3
+		WHERE id = $4
+	`
+
+	result, err := db.Exec(
+		query,
+		company.Name,
+		company.ContactInfo,
+		company.UpdatedAt,
+		company.ID,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update client company: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("client company not found with id %d", company.ID)
+	}
+
+	return nil
+}
+
+// DeleteClientCompany deletes a client company from the database
+func DeleteClientCompany(db *sql.DB, id int64) error {
+	query := `DELETE FROM client_companies WHERE id = $1`
+
+	result, err := db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete client company: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("client company not found with id %d", id)
+	}
+
+	return nil
+}
+

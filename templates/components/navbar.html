@@ -41,6 +41,10 @@ Expected template data:
                 {{if .Nav.MagicLinks}}
                 <a href="/magic-links" class="text-sm {{if eq .CurrentPage "magic-links"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Magic Links</a>
                 {{end}}
+                
+                {{if .Nav.Forms}}
+                <a href="/forms" class="text-sm {{if eq .CurrentPage "forms"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Forms</a>
+                {{end}}
             </div>
             
             <!-- User Info and Logout -->

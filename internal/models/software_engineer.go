@@ -124,3 +124,149 @@ func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface
 	return engineers, nil
 }
 
+// GetSoftwareEngineerByID retrieves a software engineer by its ID
+func GetSoftwareEngineerByID(db *sql.DB, id int64) (*SoftwareEngineer, error) {
+	query := `
+		SELECT id, name, email, phone, address, address_confirmed, address_confirmation_at, created_at, updated_at
+		FROM software_engineers
+		WHERE id = $1
+	`
+
+	var engineer SoftwareEngineer
+	var phone sql.NullString
+	var address sql.NullString
+	var addressConfirmationAt sql.NullTime
+
+	err := db.QueryRow(query, id).Scan(
+		&engineer.ID,
+		&engineer.Name,
+		&engineer.Email,
+		&phone,
+		&address,
+		&engineer.AddressConfirmed,
+		&addressConfirmationAt,
+		&engineer.CreatedAt,
+		&engineer.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("software engineer not found with id %d", id)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get software engineer: %w", err)
+	}
+
+	// Set nullable fields if available
+	if phone.Valid {
+		engineer.Phone = phone.String
+	}
+	if address.Valid {
+		engineer.Address = address.String
+	}
+	if addressConfirmationAt.Valid {
+		engineer.AddressConfirmationAt = &addressConfirmationAt.Time
+	}
+
+	return &engineer, nil
+}
+
+// CreateSoftwareEngineer creates a new software engineer in the database
+func CreateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
+	// Validate engineer
+	if err := engineer.Validate(); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	// Set timestamps
+	engineer.BeforeCreate()
+
+	query := `
+		INSERT INTO software_engineers (name, email, address, phone, address_confirmed, address_confirmation_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id
+	`
+
+	err := db.QueryRow(
+		query,
+		engineer.Name,
+		engineer.Email,
+		engineer.Address,
+		engineer.Phone,
+		engineer.AddressConfirmed,
+		engineer.AddressConfirmationAt,
+		engineer.CreatedAt,
+		engineer.UpdatedAt,
+	).Scan(&engineer.ID)
+
+	if err != nil {
+		return fmt.Errorf("failed to create software engineer: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateSoftwareEngineer updates an existing software engineer in the database
+func UpdateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
+	// Validate engineer
+	if err := engineer.Validate(); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	// Update timestamp
+	engineer.BeforeUpdate()
+
+	query := `
+		UPDATE software_engineers
+		SET name = $1, email = $2, address = $3, phone = $4, address_confirmed = $5, address_confirmation_at = $6, updated_at = $7
+		WHERE id = $8
+	`
+
+	result, err := db.Exec(
+		query,
+		engineer.Name,
+		engineer.Email,
+		engineer.Address,
+		engineer.Phone,
+		engineer.AddressConfirmed,
+		engineer.AddressConfirmationAt,
+		engineer.UpdatedAt,
+		engineer.ID,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update software engineer: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("software engineer not found with id %d", engineer.ID)
+	}
+
+	return nil
+}
+
+// DeleteSoftwareEngineer deletes a software engineer from the database
+func DeleteSoftwareEngineer(db *sql.DB, id int64) error {
+	query := `DELETE FROM software_engineers WHERE id = $1`
+
+	result, err := db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete software engineer: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("software engineer not found with id %d", id)
+	}
+
+	return nil
+}
+

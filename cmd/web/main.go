@@ -252,6 +252,7 @@ func main() {
 	receptionReportHandler := handlers.NewReceptionReportHandler(db, templates, notifier)
 	deliveryFormHandler := handlers.NewDeliveryFormHandler(db, templates, notifier)
 	shipmentsHandler := handlers.NewShipmentsHandler(db, templates, notifier)
+	formsHandler := handlers.NewFormsHandler(db, templates)
 
 	// Initialize router
 	router := mux.NewRouter()
@@ -296,6 +297,37 @@ func main() {
 	// Magic Links (logistics only)
 	protected.HandleFunc("/magic-links", authHandler.MagicLinksList).Methods("GET")
 	protected.HandleFunc("/auth/send-magic-link", authHandler.SendMagicLink).Methods("POST")
+
+	// Forms Management (logistics only)
+	protected.HandleFunc("/forms", formsHandler.FormsPage).Methods("GET")
+	
+	// User management routes
+	protected.HandleFunc("/forms/users", formsHandler.UsersList).Methods("GET")
+	protected.HandleFunc("/forms/users/add", formsHandler.UserAddPage).Methods("GET")
+	protected.HandleFunc("/forms/users/add", formsHandler.UserAddSubmit).Methods("POST")
+	protected.HandleFunc("/forms/users/{id:[0-9]+}/edit", formsHandler.UserEditPage).Methods("GET")
+	protected.HandleFunc("/forms/users/{id:[0-9]+}/edit", formsHandler.UserEditSubmit).Methods("POST")
+	
+	// Client company management routes
+	protected.HandleFunc("/forms/client-companies", formsHandler.ClientCompaniesList).Methods("GET")
+	protected.HandleFunc("/forms/client-companies/add", formsHandler.ClientCompanyAddPage).Methods("GET")
+	protected.HandleFunc("/forms/client-companies/add", formsHandler.ClientCompanyAddSubmit).Methods("POST")
+	protected.HandleFunc("/forms/client-companies/{id:[0-9]+}/edit", formsHandler.ClientCompanyEditPage).Methods("GET")
+	protected.HandleFunc("/forms/client-companies/{id:[0-9]+}/edit", formsHandler.ClientCompanyEditSubmit).Methods("POST")
+	
+	// Software engineer management routes
+	protected.HandleFunc("/forms/software-engineers", formsHandler.SoftwareEngineersList).Methods("GET")
+	protected.HandleFunc("/forms/software-engineers/add", formsHandler.SoftwareEngineerAddPage).Methods("GET")
+	protected.HandleFunc("/forms/software-engineers/add", formsHandler.SoftwareEngineerAddSubmit).Methods("POST")
+	protected.HandleFunc("/forms/software-engineers/{id:[0-9]+}/edit", formsHandler.SoftwareEngineerEditPage).Methods("GET")
+	protected.HandleFunc("/forms/software-engineers/{id:[0-9]+}/edit", formsHandler.SoftwareEngineerEditSubmit).Methods("POST")
+	
+	// Courier management routes
+	protected.HandleFunc("/forms/couriers", formsHandler.CouriersList).Methods("GET")
+	protected.HandleFunc("/forms/couriers/add", formsHandler.CourierAddPage).Methods("GET")
+	protected.HandleFunc("/forms/couriers/add", formsHandler.CourierAddSubmit).Methods("POST")
+	protected.HandleFunc("/forms/couriers/{id:[0-9]+}/edit", formsHandler.CourierEditPage).Methods("GET")
+	protected.HandleFunc("/forms/couriers/{id:[0-9]+}/edit", formsHandler.CourierEditSubmit).Methods("POST")
 
 	// Inventory routes
 	protected.HandleFunc("/inventory", inventoryHandler.InventoryList).Methods("GET")

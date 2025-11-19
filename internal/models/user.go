@@ -1,7 +1,9 @@
 package models
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
 	"regexp"
 	"time"
 )
@@ -93,5 +95,200 @@ func (u *User) BeforeCreate() {
 // BeforeUpdate sets the updated_at timestamp before updating a user
 func (u *User) BeforeUpdate() {
 	u.UpdatedAt = time.Now()
+}
+
+// GetAllUsers retrieves all users from the database
+func GetAllUsers(db *sql.DB) ([]User, error) {
+	query := `
+		SELECT u.id, u.email, u.password_hash, u.role, u.client_company_id, u.google_id, u.created_at, u.updated_at,
+		       cc.name as client_company_name
+		FROM users u
+		LEFT JOIN client_companies cc ON cc.id = u.client_company_id
+		ORDER BY u.email ASC
+	`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var user User
+		var clientCompanyName sql.NullString
+		var googleID sql.NullString
+
+		err := rows.Scan(
+			&user.ID,
+			&user.Email,
+			&user.PasswordHash,
+			&user.Role,
+			&user.ClientCompanyID,
+			&googleID,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+			&clientCompanyName,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+
+		if googleID.Valid {
+			user.GoogleID = &googleID.String
+		}
+		if clientCompanyName.Valid {
+			user.ClientCompanyName = clientCompanyName.String
+		}
+
+		users = append(users, user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating users: %w", err)
+	}
+
+	return users, nil
+}
+
+// GetUserByID retrieves a user by its ID
+func GetUserByID(db *sql.DB, id int64) (*User, error) {
+	query := `
+		SELECT u.id, u.email, u.password_hash, u.role, u.client_company_id, u.google_id, u.created_at, u.updated_at,
+		       cc.name as client_company_name
+		FROM users u
+		LEFT JOIN client_companies cc ON cc.id = u.client_company_id
+		WHERE u.id = $1
+	`
+
+	var user User
+	var clientCompanyName sql.NullString
+	var googleID sql.NullString
+
+	err := db.QueryRow(query, id).Scan(
+		&user.ID,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Role,
+		&user.ClientCompanyID,
+		&googleID,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&clientCompanyName,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("user not found with id %d", id)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	if googleID.Valid {
+		user.GoogleID = &googleID.String
+	}
+	if clientCompanyName.Valid {
+		user.ClientCompanyName = clientCompanyName.String
+	}
+
+	return &user, nil
+}
+
+// CreateUser creates a new user in the database
+func CreateUser(db *sql.DB, user *User) error {
+	// Validate user
+	if err := user.Validate(); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	// Set timestamps
+	user.BeforeCreate()
+
+	query := `
+		INSERT INTO users (email, password_hash, role, client_company_id, google_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id
+	`
+
+	err := db.QueryRow(
+		query,
+		user.Email,
+		user.PasswordHash,
+		user.Role,
+		user.ClientCompanyID,
+		user.GoogleID,
+		user.CreatedAt,
+		user.UpdatedAt,
+	).Scan(&user.ID)
+
+	if err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateUser updates an existing user in the database
+func UpdateUser(db *sql.DB, user *User) error {
+	// Validate user
+	if err := user.Validate(); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	// Update timestamp
+	user.BeforeUpdate()
+
+	query := `
+		UPDATE users
+		SET email = $1, password_hash = $2, role = $3, client_company_id = $4, google_id = $5, updated_at = $6
+		WHERE id = $7
+	`
+
+	result, err := db.Exec(
+		query,
+		user.Email,
+		user.PasswordHash,
+		user.Role,
+		user.ClientCompanyID,
+		user.GoogleID,
+		user.UpdatedAt,
+		user.ID,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found with id %d", user.ID)
+	}
+
+	return nil
+}
+
+// DeleteUser deletes a user from the database
+func DeleteUser(db *sql.DB, id int64) error {
+	query := `DELETE FROM users WHERE id = $1`
+
+	result, err := db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found with id %d", id)
+	}
+
+	return nil
 }
 

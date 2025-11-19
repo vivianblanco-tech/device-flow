@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Companies - Forms Management</title>
+    <link rel="stylesheet" href="/static/css/output.css" />
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {{template "navbar.html" .}}
+
+    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900">Client Companies</h2>
+                    <p class="mt-2 text-gray-600">Manage client company information</p>
+                </div>
+                <a href="/forms/client-companies/add" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                    + Add Company
+                </a>
+            </div>
+        </div>
+
+        {{if .Success}}
+        <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+            {{.Success}}
+        </div>
+        {{end}}
+
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            {{if .Companies}}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Info</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {{range .Companies}}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{.Name}}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">{{if .ContactInfo}}{{.ContactInfo}}{{else}}-{{end}}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <a href="/forms/client-companies/{{.ID}}/edit" class="text-green-600 hover:text-green-900">Edit</a>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <div class="p-8 text-center text-gray-500">No client companies found</div>
+            {{end}}
+        </div>
+    </div>
+</body>
+</html>
+
