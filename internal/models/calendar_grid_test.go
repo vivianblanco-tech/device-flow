@@ -158,6 +158,7 @@ func TestCalendarDayStructure(t *testing.T) {
 	day := CalendarDay{
 		Date:           date,
 		IsCurrentMonth: true,
+		IsToday:        false,
 		Events:         []CalendarEvent{},
 	}
 
@@ -188,5 +189,63 @@ func TestCalendarDayStructure(t *testing.T) {
 
 	if len(day.Events) != 1 {
 		t.Errorf("Expected 1 event, got %d", len(day.Events))
+	}
+}
+
+// TestGenerateCalendarGridWithIsToday tests that today's date is marked with IsToday flag
+func TestGenerateCalendarGridWithIsToday(t *testing.T) {
+	// Use current month and year
+	now := time.Now()
+	year := now.Year()
+	month := now.Month()
+
+	grid := GenerateCalendarGrid(year, month)
+
+	// Find today's date in the grid
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	var foundToday bool
+	var todayDay *CalendarDay
+
+	for _, week := range grid {
+		for i := range week {
+			dayDate := time.Date(week[i].Date.Year(), week[i].Date.Month(), week[i].Date.Day(), 0, 0, 0, 0, time.UTC)
+			if dayDate.Equal(today) {
+				foundToday = true
+				todayDay = &week[i]
+				break
+			}
+		}
+		if foundToday {
+			break
+		}
+	}
+
+	// Test: Today should be found in the grid
+	if !foundToday {
+		t.Fatal("Today's date should be in the grid")
+	}
+
+	// Test: Today should be marked with IsToday = true
+	if !todayDay.IsToday {
+		t.Error("Today's date should be marked with IsToday = true")
+	}
+
+	// Test: Other days should not be marked as today
+	todayCount := 0
+	for _, week := range grid {
+		for _, day := range week {
+			if day.IsToday {
+				todayCount++
+				dayDate := time.Date(day.Date.Year(), day.Date.Month(), day.Date.Day(), 0, 0, 0, 0, time.UTC)
+				if !dayDate.Equal(today) {
+					t.Errorf("Only today (%s) should be marked as IsToday, but found %s also marked", today.Format("2006-01-02"), dayDate.Format("2006-01-02"))
+				}
+			}
+		}
+	}
+
+	// Test: Exactly one day should be marked as today
+	if todayCount != 1 {
+		t.Errorf("Expected exactly 1 day marked as today, got %d", todayCount)
 	}
 }

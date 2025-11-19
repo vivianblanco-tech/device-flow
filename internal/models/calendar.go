@@ -273,6 +273,7 @@ func getStringOrDefault(ns sql.NullString, defaultValue string) string {
 type CalendarDay struct {
 	Date           time.Time       `json:"date"`
 	IsCurrentMonth bool            `json:"is_current_month"`
+	IsToday        bool            `json:"is_today"`
 	Events         []CalendarEvent `json:"events"`
 }
 
@@ -298,15 +299,25 @@ func GenerateCalendarGrid(year int, month time.Month) [][]CalendarDay {
 		endDate = endDate.Add(24 * time.Hour)
 	}
 	
+	// Get today's date components for comparison (use local time, not UTC)
+	// This ensures we compare against the user's local "today", not UTC "today"
+	now := time.Now()
+	todayYear, todayMonth, todayDay := now.Year(), now.Month(), now.Day()
+	
 	// Build the grid
 	var grid [][]CalendarDay
 	var currentWeek []CalendarDay
 	
 	currentDate := startDate
 	for !currentDate.After(endDate) {
+		// Compare date components directly (year, month, day)
+		currentYear, currentMonth, currentDay := currentDate.Year(), currentDate.Month(), currentDate.Day()
+		isToday := currentYear == todayYear && currentMonth == todayMonth && currentDay == todayDay
+		
 		day := CalendarDay{
 			Date:           currentDate,
 			IsCurrentMonth: currentDate.Month() == month,
+			IsToday:        isToday,
 			Events:         []CalendarEvent{},
 		}
 		currentWeek = append(currentWeek, day)
