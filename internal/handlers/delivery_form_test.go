@@ -245,9 +245,20 @@ func TestDeliveryFormSubmit(t *testing.T) {
 	})
 
 	t.Run("magic link should be marked as used when delivery form is submitted", func(t *testing.T) {
+		// Create a separate shipment for this test (since the first test already delivered the shared shipment)
+		var testShipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (client_company_id, status, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			companyID, models.ShipmentStatusInTransitToEngineer, "TEST-102", time.Now(), time.Now(),
+		).Scan(&testShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment for magic link test: %v", err)
+		}
+
 		// Create test user
 		var userID int64
-		err := db.QueryRowContext(ctx,
+		err = db.QueryRowContext(ctx,
 			`INSERT INTO users (email, password_hash, role, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
 			"engineer@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
@@ -256,8 +267,8 @@ func TestDeliveryFormSubmit(t *testing.T) {
 			t.Fatalf("Failed to create test user: %v", err)
 		}
 
-		// Create magic link associated with shipment
-		magicLink, err := auth.CreateMagicLink(ctx, db, userID, &shipmentID, auth.DefaultMagicLinkDuration)
+		// Create magic link associated with the test shipment
+		magicLink, err := auth.CreateMagicLink(ctx, db, userID, &testShipmentID, auth.DefaultMagicLinkDuration)
 		if err != nil {
 			t.Fatalf("Failed to create magic link: %v", err)
 		}
@@ -279,7 +290,7 @@ func TestDeliveryFormSubmit(t *testing.T) {
 
 		// Submit delivery form
 		formData := url.Values{}
-		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("shipment_id", strconv.FormatInt(testShipmentID, 10))
 		formData.Set("engineer_id", strconv.FormatInt(engineerID, 10))
 		formData.Set("notes", "Delivered successfully")
 
