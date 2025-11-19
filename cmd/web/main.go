@@ -21,6 +21,7 @@ import (
 	"github.com/yourusername/laptop-tracking-system/internal/handlers"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
+	"github.com/yourusername/laptop-tracking-system/internal/utils"
 	"github.com/yourusername/laptop-tracking-system/internal/views"
 )
 
@@ -226,6 +227,8 @@ func main() {
 			
 			return template.HTML(strings.Join(parts, ""))
 		},
+		// Format contact info for form display (converts JSON to plain text)
+		"formatContactInfoForForm": utils.FormatContactInfoForForm,
 	}
 
 	templates, err := template.New("").Funcs(funcMap).ParseGlob("templates/pages/*.html")

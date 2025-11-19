@@ -18,6 +18,7 @@ import (
 	"github.com/yourusername/laptop-tracking-system/internal/database"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
+	"github.com/yourusername/laptop-tracking-system/internal/utils"
 )
 
 // loadTestTemplates loads templates for testing
@@ -163,6 +164,45 @@ func loadTestTemplates(t *testing.T) *template.Template {
 			}
 		},
 		"printf": fmt.Sprintf,
+		// Format contact info from JSON to readable format (for display in lists)
+		"formatContactInfo": func(contactInfo string) template.HTML {
+			if contactInfo == "" {
+				return template.HTML(`<span class="text-gray-400">-</span>`)
+			}
+			
+			// Try to parse as JSON
+			var contactMap map[string]interface{}
+			if err := json.Unmarshal([]byte(contactInfo), &contactMap); err != nil {
+				// If not JSON, return as-is
+				return template.HTML(template.HTMLEscapeString(contactInfo))
+			}
+			
+			// Build formatted HTML with better spacing
+			var parts []string
+			if email, ok := contactMap["email"].(string); ok && email != "" {
+				parts = append(parts, fmt.Sprintf(`<div class="mb-1"><span class="text-gray-600">Email:</span> <span class="text-gray-900">%s</span></div>`, template.HTMLEscapeString(email)))
+			}
+			if phone, ok := contactMap["phone"].(string); ok && phone != "" {
+				parts = append(parts, fmt.Sprintf(`<div class="mb-1"><span class="text-gray-600">Phone:</span> <span class="text-gray-900">%s</span></div>`, template.HTMLEscapeString(phone)))
+			}
+			if address, ok := contactMap["address"].(string); ok && address != "" {
+				parts = append(parts, fmt.Sprintf(`<div class="mb-1"><span class="text-gray-600">Address:</span> <span class="text-gray-900">%s</span></div>`, template.HTMLEscapeString(address)))
+			}
+			if country, ok := contactMap["country"].(string); ok && country != "" {
+				parts = append(parts, fmt.Sprintf(`<div class="mb-1"><span class="text-gray-600">Country:</span> <span class="text-gray-900">%s</span></div>`, template.HTMLEscapeString(country)))
+			}
+			if website, ok := contactMap["website"].(string); ok && website != "" {
+				parts = append(parts, fmt.Sprintf(`<div><span class="text-gray-600">Website:</span> <span class="text-gray-900">%s</span></div>`, template.HTMLEscapeString(website)))
+			}
+			
+			if len(parts) == 0 {
+				return template.HTML(`<span class="text-gray-400">-</span>`)
+			}
+			
+			return template.HTML(strings.Join(parts, ""))
+		},
+		// Format contact info for form display (converts JSON to plain text)
+		"formatContactInfoForForm": utils.FormatContactInfoForForm,
 	}
 
 	templates, err := template.New("").Funcs(funcMap).ParseGlob("../../templates/pages/*.html")
