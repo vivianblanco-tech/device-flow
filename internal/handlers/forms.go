@@ -212,14 +212,22 @@ func (h *FormsHandler) UserEditPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentUser := middleware.GetUserFromContext(r.Context())
+	
+	// Get current company ID for pre-selection (0 if nil)
+	var currentCompanyID int64
+	if user.ClientCompanyID != nil {
+		currentCompanyID = *user.ClientCompanyID
+	}
+	
 	data := map[string]interface{}{
-		"User":        currentUser,
-		"Nav":         views.GetNavigationLinks(currentUser.Role),
-		"CurrentPage": "forms",
-		"EditUser":    user,
-		"Companies":   companies,
-		"Roles":       []models.UserRole{models.RoleLogistics, models.RoleClient, models.RoleWarehouse, models.RoleProjectManager},
-		"IsEdit":      true,
+		"User":             currentUser,
+		"Nav":              views.GetNavigationLinks(currentUser.Role),
+		"CurrentPage":      "forms",
+		"EditUser":         user,
+		"Companies":        companies,
+		"Roles":            []models.UserRole{models.RoleLogistics, models.RoleClient, models.RoleWarehouse, models.RoleProjectManager},
+		"IsEdit":           true,
+		"CurrentCompanyID": currentCompanyID,
 	}
 
 	if err := h.Templates.ExecuteTemplate(w, "user-form.html", data); err != nil {
