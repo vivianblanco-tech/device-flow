@@ -4071,3 +4071,102 @@ func TestShipmentDetailCouriersDropdown(t *testing.T) {
 		// Note: This test assumes we're replacing hardcoded options with database-driven ones
 	})
 }
+
+// TestUpdateShipmentStatusWithDatabaseCourier tests that couriers from database are accepted
+func TestUpdateShipmentStatusWithDatabaseCourier(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test user
+	var userID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test shipment with pending_pickup_from_client status
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPendingPickup, 1, "TEST-12345", time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	// Create a courier in the database
+	timestamp := time.Now().UnixNano()
+	courierName := fmt.Sprintf("Test Courier %d", timestamp)
+	var courierID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO couriers (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, $3, $4) RETURNING id`,
+		courierName, "Contact info", time.Now(), time.Now(),
+	).Scan(&courierID)
+	if err != nil {
+		t.Fatalf("Failed to create test courier: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	t.Run("update shipment status accepts courier from database", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("status", string(models.ShipmentStatusPickupScheduled))
+		form.Set("courier_name", courierName)
+		form.Set("tracking_number", "TRACK123")
+		form.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/"+strconv.FormatInt(shipmentID, 10)+"/status", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		// Should succeed (not return 400 Bad Request)
+		if w.Code == http.StatusBadRequest {
+			body := w.Body.String()
+			t.Errorf("Expected status update to succeed, got %d. Response: %s", w.Code, body)
+		}
+
+		// Verify courier was saved
+		var savedCourierName sql.NullString
+		err := db.QueryRowContext(ctx,
+			`SELECT courier_name FROM shipments WHERE id = $1`,
+			shipmentID,
+		).Scan(&savedCourierName)
+		if err != nil {
+			t.Fatalf("Failed to verify courier was saved: %v", err)
+		}
+		if !savedCourierName.Valid || savedCourierName.String != courierName {
+			t.Errorf("Expected courier name '%s', got '%s'", courierName, savedCourierName.String)
+		}
+	})
+}

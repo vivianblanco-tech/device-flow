@@ -202,3 +202,37 @@ func DeleteCourier(db *sql.DB, id int64) error {
 	return nil
 }
 
+// CourierExistsByName checks if a courier with the given name exists in the database
+func CourierExistsByName(db interface{ QueryRow(query string, args ...interface{}) *sql.Row }, name string) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM couriers WHERE name = $1)`
+	
+	var exists bool
+	err := db.QueryRow(query, name).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if courier exists: %w", err)
+	}
+	
+	return exists, nil
+}
+
+// IsValidCourierName checks if a courier name is valid by checking the database first,
+// then falling back to hardcoded values (UPS, FedEx, DHL) for backward compatibility
+func IsValidCourierName(db interface{ QueryRow(query string, args ...interface{}) *sql.Row }, name string) (bool, error) {
+	// First check database
+	exists, err := CourierExistsByName(db, name)
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		return true, nil
+	}
+	
+	// Fall back to hardcoded values for backward compatibility
+	switch name {
+	case "UPS", "FedEx", "DHL":
+		return true, nil
+	}
+	
+	return false, nil
+}
+

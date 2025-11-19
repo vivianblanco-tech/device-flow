@@ -230,8 +230,14 @@ func (h *ShipmentsHandler) EditShipmentPOST(w http.ResponseWriter, r *http.Reque
 	// Update courier if provided
 	courierName := r.FormValue("courier_name")
 	if courierName != "" {
-		if !models.IsValidCourier(courierName) {
-			http.Error(w, "Invalid courier name", http.StatusBadRequest)
+		// Check if courier exists in database or is a valid hardcoded value
+		valid, err := models.IsValidCourierName(h.DB, courierName)
+		if err != nil {
+			http.Error(w, "Failed to validate courier name", http.StatusInternalServerError)
+			return
+		}
+		if !valid {
+			http.Error(w, "Invalid courier name. Courier must exist in the system", http.StatusBadRequest)
 			return
 		}
 
