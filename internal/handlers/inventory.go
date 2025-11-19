@@ -166,7 +166,7 @@ func (h *InventoryHandler) AddLaptopPage(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Get all software engineers
-	engineers, err := models.GetAllSoftwareEngineers(h.DB)
+	engineers, err := models.GetAllSoftwareEngineers(h.DB, nil)
 	if err != nil {
 		log.Printf("Error getting software engineers: %v", err)
 		http.Error(w, "Failed to load software engineers", http.StatusInternalServerError)
@@ -298,7 +298,7 @@ func (h *InventoryHandler) EditLaptopPage(w http.ResponseWriter, r *http.Request
 	}
 
 	// Get all software engineers
-	engineers, err := models.GetAllSoftwareEngineers(h.DB)
+	engineers, err := models.GetAllSoftwareEngineers(h.DB, nil)
 	if err != nil {
 		log.Printf("Error getting software engineers: %v", err)
 		http.Error(w, "Failed to load software engineers", http.StatusInternalServerError)

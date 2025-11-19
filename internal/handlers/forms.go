@@ -458,7 +458,19 @@ func (h *FormsHandler) SoftwareEngineersList(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	engineers, err := models.GetAllSoftwareEngineers(h.DB)
+	// Parse query parameters
+	searchQuery := r.URL.Query().Get("search")
+	sortBy := r.URL.Query().Get("sort")
+	sortOrder := r.URL.Query().Get("order")
+
+	// Build filter
+	filter := &models.SoftwareEngineerFilter{
+		Search:    searchQuery,
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
+	}
+
+	engineers, err := models.GetAllSoftwareEngineers(h.DB, filter)
 	if err != nil {
 		log.Printf("Error getting software engineers: %v", err)
 		http.Error(w, "Failed to load software engineers", http.StatusInternalServerError)
@@ -467,10 +479,13 @@ func (h *FormsHandler) SoftwareEngineersList(w http.ResponseWriter, r *http.Requ
 
 	user := middleware.GetUserFromContext(r.Context())
 	data := map[string]interface{}{
-		"User":      user,
-		"Nav":       views.GetNavigationLinks(user.Role),
+		"User":        user,
+		"Nav":         views.GetNavigationLinks(user.Role),
 		"CurrentPage": "forms",
-		"Engineers": engineers,
+		"Engineers":   engineers,
+		"SearchQuery": searchQuery,
+		"SortBy":      sortBy,
+		"SortOrder":   sortOrder,
 	}
 
 	if err := h.Templates.ExecuteTemplate(w, "software-engineers-list.html", data); err != nil {

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -68,15 +69,48 @@ func (s *SoftwareEngineer) ConfirmAddress() {
 	s.AddressConfirmationAt = &now
 }
 
-// GetAllSoftwareEngineers retrieves all software engineers from the database sorted by name
-func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface{}) (*sql.Rows, error) }) ([]SoftwareEngineer, error) {
+// SoftwareEngineerFilter represents filtering options for software engineer queries
+type SoftwareEngineerFilter struct {
+	Search    string // Search by name, email, or employee number
+	SortBy    string // Column to sort by (e.g., "name", "email", "created_at")
+	SortOrder string // Sort order: "asc" or "desc"
+}
+
+// GetAllSoftwareEngineers retrieves all software engineers from the database with optional filtering
+func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface{}) (*sql.Rows, error) }, filter *SoftwareEngineerFilter) ([]SoftwareEngineer, error) {
 	query := `
 		SELECT id, name, email, phone, address, employee_number, address_confirmed, address_confirmation_at, created_at, updated_at
 		FROM software_engineers
-		ORDER BY name ASC
 	`
+	
+	var conditions []string
+	var args []interface{}
+	argCount := 0
 
-	rows, err := db.Query(query)
+	// Apply search filter if provided
+	if filter != nil && filter.Search != "" {
+		argCount++
+		searchPattern := "%" + strings.ToLower(filter.Search) + "%"
+		conditions = append(conditions, fmt.Sprintf("(LOWER(name) LIKE $%d OR LOWER(email) LIKE $%d OR LOWER(COALESCE(employee_number, '')) LIKE $%d)", argCount, argCount, argCount))
+		args = append(args, searchPattern)
+	}
+
+	// Add WHERE clause if there are conditions
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Add ordering
+	orderBy := buildSoftwareEngineerOrderByClause(filter)
+	query += " " + orderBy
+
+	var rows *sql.Rows
+	var err error
+	if len(args) > 0 {
+		rows, err = db.Query(query, args...)
+	} else {
+		rows, err = db.Query(query)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to query software engineers: %w", err)
 	}
@@ -281,5 +315,54 @@ func DeleteSoftwareEngineer(db *sql.DB, id int64) error {
 	}
 
 	return nil
+}
+
+// buildSoftwareEngineerOrderByClause builds the ORDER BY clause based on the filter
+func buildSoftwareEngineerOrderByClause(filter *SoftwareEngineerFilter) string {
+	// Default sort: by name ASC
+	if filter == nil {
+		return "ORDER BY name ASC"
+	}
+
+	// Map of allowed sort columns to their SQL equivalents
+	sortColumns := map[string]string{
+		"name":       "name",
+		"email":      "email",
+		"phone":      "phone",
+		"created_at": "created_at",
+		"updated_at": "updated_at",
+	}
+
+	// Validate sort order
+	sortOrder := "ASC"
+	if filter.SortOrder == "desc" {
+		sortOrder = "DESC"
+	}
+
+	// If no sort column specified, use default
+	if filter.SortBy == "" {
+		return "ORDER BY name ASC"
+	}
+
+	// Get the SQL column name
+	sqlColumn, exists := sortColumns[filter.SortBy]
+	if !exists {
+		// If invalid column, use default
+		return "ORDER BY name ASC"
+	}
+
+	// Text columns that should use COLLATE
+	textColumns := map[string]bool{
+		"name":  true,
+		"email": true,
+		"phone": true,
+	}
+
+	// Return the ORDER BY clause with the specified column and order
+	if textColumns[filter.SortBy] {
+		return fmt.Sprintf("ORDER BY %s COLLATE \"C\" %s", sqlColumn, sortOrder)
+	}
+
+	return fmt.Sprintf("ORDER BY %s %s", sqlColumn, sortOrder)
 }
 
