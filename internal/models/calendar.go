@@ -39,7 +39,7 @@ func IsValidCalendarEventType(eventType CalendarEventType) bool {
 	return false
 }
 
-// GetColorClass returns the CSS color class for the event type
+// GetColorClass returns the CSS background color class for the event type
 func (e *CalendarEvent) GetColorClass() string {
 	switch e.Type {
 	case CalendarEventTypePickup:
@@ -53,6 +53,46 @@ func (e *CalendarEvent) GetColorClass() string {
 	default:
 		return "bg-gray-500"
 	}
+}
+
+// GetBorderColorClass returns the CSS border color class for the event type
+func (e *CalendarEvent) GetBorderColorClass() string {
+	switch e.Type {
+	case CalendarEventTypePickup:
+		return "border-blue-500"
+	case CalendarEventTypeDelivery:
+		return "border-green-500"
+	case CalendarEventTypeInTransit:
+		return "border-yellow-500"
+	case CalendarEventTypeAtWarehouse:
+		return "border-purple-500"
+	default:
+		return "border-gray-500"
+	}
+}
+
+// GetTextColorClass returns the CSS text color class for the event type
+func (e *CalendarEvent) GetTextColorClass() string {
+	switch e.Type {
+	case CalendarEventTypePickup:
+		return "text-blue-700"
+	case CalendarEventTypeDelivery:
+		return "text-green-700"
+	case CalendarEventTypeInTransit:
+		return "text-yellow-700"
+	case CalendarEventTypeAtWarehouse:
+		return "text-purple-700"
+	default:
+		return "text-gray-700"
+	}
+}
+
+// GetShipmentLink returns the URL to the shipment detail page
+func (e *CalendarEvent) GetShipmentLink() string {
+	if e.ShipmentID == 0 {
+		return ""
+	}
+	return fmt.Sprintf("/shipments/%d", e.ShipmentID)
 }
 
 // GetCalendarEvents retrieves calendar events within a date range

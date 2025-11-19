@@ -93,10 +93,12 @@
                         {{if .Events}}
                         <div class="space-y-1">
                             {{range .Events}}
-                            <div class="flex items-center space-x-1">
+                            <a href="{{.GetShipmentLink}}" 
+                               class="flex items-center space-x-1 p-1 rounded hover:bg-gray-100 transition-colors group"
+                               title="{{.Title}}">
                                 <span class="w-2 h-2 {{.GetColorClass}} rounded-full flex-shrink-0"></span>
-                                <span class="text-xs text-gray-700 truncate">{{.Title}}</span>
-                            </div>
+                                <span class="text-xs {{.GetTextColorClass}} truncate group-hover:font-medium">{{.Title}}</span>
+                            </a>
                             {{end}}
                         </div>
                         {{end}}
@@ -114,18 +116,18 @@
             {{if .Events}}
             <div class="space-y-4">
                 {{range .Events}}
-                <div class="border-l-4 {{.GetColorClass}} pl-4 py-2">
+                <a href="{{.GetShipmentLink}}" class="block border-l-4 {{.GetBorderColorClass}} pl-4 py-2 hover:bg-gray-50 transition-colors rounded-r">
                     <div class="flex items-start justify-between">
                         <div>
-                            <h4 class="font-semibold text-gray-900">{{.Title}}</h4>
+                            <h4 class="font-semibold {{.GetTextColorClass}}">{{.Title}}</h4>
                             <p class="text-sm text-gray-600 mt-1">{{.Description}}</p>
                             <p class="text-xs text-gray-500 mt-1">{{formatDate .Date}} at {{formatTime .Date}}</p>
                         </div>
-                        <a href="/shipments/{{.ShipmentID}}" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                        <span class="text-sm {{.GetTextColorClass}} font-medium flex items-center">
                             View Shipment →
-                        </a>
+                        </span>
                     </div>
-                </div>
+                </a>
                 {{end}}
             </div>
             {{else}}

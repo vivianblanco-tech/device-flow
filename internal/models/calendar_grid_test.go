@@ -154,7 +154,7 @@ func TestGenerateCalendarGridWithEvents(t *testing.T) {
 // TestCalendarDayStructure tests the CalendarDay structure
 func TestCalendarDayStructure(t *testing.T) {
 	date := time.Date(2025, time.November, 15, 0, 0, 0, 0, time.UTC)
-	
+
 	day := CalendarDay{
 		Date:           date,
 		IsCurrentMonth: true,
@@ -190,4 +190,3 @@ func TestCalendarDayStructure(t *testing.T) {
 		t.Errorf("Expected 1 event, got %d", len(day.Events))
 	}
 }
-
