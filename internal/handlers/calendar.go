@@ -58,7 +58,13 @@ func (h *CalendarHandler) Calendar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get calendar events
-	events, err := models.GetCalendarEvents(h.DB, startDate, endDate)
+	// For client users, filter by their company ID; for other roles, show all events
+	var clientCompanyID *int64
+	if user.Role == models.RoleClient && user.ClientCompanyID != nil {
+		clientCompanyID = user.ClientCompanyID
+	}
+
+	events, err := models.GetCalendarEvents(h.DB, startDate, endDate, clientCompanyID)
 	if err != nil {
 		log.Printf("Error getting calendar events: %v", err)
 		http.Error(w, "Failed to load calendar events", http.StatusInternalServerError)

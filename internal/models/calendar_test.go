@@ -68,7 +68,7 @@ func TestGetCalendarEvents(t *testing.T) {
 	}
 
 	// Test: Get calendar events
-	events, err := GetCalendarEvents(db, now.AddDate(0, 0, -1), now.AddDate(0, 0, 14))
+	events, err := GetCalendarEvents(db, now.AddDate(0, 0, -1), now.AddDate(0, 0, 14), nil)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -128,7 +128,7 @@ func TestGetCalendarEventsWithDateFilter(t *testing.T) {
 	}
 
 	// Test: Query within date range (should include the event)
-	events, err := GetCalendarEvents(db, now, now.AddDate(0, 2, 0))
+	events, err := GetCalendarEvents(db, now, now.AddDate(0, 2, 0), nil)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -138,7 +138,7 @@ func TestGetCalendarEventsWithDateFilter(t *testing.T) {
 	}
 
 	// Test: Query outside date range (should not include the event)
-	events, err = GetCalendarEvents(db, now.AddDate(0, -2, 0), now.AddDate(0, -1, 0))
+	events, err = GetCalendarEvents(db, now.AddDate(0, -2, 0), now.AddDate(0, -1, 0), nil)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -205,6 +205,131 @@ func TestCalendarEventTypeValidation(t *testing.T) {
 				t.Errorf("Expected %v for %s, got %v", tc.expected, tc.eventType, result)
 			}
 		})
+	}
+}
+
+// TestGetCalendarEventsWithClientCompanyFilter tests filtering events by client company
+func TestGetCalendarEventsWithClientCompanyFilter(t *testing.T) {
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Create two client companies
+	clientCompany1 := &ClientCompany{
+		Name:        "Company A",
+		ContactInfo: "contact@companya.com",
+	}
+	err := createClientCompany(db, clientCompany1)
+	if err != nil {
+		t.Fatalf("Failed to create client company 1: %v", err)
+	}
+
+	clientCompany2 := &ClientCompany{
+		Name:        "Company B",
+		ContactInfo: "contact@companyb.com",
+	}
+	err = createClientCompany(db, clientCompany2)
+	if err != nil {
+		t.Fatalf("Failed to create client company 2: %v", err)
+	}
+
+	// Create test software engineer
+	engineer := &SoftwareEngineer{
+		Name:    "John Doe",
+		Email:   "john@example.com",
+		Address: "123 Main St",
+	}
+	err = createSoftwareEngineer(db, engineer)
+	if err != nil {
+		t.Fatalf("Failed to create software engineer: %v", err)
+	}
+
+	// Create shipments for both companies
+	now := time.Now()
+	tomorrow := now.AddDate(0, 0, 1)
+
+	// Shipment for Company A
+	shipmentA := &Shipment{
+		ClientCompanyID:     clientCompany1.ID,
+		SoftwareEngineerID:  &engineer.ID,
+		Status:              ShipmentStatusPendingPickup,
+		JiraTicketNumber:    "TEST-700",
+		PickupScheduledDate: &tomorrow,
+	}
+	shipmentA.BeforeCreate()
+	err = createShipment(db, shipmentA)
+	if err != nil {
+		t.Fatalf("Failed to create shipment A: %v", err)
+	}
+
+	// Shipment for Company B
+	shipmentB := &Shipment{
+		ClientCompanyID:     clientCompany2.ID,
+		SoftwareEngineerID:  &engineer.ID,
+		Status:              ShipmentStatusPendingPickup,
+		JiraTicketNumber:    "TEST-701",
+		PickupScheduledDate: &tomorrow,
+	}
+	shipmentB.BeforeCreate()
+	err = createShipment(db, shipmentB)
+	if err != nil {
+		t.Fatalf("Failed to create shipment B: %v", err)
+	}
+
+	// Test: Get all events without filter (should return both)
+	allEvents, err := GetCalendarEvents(db, now.AddDate(0, 0, -1), now.AddDate(0, 0, 14), nil)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(allEvents) < 2 {
+		t.Errorf("Expected at least 2 events without filter, got %d", len(allEvents))
+	}
+
+	// Test: Filter by Company A (should only return Company A's events)
+	companyAID := clientCompany1.ID
+	eventsA, err := GetCalendarEvents(db, now.AddDate(0, 0, -1), now.AddDate(0, 0, 14), &companyAID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(eventsA) == 0 {
+		t.Error("Expected to find events for Company A")
+	}
+
+	// Verify all events belong to Company A
+	for _, event := range eventsA {
+		if event.ShipmentID != shipmentA.ID {
+			t.Errorf("Expected event to belong to Company A shipment, got shipment ID %d", event.ShipmentID)
+		}
+	}
+
+	// Test: Filter by Company B (should only return Company B's events)
+	companyBID := clientCompany2.ID
+	eventsB, err := GetCalendarEvents(db, now.AddDate(0, 0, -1), now.AddDate(0, 0, 14), &companyBID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(eventsB) == 0 {
+		t.Error("Expected to find events for Company B")
+	}
+
+	// Verify all events belong to Company B
+	for _, event := range eventsB {
+		if event.ShipmentID != shipmentB.ID {
+			t.Errorf("Expected event to belong to Company B shipment, got shipment ID %d", event.ShipmentID)
+		}
+	}
+
+	// Test: Filter by non-existent company (should return no events)
+	nonExistentID := int64(99999)
+	eventsEmpty, err := GetCalendarEvents(db, now.AddDate(0, 0, -1), now.AddDate(0, 0, 14), &nonExistentID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(eventsEmpty) != 0 {
+		t.Errorf("Expected 0 events for non-existent company, got %d", len(eventsEmpty))
 	}
 }
 

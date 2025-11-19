@@ -96,7 +96,9 @@ func (e *CalendarEvent) GetShipmentLink() string {
 }
 
 // GetCalendarEvents retrieves calendar events within a date range
-func GetCalendarEvents(db *sql.DB, startDate, endDate time.Time) ([]CalendarEvent, error) {
+// If clientCompanyID is provided (non-nil), only events for that company are returned
+// If clientCompanyID is nil, all events are returned
+func GetCalendarEvents(db *sql.DB, startDate, endDate time.Time, clientCompanyID *int64) ([]CalendarEvent, error) {
 	query := `
 		SELECT 
 			s.id,
@@ -112,16 +114,31 @@ func GetCalendarEvents(db *sql.DB, startDate, endDate time.Time) ([]CalendarEven
 		LEFT JOIN client_companies cc ON s.client_company_id = cc.id
 		LEFT JOIN software_engineers se ON s.software_engineer_id = se.id
 		WHERE 
-			(s.pickup_scheduled_date BETWEEN $1 AND $2)
+			((s.pickup_scheduled_date BETWEEN $1 AND $2)
 			OR (s.picked_up_at BETWEEN $1 AND $2)
 			OR (s.arrived_warehouse_at BETWEEN $1 AND $2)
 			OR (s.released_warehouse_at BETWEEN $1 AND $2)
-			OR (s.delivered_at BETWEEN $1 AND $2)
-		ORDER BY 
-			COALESCE(s.pickup_scheduled_date, s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, s.delivered_at)
+			OR (s.delivered_at BETWEEN $1 AND $2))
 	`
 
-	rows, err := db.Query(query, startDate, endDate)
+	var rows *sql.Rows
+	var err error
+
+	// Add client company filter if provided
+	if clientCompanyID != nil {
+		query += ` AND s.client_company_id = $3`
+		query += `
+		ORDER BY 
+			COALESCE(s.pickup_scheduled_date, s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, s.delivered_at)
+		`
+		rows, err = db.Query(query, startDate, endDate, *clientCompanyID)
+	} else {
+		query += `
+		ORDER BY 
+			COALESCE(s.pickup_scheduled_date, s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, s.delivered_at)
+		`
+		rows, err = db.Query(query, startDate, endDate)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to query calendar events: %w", err)
 	}
