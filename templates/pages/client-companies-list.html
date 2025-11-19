@@ -35,7 +35,7 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Info</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2">Contact Info</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -43,7 +43,7 @@
                         {{range .Companies}}
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{.Name}}</td>
-                            <td class="px-6 py-4 text-sm text-gray-900">{{if .ContactInfo}}{{.ContactInfo}}{{else}}-{{end}}</td>
+                            <td class="px-6 py-4 text-sm">{{if .ContactInfo}}{{formatContactInfo .ContactInfo}}{{else}}<span class="text-gray-400">-</span>{{end}}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <a href="/forms/client-companies/{{.ID}}/edit" class="text-green-600 hover:text-green-900">Edit</a>
                             </td>

@@ -76,4 +76,3 @@ func TestFormsHandler_FormsPage_RequiresLogisticsRole(t *testing.T) {
 		})
 	}
 }
-
