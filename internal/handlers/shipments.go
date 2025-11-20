@@ -659,6 +659,59 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	// Send warehouse pre-alert email when status changes to picked_up_from_client
+	if newStatus == models.ShipmentStatusPickedUpFromClient {
+		if h.EmailNotifier != nil {
+			go func() {
+				ctx := context.Background()
+				if err := h.EmailNotifier.SendWarehousePreAlert(ctx, shipmentID); err != nil {
+					fmt.Printf("Warning: failed to send warehouse pre-alert: %v\n", err)
+				} else {
+					fmt.Printf("Warehouse pre-alert sent successfully for shipment %d\n", shipmentID)
+				}
+			}()
+		}
+	}
+
+	// Send release notification email when status changes to released_from_warehouse
+	if newStatus == models.ShipmentStatusReleasedFromWarehouse {
+		if h.EmailNotifier != nil {
+			go func() {
+				ctx := context.Background()
+				if err := h.EmailNotifier.SendReleaseNotification(ctx, shipmentID); err != nil {
+					fmt.Printf("Warning: failed to send release notification: %v\n", err)
+				} else {
+					fmt.Printf("Release notification sent successfully for shipment %d\n", shipmentID)
+				}
+			}()
+		}
+	}
+
+	// Send delivery confirmation email when status changes to delivered
+	// Only for shipment types that involve engineer delivery
+	if newStatus == models.ShipmentStatusDelivered {
+		if h.EmailNotifier != nil {
+			// Check shipment type to ensure we only send for applicable types
+			var shipmentType models.ShipmentType
+			err := h.DB.QueryRowContext(r.Context(),
+				`SELECT shipment_type FROM shipments WHERE id = $1`,
+				shipmentID,
+			).Scan(&shipmentType)
+
+			if err == nil && (shipmentType == models.ShipmentTypeSingleFullJourney ||
+				shipmentType == models.ShipmentTypeWarehouseToEngineer) {
+				go func() {
+					ctx := context.Background()
+					if err := h.EmailNotifier.SendDeliveryConfirmation(ctx, shipmentID); err != nil {
+						fmt.Printf("Warning: failed to send delivery confirmation: %v\n", err)
+					} else {
+						fmt.Printf("Delivery confirmation sent successfully for shipment %d\n", shipmentID)
+					}
+				}()
+			}
+		}
+	}
+
 	// Create audit log
 	auditDetails, _ := json.Marshal(map[string]interface{}{
 		"action":     "status_updated",

@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/yourusername/laptop-tracking-system/internal/auth"
 	"github.com/yourusername/laptop-tracking-system/internal/database"
+	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 )
@@ -4167,6 +4168,334 @@ func TestUpdateShipmentStatusWithDatabaseCourier(t *testing.T) {
 		}
 		if !savedCourierName.Valid || savedCourierName.String != courierName {
 			t.Errorf("Expected courier name '%s', got '%s'", courierName, savedCourierName.String)
+		}
+	})
+}
+
+// TestUpdateShipmentStatus_WarehousePreAlert tests that warehouse pre-alert email is triggered when status changes to picked_up_from_client
+func TestUpdateShipmentStatus_WarehousePreAlert(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test logistics user
+	var logisticsUserID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create warehouse user (for email recipient)
+	var warehouseUserID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"warehouse@example.com", "hashedpassword", models.RoleWarehouse, time.Now(), time.Now(),
+	).Scan(&warehouseUserID)
+	if err != nil {
+		t.Fatalf("Failed to create warehouse user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test shipment with pickup_scheduled status (to transition to picked_up_from_client)
+	var shipmentID int64
+	pickupScheduledDate := time.Now().AddDate(0, 0, 1)
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, tracking_number, 
+		pickup_scheduled_date, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		companyID, models.ShipmentStatusPickupScheduled, "TEST-WAREHOUSE-ALERT", "TRACK123456",
+		pickupScheduledDate, time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	// Create email notifier (will use real SMTP config, but test will verify notification log)
+	// Note: Email sending may fail in test environment, but notification log should still be created
+	emailClient, err := email.NewClient(email.Config{
+		Host: "localhost",
+		Port: 1025, // Mailhog port if running, otherwise will fail gracefully
+		From: "noreply@example.com",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create email client: %v", err)
+	}
+
+	emailNotifier := email.NewNotifier(emailClient, db)
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, emailNotifier)
+
+	t.Run("warehouse pre-alert email is triggered when status changes to picked_up_from_client", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusPickedUpFromClient))
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Wait a bit for async email goroutine to complete
+		time.Sleep(300 * time.Millisecond)
+
+		// Verify warehouse pre-alert notification was logged
+		// Note: Even if email sending fails, the notification should be logged if the trigger exists
+		var count int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM notification_logs 
+			WHERE type = 'warehouse_pre_alert' AND shipment_id = $1`,
+			shipmentID,
+		).Scan(&count)
+
+		if err != nil {
+			t.Fatalf("Failed to query notification log: %v", err)
+		}
+
+		if count == 0 {
+			t.Error("Warehouse pre-alert notification was not logged - trigger may not be implemented")
+		}
+	})
+}
+
+// TestUpdateShipmentStatus_ReleaseNotification tests that release notification email is triggered when status changes to released_from_warehouse
+func TestUpdateShipmentStatus_ReleaseNotification(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test logistics user
+	var logisticsUserID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test shipment with at_warehouse status (to transition to released_from_warehouse)
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, tracking_number, 
+		arrived_warehouse_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		companyID, models.ShipmentStatusAtWarehouse, "TEST-RELEASE", "TRACK789",
+		time.Now(), time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	// Create email notifier
+	emailClient, err := email.NewClient(email.Config{
+		Host: "localhost",
+		Port: 1025,
+		From: "noreply@example.com",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create email client: %v", err)
+	}
+
+	emailNotifier := email.NewNotifier(emailClient, db)
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, emailNotifier)
+
+	t.Run("release notification email is triggered when status changes to released_from_warehouse", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusReleasedFromWarehouse))
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Wait a bit for async email goroutine to complete
+		time.Sleep(300 * time.Millisecond)
+
+		// Verify release notification was logged
+		var count int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM notification_logs 
+			WHERE type = 'release_notification' AND shipment_id = $1`,
+			shipmentID,
+		).Scan(&count)
+
+		if err != nil {
+			t.Fatalf("Failed to query notification log: %v", err)
+		}
+
+		if count == 0 {
+			t.Error("Release notification was not logged - trigger may not be implemented")
+		}
+	})
+}
+
+// TestUpdateShipmentStatus_DeliveryConfirmation tests that delivery confirmation email is triggered when status changes to delivered
+func TestUpdateShipmentStatus_DeliveryConfirmation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test logistics user
+	var logisticsUserID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test software engineer
+	var engineerID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO software_engineers (name, email, created_at, updated_at)
+		VALUES ($1, $2, $3, $4) RETURNING id`,
+		"Test Engineer", "engineer@example.com", time.Now(), time.Now(),
+	).Scan(&engineerID)
+	if err != nil {
+		t.Fatalf("Failed to create test engineer: %v", err)
+	}
+
+	// Create test shipment with in_transit_to_engineer status (to transition to delivered)
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (shipment_type, client_company_id, software_engineer_id, status, jira_ticket_number, 
+		tracking_number, released_warehouse_at, laptop_count, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		models.ShipmentTypeSingleFullJourney, companyID, engineerID, models.ShipmentStatusInTransitToEngineer,
+		"TEST-DELIVERY", "TRACK999", time.Now(), 1, time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	// Create email notifier
+	emailClient, err := email.NewClient(email.Config{
+		Host: "localhost",
+		Port: 1025,
+		From: "noreply@example.com",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create email client: %v", err)
+	}
+
+	emailNotifier := email.NewNotifier(emailClient, db)
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, emailNotifier)
+
+	t.Run("delivery confirmation email is triggered when status changes to delivered", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusDelivered))
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Wait a bit for async email goroutine to complete
+		time.Sleep(300 * time.Millisecond)
+
+		// Verify delivery confirmation notification was logged
+		var count int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM notification_logs 
+			WHERE type = 'delivery_confirmation' AND shipment_id = $1`,
+			shipmentID,
+		).Scan(&count)
+
+		if err != nil {
+			t.Fatalf("Failed to query notification log: %v", err)
+		}
+
+		if count == 0 {
+			t.Error("Delivery confirmation notification was not logged - trigger may not be implemented")
 		}
 	})
 }

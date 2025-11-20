@@ -33,7 +33,7 @@ func (n *Notifier) SendPickupConfirmation(ctx context.Context, shipmentID int64)
 	}
 
 	// Fetch client company
-	var clientName, clientCompany, clientEmail string
+	var clientName, clientCompany string
 	err = n.db.QueryRowContext(ctx,
 		`SELECT name, contact_info FROM client_companies WHERE id = $1`,
 		shipment.ClientCompanyID,
@@ -42,14 +42,32 @@ func (n *Notifier) SendPickupConfirmation(ctx context.Context, shipmentID int64)
 		return fmt.Errorf("failed to fetch client company: %w", err)
 	}
 
-	// Get client user email
+	// Fetch pickup form data to get contact email (FIX: use form contact_email instead of users table)
+	var formDataJSON string
 	err = n.db.QueryRowContext(ctx,
-		`SELECT email FROM users WHERE id IN (
-			SELECT id FROM users WHERE role = 'client' LIMIT 1
-		)`,
-	).Scan(&clientEmail)
+		`SELECT form_data FROM pickup_forms WHERE shipment_id = $1 ORDER BY submitted_at DESC LIMIT 1`,
+		shipmentID,
+	).Scan(&formDataJSON)
 	if err != nil {
-		clientEmail = "noreply@example.com" // Fallback
+		// If no pickup form exists, we can't send the notification (no contact email)
+		return fmt.Errorf("no pickup form found for shipment %d: cannot send notification without contact email", shipmentID)
+	}
+
+	// Parse form data to extract contact information
+	var formData map[string]interface{}
+	if err := json.Unmarshal([]byte(formDataJSON), &formData); err != nil {
+		return fmt.Errorf("failed to parse form data: %w", err)
+	}
+
+	clientEmail, ok := formData["contact_email"].(string)
+	if !ok || clientEmail == "" {
+		return fmt.Errorf("contact email not found in pickup form")
+	}
+
+	// Extract contact name from form if available
+	contactName, _ := formData["contact_name"].(string)
+	if contactName == "" {
+		contactName = clientName // Fallback to company name
 	}
 
 	// Prepare template data
@@ -58,12 +76,25 @@ func (n *Notifier) SendPickupConfirmation(ctx context.Context, shipmentID int64)
 		pickupDate = shipment.PickupScheduledDate.Time.Format("Monday, January 2, 2006")
 	}
 
+	// Extract pickup time slot from form if available
+	pickupTimeSlot := "Morning (9AM - 12PM)" // Default time slot
+	if timeSlot, ok := formData["pickup_time_slot"].(string); ok && timeSlot != "" {
+		switch timeSlot {
+		case "morning":
+			pickupTimeSlot = "Morning (8AM - 12PM)"
+		case "afternoon":
+			pickupTimeSlot = "Afternoon (12PM - 5PM)"
+		case "evening":
+			pickupTimeSlot = "Evening (5PM - 8PM)"
+		}
+	}
+
 	data := PickupConfirmationData{
-		ClientName:       clientName,
+		ClientName:       contactName, // Use contact name from form
 		ClientCompany:    clientCompany,
 		TrackingNumber:   shipment.TrackingNumber.String,
 		PickupDate:       pickupDate,
-		PickupTimeSlot:   "Morning (9AM - 12PM)", // Default time slot
+		PickupTimeSlot:   pickupTimeSlot,
 		NumberOfDevices:  shipment.LaptopCount,
 		ConfirmationCode: fmt.Sprintf("CONF-%d", shipmentID),
 	}
