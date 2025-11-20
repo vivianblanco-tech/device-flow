@@ -359,8 +359,13 @@ func (et *EmailTemplates) loadTemplates() {
                     <span class="info-label">Expected Delivery:</span> {{.ExpectedDate}}
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Shipper:</span> {{.ShipperName}} ({{.ShipperCompany}})
+                    <span class="info-label">Shipper:</span> {{.ShipperName}}
                 </div>
+                {{if .ShipperCompany}}
+                <div class="info-row">
+                    <span class="info-label">Contact Info:</span> {{.ShipperCompany}}
+                </div>
+                {{end}}
                 <div class="info-row">
                     <span class="info-label">Contents:</span> {{.DeviceDescription}}
                 </div>

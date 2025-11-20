@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -173,8 +174,18 @@ func (n *Notifier) SendPickupScheduledNotification(ctx context.Context, shipment
 	}
 
 	// Prepare template data
+	// Priority: Use pickup_date from form data first, then fall back to shipment.PickupScheduledDate
 	pickupDate := "To be determined"
-	if shipment.PickupScheduledDate.Valid {
+	if formPickupDate, ok := formData["pickup_date"].(string); ok && formPickupDate != "" {
+		// Parse the date from form (format: "2006-01-02")
+		if parsedDate, err := time.Parse("2006-01-02", formPickupDate); err == nil {
+			pickupDate = parsedDate.Format("Monday, January 2, 2006")
+		} else if shipment.PickupScheduledDate.Valid {
+			// Fallback to shipment date if form date parsing fails
+			pickupDate = shipment.PickupScheduledDate.Time.Format("Monday, January 2, 2006")
+		}
+	} else if shipment.PickupScheduledDate.Valid {
+		// Fallback to shipment date if form date not available
 		pickupDate = shipment.PickupScheduledDate.Time.Format("Monday, January 2, 2006")
 	}
 
@@ -252,13 +263,36 @@ func (n *Notifier) SendWarehousePreAlert(ctx context.Context, shipmentID int64) 
 	}
 
 	// Fetch client company
-	var shipperName, shipperCompany string
+	var shipperName string
+	var contactInfoJSON string
 	err = n.db.QueryRowContext(ctx,
 		`SELECT name, contact_info FROM client_companies WHERE id = $1`,
 		shipment.ClientCompanyID,
-	).Scan(&shipperName, &shipperCompany)
+	).Scan(&shipperName, &contactInfoJSON)
 	if err != nil {
 		return fmt.Errorf("failed to fetch client company: %w", err)
+	}
+
+	// Parse and format contact_info JSON to readable format
+	shipperCompany := shipperName // Default to company name
+	if contactInfoJSON != "" {
+		var contactInfo map[string]interface{}
+		if err := json.Unmarshal([]byte(contactInfoJSON), &contactInfo); err == nil {
+			// Build readable format: email, phone, address, etc.
+			var parts []string
+			if email, ok := contactInfo["email"].(string); ok && email != "" {
+				parts = append(parts, fmt.Sprintf("Email: %s", email))
+			}
+			if phone, ok := contactInfo["phone"].(string); ok && phone != "" {
+				parts = append(parts, fmt.Sprintf("Phone: %s", phone))
+			}
+			if address, ok := contactInfo["address"].(string); ok && address != "" {
+				parts = append(parts, fmt.Sprintf("Address: %s", address))
+			}
+			if len(parts) > 0 {
+				shipperCompany = strings.Join(parts, " | ")
+			}
+		}
 	}
 
 	// Get warehouse email
@@ -344,15 +378,37 @@ func (n *Notifier) SendReleaseNotification(ctx context.Context, shipmentID int64
 		engineerName = "To be assigned"
 	}
 
+	// Get warehouse user email for contact details
+	// Note: users table doesn't have a name field, so we'll use email
+	var warehouseUserEmail string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT email FROM users WHERE role = 'warehouse' LIMIT 1`,
+	).Scan(&warehouseUserEmail)
+	if err != nil {
+		warehouseUserEmail = "warehouse@bairesdev.com" // Default fallback
+	}
+
+	// Get shipment release date for pickup date
+	pickupDate := time.Now().AddDate(0, 0, 1).Format("Monday, January 2, 2006") // Default: tomorrow
+	var releasedAt sql.NullTime
+	err = n.db.QueryRowContext(ctx,
+		`SELECT released_warehouse_at FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&releasedAt)
+	if err == nil && releasedAt.Valid {
+		// Use release date + 1 day as pickup date (hardware ready for pickup next day)
+		pickupDate = releasedAt.Time.AddDate(0, 0, 1).Format("Monday, January 2, 2006")
+	}
+
 	// Prepare template data
 	data := ReleaseNotificationData{
 		CourierName:        "Logistics Team",
 		CourierCompany:     "BairesDev",
-		PickupDate:         time.Now().AddDate(0, 0, 1).Format("Monday, January 2, 2006"),
-		PickupTimeSlot:     "Morning (9AM - 12PM)",
-		WarehouseAddress:   "Warehouse Address", // Should be from config
-		ContactPerson:      "Warehouse Manager",
-		ContactPhone:       "Contact Phone",     // Should be from config
+		PickupDate:         pickupDate,
+		PickupTimeSlot:     "Morning (9AM - 12PM)", // Default time slot
+		WarehouseAddress:   "Please contact warehouse for pickup address", // TODO: Add to config
+		ContactPerson:      "Warehouse Team", // Use generic name since users table doesn't have name field
+		ContactPhone:       "Email: " + warehouseUserEmail, // Use email since phone not available in users table
 		DeviceSerialNumber: "SN-" + shipment.TrackingNumber.String,
 		EngineerName:       engineerName,
 		TrackingNumber:     shipment.TrackingNumber.String,
