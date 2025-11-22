@@ -529,7 +529,8 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Send pickup confirmation email (Step 4 in process flow)
-	if h.Notifier != nil {
+	// Skip notifications for warehouse-to-engineer shipments (they don't have pickup from client)
+	if h.Notifier != nil && shipmentType != models.ShipmentTypeWarehouseToEngineer {
 		if err := h.Notifier.SendPickupConfirmation(r.Context(), shipmentID); err != nil {
 			// Log error but don't fail the request
 			fmt.Printf("Warning: Failed to send pickup confirmation email: %v\n", err)
@@ -1643,7 +1644,8 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 	}
 
 	// Send pickup confirmation email (Step 4 in process flow)
-	if h.Notifier != nil {
+	// Skip notifications for warehouse-to-engineer shipments (they don't have pickup from client)
+	if h.Notifier != nil && shipmentType != models.ShipmentTypeWarehouseToEngineer {
 		if err := h.Notifier.SendPickupConfirmation(r.Context(), shipmentID); err != nil {
 			// Log error but don't fail the request
 			fmt.Printf("Warning: Failed to send pickup confirmation email: %v\n", err)

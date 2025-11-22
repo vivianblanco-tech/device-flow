@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/yourusername/laptop-tracking-system/internal/database"
+	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 )
@@ -945,6 +946,136 @@ func TestPickupFormHandler_SubmitWarehouseToEngineer(t *testing.T) {
 		location := w.Header().Get("Location")
 		if !strings.Contains(location, "error=") {
 			t.Errorf("Expected error in redirect URL, got: %s", location)
+		}
+	})
+
+	t.Run("warehouse to engineer form does not send pickup confirmation notification", func(t *testing.T) {
+		// Create email notifier with mock client
+		emailClient, err := email.NewClient(email.Config{
+			Host: "localhost",
+			Port: 1025,
+			From: "noreply@example.com",
+		})
+		if err != nil {
+			t.Fatalf("Failed to create email client: %v", err)
+		}
+		emailNotifier := email.NewNotifier(emailClient, db)
+
+		handler := NewPickupFormHandler(db, nil, emailNotifier)
+
+		formData := url.Values{
+			"shipment_type":        {string(models.ShipmentTypeWarehouseToEngineer)},
+			"client_company_id":    {strconv.FormatInt(companyID, 10)},
+			"laptop_id":            {strconv.FormatInt(laptopID, 10)},
+			"software_engineer_id": {strconv.FormatInt(engineerID, 10)},
+			"engineer_name":        {"Jane Engineer"},
+			"engineer_email":       {"jane@test.com"},
+			"engineer_address":     {"456 Engineer Ave"},
+			"engineer_city":        {"San Francisco"},
+			"engineer_country":     {"United States"},
+			"engineer_state":       {"CA"},
+			"engineer_zip":         {"94102"},
+			"jira_ticket_number":   {"SCOP-NO-PICKUP-CONF"},
+			"courier_name":         {"FedEx"},
+			"tracking_number":      {"TRACK123456"},
+			"include_accessories":  {"false"},
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserContextKey, &models.User{ID: userID, Role: models.RoleLogistics}))
+
+		w := httptest.NewRecorder()
+		handler.PickupFormSubmit(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Wait a bit for async email goroutine to complete
+		time.Sleep(300 * time.Millisecond)
+
+		// Verify pickup confirmation notification was NOT logged
+		var count int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM notification_logs 
+			WHERE type = 'pickup_confirmation' AND shipment_id IN (
+				SELECT id FROM shipments WHERE jira_ticket_number = $1
+			)`,
+			"SCOP-NO-PICKUP-CONF",
+		).Scan(&count)
+
+		if err != nil {
+			t.Fatalf("Failed to query notification log: %v", err)
+		}
+
+		if count > 0 {
+			t.Error("Pickup confirmation notification should NOT be sent for warehouse-to-engineer shipments")
+		}
+	})
+
+	t.Run("warehouse to engineer form does not send pickup form submitted notification", func(t *testing.T) {
+		// Create email notifier with mock client
+		emailClient, err := email.NewClient(email.Config{
+			Host: "localhost",
+			Port: 1025,
+			From: "noreply@example.com",
+		})
+		if err != nil {
+			t.Fatalf("Failed to create email client: %v", err)
+		}
+		emailNotifier := email.NewNotifier(emailClient, db)
+
+		handler := NewPickupFormHandler(db, nil, emailNotifier)
+
+		formData := url.Values{
+			"shipment_type":        {string(models.ShipmentTypeWarehouseToEngineer)},
+			"client_company_id":    {strconv.FormatInt(companyID, 10)},
+			"laptop_id":            {strconv.FormatInt(laptopID, 10)},
+			"software_engineer_id": {strconv.FormatInt(engineerID, 10)},
+			"engineer_name":        {"Jane Engineer"},
+			"engineer_email":       {"jane@test.com"},
+			"engineer_address":     {"456 Engineer Ave"},
+			"engineer_city":        {"San Francisco"},
+			"engineer_country":     {"United States"},
+			"engineer_state":       {"CA"},
+			"engineer_zip":         {"94102"},
+			"jira_ticket_number":   {"SCOP-NO-FORM-SUBMITTED"},
+			"courier_name":         {"FedEx"},
+			"tracking_number":      {"TRACK123456"},
+			"include_accessories":  {"false"},
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserContextKey, &models.User{ID: userID, Role: models.RoleLogistics}))
+
+		w := httptest.NewRecorder()
+		handler.PickupFormSubmit(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Wait a bit for async email goroutine to complete
+		time.Sleep(300 * time.Millisecond)
+
+		// Verify pickup form submitted notification was NOT logged
+		var count int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM notification_logs 
+			WHERE type = 'pickup_form_submitted' AND shipment_id IN (
+				SELECT id FROM shipments WHERE jira_ticket_number = $1
+			)`,
+			"SCOP-NO-FORM-SUBMITTED",
+		).Scan(&count)
+
+		if err != nil {
+			t.Fatalf("Failed to query notification log: %v", err)
+		}
+
+		if count > 0 {
+			t.Error("Pickup form submitted notification should NOT be sent for warehouse-to-engineer shipments")
 		}
 	})
 
