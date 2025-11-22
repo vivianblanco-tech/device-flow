@@ -502,11 +502,33 @@ func (n *Notifier) SendDeliveryConfirmation(ctx context.Context, shipmentID int6
 		deliveryDate = deliveredAt.Time.Format("Monday, January 2, 2006")
 	}
 
+	// Get laptop model from the first laptop in the shipment
+	deviceModel := "Configured Laptop" // Default fallback
+	var laptopBrand, laptopModel string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT l.brand, l.model 
+		FROM laptops l
+		JOIN shipment_laptops sl ON sl.laptop_id = l.id
+		WHERE sl.shipment_id = $1
+		LIMIT 1`,
+		shipmentID,
+	).Scan(&laptopBrand, &laptopModel)
+	if err == nil {
+		// Format as "Brand Model" if both available, otherwise just model
+		if laptopBrand != "" && laptopModel != "" {
+			deviceModel = fmt.Sprintf("%s %s", laptopBrand, laptopModel)
+		} else if laptopModel != "" {
+			deviceModel = laptopModel
+		} else if laptopBrand != "" {
+			deviceModel = laptopBrand
+		}
+	}
+
 	// Prepare template data
 	data := DeliveryConfirmationData{
 		EngineerName:       engineerName,
 		DeviceSerialNumber: "SN-" + shipment.TrackingNumber.String,
-		DeviceModel:        "Configured Laptop",
+		DeviceModel:        deviceModel,
 		DeliveryDate:       deliveryDate,
 		TrackingNumber:     shipment.TrackingNumber.String,
 		ProjectName:        "",
