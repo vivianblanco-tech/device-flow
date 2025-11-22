@@ -1843,6 +1843,160 @@ func TestShipmentDetailWarningForMissingEngineer(t *testing.T) {
 	})
 }
 
+// 🟥 RED: Test that in_transit_to_engineer is filtered from NextAllowedStatuses when no engineer assigned
+func TestShipmentDetailNextAllowedStatusesFiltering(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test user
+	var userID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	t.Run("in_transit_to_engineer not in NextAllowedStatuses for single_full_journey without engineer at released_from_warehouse", func(t *testing.T) {
+		// Create a single_full_journey shipment at released_from_warehouse status without engineer
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, laptop_count, created_at, updated_at, released_warehouse_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+			models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusReleasedFromWarehouse, "TEST-FILTER-1", 1, time.Now(), time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		templates := loadTestTemplates(t)
+		handler := NewShipmentsHandler(db, templates, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		// Verify that 'in_transit_to_engineer' option is NOT in the dropdown
+		// The template renders it as "In Transit to Engineer" option value="in_transit_to_engineer"
+		if strings.Contains(body, `value="in_transit_to_engineer"`) {
+			t.Errorf("Expected 'in_transit_to_engineer' option to be filtered out from dropdown, but it was found in the response")
+		}
+	})
+
+	t.Run("in_transit_to_engineer not in NextAllowedStatuses for warehouse_to_engineer without engineer at released_from_warehouse", func(t *testing.T) {
+		// Create a warehouse_to_engineer shipment at released_from_warehouse status without engineer
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, laptop_count, created_at, updated_at, released_warehouse_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+			models.ShipmentTypeWarehouseToEngineer, companyID, models.ShipmentStatusReleasedFromWarehouse, "TEST-FILTER-2", 1, time.Now(), time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		templates := loadTestTemplates(t)
+		handler := NewShipmentsHandler(db, templates, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		// Verify that 'in_transit_to_engineer' option is NOT in the dropdown
+		if strings.Contains(body, `value="in_transit_to_engineer"`) {
+			t.Errorf("Expected 'in_transit_to_engineer' option to be filtered out from dropdown, but it was found in the response")
+		}
+	})
+
+	t.Run("in_transit_to_engineer IS in NextAllowedStatuses for single_full_journey WITH engineer at released_from_warehouse", func(t *testing.T) {
+		// Create a software engineer
+		var engineerID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO software_engineers (name, email, employee_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			"Test Engineer Filter", "engineer-filter@test.com", "EMP-FILTER", time.Now(), time.Now(),
+		).Scan(&engineerID)
+		if err != nil {
+			t.Fatalf("Failed to create test engineer: %v", err)
+		}
+
+		// Create a single_full_journey shipment at released_from_warehouse status WITH engineer
+		var shipmentID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, software_engineer_id, status, jira_ticket_number, laptop_count, created_at, updated_at, released_warehouse_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+			models.ShipmentTypeSingleFullJourney, companyID, engineerID, models.ShipmentStatusReleasedFromWarehouse, "TEST-FILTER-3", 1, time.Now(), time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		templates := loadTestTemplates(t)
+		handler := NewShipmentsHandler(db, templates, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		// Verify that 'in_transit_to_engineer' option IS in the dropdown
+		if !strings.Contains(body, `value="in_transit_to_engineer"`) {
+			t.Errorf("Expected 'in_transit_to_engineer' option to be available in dropdown when engineer is assigned, but it was not found")
+		}
+	})
+}
+
 func TestUpdateShipmentStatus(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")

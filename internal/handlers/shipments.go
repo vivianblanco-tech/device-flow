@@ -396,20 +396,29 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	// Get next allowed statuses for sequential validation
 	nextAllowedStatuses := s.GetNextAllowedStatuses()
 
-	// Check if warning should be shown for missing engineer when transitioning to in_transit_to_engineer
+	// Filter out 'in_transit_to_engineer' from NextAllowedStatuses if no engineer assigned
 	// Only for single_full_journey and warehouse_to_engineer shipment types
-	if warningMsg == "" && (s.ShipmentType == models.ShipmentTypeSingleFullJourney || s.ShipmentType == models.ShipmentTypeWarehouseToEngineer) {
-		// Check if in_transit_to_engineer is in the next allowed statuses
-		canTransitionToInTransit := false
-		for _, status := range nextAllowedStatuses {
-			if status == models.ShipmentStatusInTransitToEngineer {
-				canTransitionToInTransit = true
-				break
+	if s.ShipmentType == models.ShipmentTypeSingleFullJourney || s.ShipmentType == models.ShipmentTypeWarehouseToEngineer {
+		if s.SoftwareEngineerID == nil {
+			// Filter out in_transit_to_engineer from the list
+			filteredStatuses := []models.ShipmentStatus{}
+			for _, status := range nextAllowedStatuses {
+				if status != models.ShipmentStatusInTransitToEngineer {
+					filteredStatuses = append(filteredStatuses, status)
+				}
 			}
-		}
-		// If can transition to in_transit_to_engineer but no engineer assigned, show warning
-		if canTransitionToInTransit && s.SoftwareEngineerID == nil {
-			warningMsg = "⚠️ An engineer must be assigned before updating the status to 'In Transit to Engineer'. Please assign an engineer first."
+			nextAllowedStatuses = filteredStatuses
+			
+			// Also show warning message if in_transit_to_engineer would have been available
+			if warningMsg == "" {
+				originalNextAllowedStatuses := s.GetNextAllowedStatuses()
+				for _, status := range originalNextAllowedStatuses {
+					if status == models.ShipmentStatusInTransitToEngineer {
+						warningMsg = "⚠️ An engineer must be assigned before updating the status to 'In Transit to Engineer'. Please assign an engineer first."
+						break
+					}
+				}
+			}
 		}
 	}
 
