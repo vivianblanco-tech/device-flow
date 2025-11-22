@@ -34,7 +34,7 @@ func BuildTimeline(s *Shipment) []TimelineItem {
 			Status:  ShipmentStatusPendingPickup,
 			Label:   "Pending Pickup",
 			Icon:    "clock",
-			GetTime: func(s *Shipment) *time.Time { return nil },
+			GetTime: func(s *Shipment) *time.Time { return &s.CreatedAt },
 		},
 		{
 			Status:  ShipmentStatusPickupScheduled,
@@ -53,7 +53,7 @@ func BuildTimeline(s *Shipment) []TimelineItem {
 			Label:     "In Transit to Warehouse",
 			Icon:      "truck",
 			IsTransit: true,
-			GetTime:   func(s *Shipment) *time.Time { return nil }, // No specific timestamp field
+			GetTime:   func(s *Shipment) *time.Time { return s.PickedUpAt }, // Transit starts after pickup
 		},
 		{
 			Status:  ShipmentStatusAtWarehouse,
@@ -72,7 +72,7 @@ func BuildTimeline(s *Shipment) []TimelineItem {
 			Label:     "In Transit to Engineer",
 			Icon:      "truck",
 			IsTransit: true,
-			GetTime:   func(s *Shipment) *time.Time { return nil }, // No specific timestamp field
+			GetTime:   func(s *Shipment) *time.Time { return s.ReleasedWarehouseAt }, // Transit starts after release
 		},
 		{
 			Status:  ShipmentStatusDelivered,

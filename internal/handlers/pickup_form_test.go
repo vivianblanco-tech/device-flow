@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yourusername/laptop-tracking-system/internal/auth"
 	"github.com/yourusername/laptop-tracking-system/internal/database"
 	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
@@ -1342,6 +1343,157 @@ func TestWarehouseToEngineerFormPage(t *testing.T) {
 			t.Error("Expected form to contain laptop_id field when laptops are available")
 		}
 	})
+
+	// 🟥 RED: Test that form page loads engineers and displays them in dropdown
+	t.Run("form page loads engineers and displays dropdown", func(t *testing.T) {
+		// Create test engineers
+		var engineer1ID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO software_engineers (name, email, employee_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			"John Engineer", "john.engineer@bairesdev.com", "EMP001", time.Now(), time.Now(),
+		).Scan(&engineer1ID)
+		if err != nil {
+			t.Fatalf("Failed to create engineer 1: %v", err)
+		}
+
+		var engineer2ID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO software_engineers (name, email, employee_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			"Jane Engineer", "jane.engineer@bairesdev.com", "EMP002", time.Now(), time.Now(),
+		).Scan(&engineer2ID)
+		if err != nil {
+			t.Fatalf("Failed to create engineer 2: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/create/warehouse-to-engineer", nil)
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{ID: userID, Email: "warehouse@company.com", Role: models.RoleWarehouse})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.WarehouseToEngineerFormPage(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+
+		// Verify engineer_name is a select dropdown (not text input)
+		if strings.Contains(body, `<input type="text" id="engineer_name"`) {
+			t.Error("Expected engineer_name to be a select dropdown, but found text input")
+		}
+		if !strings.Contains(body, `<select`) || !strings.Contains(body, `id="engineer_name"`) {
+			t.Error("Expected engineer_name to be a select dropdown")
+		}
+
+		// Verify engineers appear in the dropdown
+		if !strings.Contains(body, "John Engineer") || !strings.Contains(body, "EMP001") {
+			t.Error("Expected engineer John Engineer (EMP001) to appear in dropdown")
+		}
+		if !strings.Contains(body, "Jane Engineer") || !strings.Contains(body, "EMP002") {
+			t.Error("Expected engineer Jane Engineer (EMP002) to appear in dropdown")
+		}
+	})
+
+	// 🟥 RED: Test that form submission assigns laptop to selected engineer
+	t.Run("form submission assigns laptop to selected engineer", func(t *testing.T) {
+		// Create test engineer
+		var engineerID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO software_engineers (name, email, employee_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			"Test Engineer", "test.engineer@bairesdev.com", "EMP999", time.Now(), time.Now(),
+		).Scan(&engineerID)
+		if err != nil {
+			t.Fatalf("Failed to create engineer: %v", err)
+		}
+
+		// Create another laptop for this test
+		var testLaptopID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+			"ASSIGN-TEST", "Dell", "Latitude 5420", "Intel i7", "16", "512", models.LaptopStatusAtWarehouse, 1, time.Now(), time.Now(),
+		).Scan(&testLaptopID)
+		if err != nil {
+			t.Fatalf("Failed to create test laptop: %v", err)
+		}
+
+		// Create reception report
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO reception_reports (laptop_id, warehouse_user_id, photo_serial_number, photo_external_condition, photo_working_condition, status, notes, received_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			testLaptopID, userID, "http://example.com/serial.jpg", "http://example.com/ext.jpg", "http://example.com/work.jpg", "approved", "Test reception", time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to create reception report: %v", err)
+		}
+
+		// Verify laptop has NO engineer assigned initially
+		var initialEngineerID sql.NullInt64
+		err = db.QueryRowContext(ctx,
+			`SELECT software_engineer_id FROM laptops WHERE id = $1`,
+			testLaptopID,
+		).Scan(&initialEngineerID)
+		if err != nil {
+			t.Fatalf("Failed to query laptop: %v", err)
+		}
+		if initialEngineerID.Valid {
+			t.Errorf("Expected laptop to have NO engineer initially, but found engineer ID: %d", initialEngineerID.Int64)
+		}
+
+		// Submit form with engineer selected (engineer_name dropdown contains engineer ID)
+		formData := url.Values{}
+		formData.Set("shipment_type", string(models.ShipmentTypeWarehouseToEngineer))
+		formData.Set("laptop_id", strconv.FormatInt(testLaptopID, 10))
+		formData.Set("engineer_name", strconv.FormatInt(engineerID, 10)) // Engineer ID from dropdown (as string)
+		formData.Set("engineer_email", "test.engineer@bairesdev.com") // Will be auto-populated by JavaScript, but set here for test
+		formData.Set("engineer_address", "123 Test St")
+		formData.Set("engineer_city", "Test City")
+		formData.Set("engineer_country", "United States")
+		formData.Set("jira_ticket_number", "SCOP-12345") // Valid JIRA ticket format
+
+		req := httptest.NewRequest(http.MethodPost, "/pickup-form", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    userID,
+			Email: "warehouse@company.com",
+			Role:  models.RoleLogistics,
+		})
+		req = req.WithContext(ctx)
+
+		w := httptest.NewRecorder()
+		handler.PickupFormSubmit(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303 (See Other), got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		// Check redirect location for errors
+		location := w.Header().Get("Location")
+		if strings.Contains(location, "error=") {
+			t.Errorf("Form submission failed with error: %s", location)
+		}
+
+		// Verify laptop is now assigned to the engineer
+		var assignedEngineerID sql.NullInt64
+		err = db.QueryRowContext(ctx,
+			`SELECT software_engineer_id FROM laptops WHERE id = $1`,
+			testLaptopID,
+		).Scan(&assignedEngineerID)
+		if err != nil {
+			t.Fatalf("Failed to query laptop after submission: %v", err)
+		}
+		if !assignedEngineerID.Valid {
+			t.Error("Expected laptop to be assigned to engineer after form submission, but software_engineer_id is NULL")
+		}
+		if assignedEngineerID.Int64 != engineerID {
+			t.Errorf("Expected laptop to be assigned to engineer %d, but got %d", engineerID, assignedEngineerID.Int64)
+		}
+	})
 }
 
 // TestCreateMinimalSingleShipment tests creating a single shipment with only JIRA ticket and company ID
@@ -1808,6 +1960,86 @@ func TestCompleteShipmentDetailsViaMagicLink(t *testing.T) {
 		location := w.Header().Get("Location")
 		if !strings.Contains(location, "error=") {
 			t.Error("Expected error parameter in redirect URL")
+		}
+	})
+
+	t.Run("magic link should be marked as used when shipment details form is submitted", func(t *testing.T) {
+		// Create a separate shipment for this test
+		var testShipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPendingPickup, 1, "SCOP-12347",
+			time.Now(), time.Now(),
+		).Scan(&testShipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment for magic link test: %v", err)
+		}
+
+		// Create magic link associated with the test shipment and client user
+		magicLink, err := auth.CreateMagicLink(ctx, db, clientUserID, &testShipmentID, auth.DefaultMagicLinkDuration)
+		if err != nil {
+			t.Fatalf("Failed to create magic link: %v", err)
+		}
+
+		// Verify magic link is not used yet
+		validatedLink, err := auth.ValidateMagicLink(ctx, db, magicLink.Token)
+		if err != nil {
+			t.Fatalf("Failed to validate magic link: %v", err)
+		}
+		if validatedLink == nil || validatedLink.IsUsed() {
+			t.Fatal("Magic link should be valid and not used before form submission")
+		}
+
+		// Create session (simulating magic link login)
+		session, err := auth.CreateSession(ctx, db, clientUserID, auth.DefaultSessionDuration)
+		if err != nil {
+			t.Fatalf("Failed to create session: %v", err)
+		}
+
+		// Prepare form data for CompleteShipmentDetails
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(testShipmentID, 10))
+		formData.Set("laptop_serial_number", "MAGIC123456789")
+		formData.Set("laptop_brand", "Dell")
+		formData.Set("laptop_model", "Dell XPS 15")
+		formData.Set("laptop_cpu", "Intel Core i7")
+		formData.Set("laptop_ram_gb", "16GB")
+		formData.Set("laptop_ssd_gb", "512GB")
+		formData.Set("engineer_name", "Jane Smith")
+		formData.Set("contact_name", "John Doe")
+		formData.Set("contact_email", "john.doe@company.com")
+		formData.Set("contact_phone", "+1-555-0123")
+		formData.Set("pickup_address", "123 Main Street, Suite 400")
+		formData.Set("pickup_city", "New York")
+		formData.Set("pickup_state", "NY")
+		formData.Set("pickup_zip", "10001")
+		formData.Set("pickup_date", "2025-12-15")
+		formData.Set("pickup_time_slot", "morning")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/"+strconv.FormatInt(testShipmentID, 10)+"/complete-details", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserContextKey, &models.User{
+			ID:    clientUserID,
+			Email: "client@company.com",
+			Role:  models.RoleClient,
+		}))
+		req = req.WithContext(context.WithValue(req.Context(), middleware.SessionContextKey, session))
+
+		w := httptest.NewRecorder()
+		handler.CompleteShipmentDetails(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify magic link is now marked as used
+		validatedLink, err = auth.ValidateMagicLink(ctx, db, magicLink.Token)
+		if err != nil {
+			t.Fatalf("Failed to validate magic link: %v", err)
+		}
+		if validatedLink != nil && !validatedLink.IsUsed() {
+			t.Error("Magic link should be marked as used after form submission")
 		}
 	})
 }

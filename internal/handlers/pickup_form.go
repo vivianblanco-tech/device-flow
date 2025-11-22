@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yourusername/laptop-tracking-system/internal/auth"
 	"github.com/yourusername/laptop-tracking-system/internal/email"
 	"github.com/yourusername/laptop-tracking-system/internal/middleware"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
@@ -333,6 +334,13 @@ func (h *PickupFormHandler) WarehouseToEngineerFormPage(w http.ResponseWriter, r
 		fmt.Printf("Warning: Error iterating laptop rows: %v\n", err)
 	}
 
+	// Get list of all software engineers for dropdown
+	engineers, err := models.GetAllSoftwareEngineers(h.DB, nil)
+	if err != nil {
+		fmt.Printf("Warning: Failed to load software engineers: %v\n", err)
+		engineers = []models.SoftwareEngineer{} // Use empty slice on error
+	}
+
 	data := map[string]interface{}{
 		"Error":        errorMsg,
 		"Success":      successMsg,
@@ -341,6 +349,7 @@ func (h *PickupFormHandler) WarehouseToEngineerFormPage(w http.ResponseWriter, r
 		"CurrentPage":  "pickup-forms",
 		"Laptops":      laptops,
 		"LaptopCount":  len(laptops),
+		"Engineers":    engineers,
 		"ShipmentType": models.ShipmentTypeWarehouseToEngineer,
 	}
 
@@ -1117,13 +1126,43 @@ func (h *PickupFormHandler) handleWarehouseToEngineerForm(r *http.Request, user 
 		return 0, fmt.Errorf("invalid laptop ID")
 	}
 
-	// Parse software engineer (can be ID or name)
+	// Parse software engineer ID from engineer_name dropdown (now contains engineer ID)
 	var softwareEngineerID *int64
-	engineerIDStr := r.FormValue("software_engineer_id")
-	if engineerIDStr != "" {
-		engineerID, err := strconv.ParseInt(engineerIDStr, 10, 64)
+	engineerNameStr := r.FormValue("engineer_name")
+	if engineerNameStr != "" {
+		// Try to parse as ID (from dropdown)
+		engineerID, err := strconv.ParseInt(engineerNameStr, 10, 64)
 		if err == nil {
 			softwareEngineerID = &engineerID
+		}
+	}
+	
+	// Also check software_engineer_id field (for backward compatibility)
+	if softwareEngineerID == nil {
+		engineerIDStr := r.FormValue("software_engineer_id")
+		if engineerIDStr != "" {
+			engineerID, err := strconv.ParseInt(engineerIDStr, 10, 64)
+			if err == nil {
+				softwareEngineerID = &engineerID
+			}
+		}
+	}
+
+	// Get engineer details for validation (lookup before transaction for validation)
+	engineerName := r.FormValue("engineer_name")
+	engineerEmail := r.FormValue("engineer_email")
+	if softwareEngineerID != nil {
+		engineer, err := models.GetSoftwareEngineerByID(h.DB, *softwareEngineerID)
+		if err == nil && engineer != nil {
+			// Use engineer details from database
+			engineerName = engineer.Name
+			if engineerEmail == "" {
+				engineerEmail = engineer.Email
+			}
+		}
+		// If lookup failed, use the ID string as name for validation (will be looked up again in transaction)
+		if engineerName == r.FormValue("engineer_name") && softwareEngineerID != nil {
+			// Name is still the ID string, which is fine for validation
 		}
 	}
 
@@ -1131,8 +1170,8 @@ func (h *PickupFormHandler) handleWarehouseToEngineerForm(r *http.Request, user 
 	formInput := validator.WarehouseToEngineerFormInput{
 		LaptopID:            laptopID,
 		SoftwareEngineerID:  0,
-		EngineerName:        r.FormValue("engineer_name"),
-		EngineerEmail:       r.FormValue("engineer_email"),
+		EngineerName:        engineerName,
+		EngineerEmail:       engineerEmail,
 		EngineerAddress:     r.FormValue("engineer_address"),
 		EngineerCity:        r.FormValue("engineer_city"),
 		EngineerCountry:     r.FormValue("engineer_country"),
@@ -1227,13 +1266,36 @@ func (h *PickupFormHandler) handleWarehouseToEngineerForm(r *http.Request, user 
 		return 0, fmt.Errorf("failed to link laptop to shipment: %w", err)
 	}
 
-	// Update laptop status to in_transit_to_engineer
-	_, err = tx.ExecContext(r.Context(),
-		`UPDATE laptops SET status = $1, updated_at = $2 WHERE id = $3`,
-		models.LaptopStatusInTransitToEngineer, time.Now(), laptopID,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to update laptop status: %w", err)
+	// Update laptop status to in_transit_to_engineer and assign to engineer if selected
+	if softwareEngineerID != nil && *softwareEngineerID > 0 {
+		// Verify engineer exists before assigning
+		var engineerExists bool
+		err = tx.QueryRowContext(r.Context(),
+			`SELECT EXISTS(SELECT 1 FROM software_engineers WHERE id = $1)`,
+			*softwareEngineerID,
+		).Scan(&engineerExists)
+		if err != nil {
+			return 0, fmt.Errorf("failed to verify engineer exists: %w", err)
+		}
+		if !engineerExists {
+			return 0, fmt.Errorf("engineer with ID %d does not exist", *softwareEngineerID)
+		}
+
+		_, err = tx.ExecContext(r.Context(),
+			`UPDATE laptops SET status = $1, software_engineer_id = $2, updated_at = $3 WHERE id = $4`,
+			models.LaptopStatusInTransitToEngineer, *softwareEngineerID, time.Now(), laptopID,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to update laptop status and assign engineer: %w", err)
+		}
+	} else {
+		_, err = tx.ExecContext(r.Context(),
+			`UPDATE laptops SET status = $1, updated_at = $2 WHERE id = $3`,
+			models.LaptopStatusInTransitToEngineer, time.Now(), laptopID,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to update laptop status: %w", err)
+		}
 	}
 
 	// Create pickup form record with all data as JSON
@@ -1651,6 +1713,13 @@ func (h *PickupFormHandler) CompleteShipmentDetails(w http.ResponseWriter, r *ht
 	if err := tx.Commit(); err != nil {
 		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
 		return
+	}
+
+	// Mark magic link as used (if accessed via magic link)
+	magicLinkToken, err := auth.GetMagicLinkByShipmentAndUser(r.Context(), h.DB, shipmentID, user.ID)
+	if err == nil && magicLinkToken != "" {
+		_ = auth.MarkMagicLinkAsUsed(r.Context(), h.DB, magicLinkToken)
+		// Log error but don't fail the request if marking as used fails
 	}
 
 	// Send pickup confirmation email (Step 4 in process flow)
