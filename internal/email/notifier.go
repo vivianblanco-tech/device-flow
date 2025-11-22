@@ -1004,25 +1004,51 @@ func (n *Notifier) SendInTransitToEngineerNotification(ctx context.Context, ship
 		courierNameStr = courierName.String
 	}
 
-	// Get laptop model from the first laptop in the shipment
-	deviceModel := ""
-	var laptopBrand, laptopModel string
+	// Get complete laptop details from the first laptop in the shipment
+	var serialNumber, brand, model, cpu, ramGB, ssdGB, sku sql.NullString
 	err = n.db.QueryRowContext(ctx,
-		`SELECT l.brand, l.model 
+		`SELECT l.serial_number, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb, l.sku
 		FROM laptops l
 		JOIN shipment_laptops sl ON sl.laptop_id = l.id
 		WHERE sl.shipment_id = $1
 		LIMIT 1`,
 		shipmentID,
-	).Scan(&laptopBrand, &laptopModel)
+	).Scan(&serialNumber, &brand, &model, &cpu, &ramGB, &ssdGB, &sku)
+	
+	// Set defaults if laptop details not found
+	serialNumberStr := ""
+	brandStr := ""
+	deviceModel := ""
+	cpuStr := ""
+	ramGBStr := ""
+	ssdGBStr := ""
+	skuStr := ""
+	
 	if err == nil {
-		// Format as "Brand Model" if both available, otherwise just model
-		if laptopBrand != "" && laptopModel != "" {
-			deviceModel = fmt.Sprintf("%s %s", laptopBrand, laptopModel)
-		} else if laptopModel != "" {
-			deviceModel = laptopModel
-		} else if laptopBrand != "" {
-			deviceModel = laptopBrand
+		if serialNumber.Valid {
+			serialNumberStr = serialNumber.String
+		}
+		if brand.Valid {
+			brandStr = brand.String
+		}
+		if model.Valid {
+			deviceModel = model.String
+			// Format as "Brand Model" if both available
+			if brandStr != "" {
+				deviceModel = fmt.Sprintf("%s %s", brandStr, model.String)
+			}
+		}
+		if cpu.Valid {
+			cpuStr = cpu.String
+		}
+		if ramGB.Valid {
+			ramGBStr = ramGB.String
+		}
+		if ssdGB.Valid {
+			ssdGBStr = ssdGB.String
+		}
+		if sku.Valid {
+			skuStr = sku.String
 		}
 	}
 
@@ -1052,7 +1078,13 @@ func (n *Notifier) SendInTransitToEngineerNotification(ctx context.Context, ship
 	// Prepare template data
 	data := InTransitToEngineerData{
 		EngineerName:   engineerName,
+		SerialNumber:   serialNumberStr,
+		Brand:          brandStr,
 		DeviceModel:    deviceModel,
+		CPU:            cpuStr,
+		RAMGB:          ramGBStr,
+		SSDGB:          ssdGBStr,
+		SKU:            skuStr,
 		TrackingNumber: shipment.TrackingNumber.String,
 		CourierName:    courierNameStr,
 		ETA:            eta,

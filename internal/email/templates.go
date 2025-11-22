@@ -127,7 +127,13 @@ type EngineerDeliveryClientData struct {
 // InTransitToEngineerData contains data for in transit to engineer notification emails
 type InTransitToEngineerData struct {
 	EngineerName     string
+	SerialNumber     string
+	Brand            string
 	DeviceModel      string
+	CPU              string
+	RAMGB            string
+	SSDGB            string
+	SKU              string
 	TrackingNumber   string
 	CourierName      string
 	ETA              string
@@ -697,9 +703,42 @@ func (et *EmailTemplates) loadTemplates() {
                 <div class="info-row">
                     <span class="info-label">Expected Arrival (ETA):</span> {{.ETA}}
                 </div>
+            </div>
+            <div class="info-box" style="border: 2px solid #4CAF50; background-color: #f0f9f0;">
+                <h3>💻 Laptop Details</h3>
+                {{if .SerialNumber}}
+                <div class="info-row" style="font-size: 1.1em; font-weight: bold; color: #2E7D32; margin-bottom: 10px;">
+                    <span class="info-label">Serial Number:</span> <span style="font-family: monospace; background-color: #fff; padding: 4px 8px; border-radius: 4px;">{{.SerialNumber}}</span>
+                </div>
+                {{end}}
                 {{if .DeviceModel}}
                 <div class="info-row">
-                    <span class="info-label">Device Model:</span> {{.DeviceModel}}
+                    <span class="info-label">Model:</span> {{.DeviceModel}}
+                </div>
+                {{end}}
+                {{if .Brand}}
+                <div class="info-row">
+                    <span class="info-label">Brand:</span> {{.Brand}}
+                </div>
+                {{end}}
+                {{if .CPU}}
+                <div class="info-row">
+                    <span class="info-label">CPU:</span> {{.CPU}}
+                </div>
+                {{end}}
+                {{if .RAMGB}}
+                <div class="info-row">
+                    <span class="info-label">RAM:</span> {{.RAMGB}}
+                </div>
+                {{end}}
+                {{if .SSDGB}}
+                <div class="info-row">
+                    <span class="info-label">Storage:</span> {{.SSDGB}}
+                </div>
+                {{end}}
+                {{if .SKU}}
+                <div class="info-row">
+                    <span class="info-label">SKU:</span> {{.SKU}}
                 </div>
                 {{end}}
             </div>
@@ -839,7 +878,13 @@ func (et *EmailTemplates) RenderTemplate(templateName string, data interface{}) 
 		dataMap["Subject"] = "Device Delivered to Engineer - " + v.TrackingNumber
 	case InTransitToEngineerData:
 		dataMap["EngineerName"] = v.EngineerName
+		dataMap["SerialNumber"] = v.SerialNumber
+		dataMap["Brand"] = v.Brand
 		dataMap["DeviceModel"] = v.DeviceModel
+		dataMap["CPU"] = v.CPU
+		dataMap["RAMGB"] = v.RAMGB
+		dataMap["SSDGB"] = v.SSDGB
+		dataMap["SKU"] = v.SKU
 		dataMap["TrackingNumber"] = v.TrackingNumber
 		dataMap["CourierName"] = v.CourierName
 		dataMap["ETA"] = v.ETA
