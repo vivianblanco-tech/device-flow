@@ -396,6 +396,23 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 	// Get next allowed statuses for sequential validation
 	nextAllowedStatuses := s.GetNextAllowedStatuses()
 
+	// Check if warning should be shown for missing engineer when transitioning to in_transit_to_engineer
+	// Only for single_full_journey and warehouse_to_engineer shipment types
+	if warningMsg == "" && (s.ShipmentType == models.ShipmentTypeSingleFullJourney || s.ShipmentType == models.ShipmentTypeWarehouseToEngineer) {
+		// Check if in_transit_to_engineer is in the next allowed statuses
+		canTransitionToInTransit := false
+		for _, status := range nextAllowedStatuses {
+			if status == models.ShipmentStatusInTransitToEngineer {
+				canTransitionToInTransit = true
+				break
+			}
+		}
+		// If can transition to in_transit_to_engineer but no engineer assigned, show warning
+		if canTransitionToInTransit && s.SoftwareEngineerID == nil {
+			warningMsg = "⚠️ An engineer must be assigned before updating the status to 'In Transit to Engineer'. Please assign an engineer first."
+		}
+	}
+
 	// Get available laptops for bulk shipments (only for logistics users)
 	var availableLaptops []models.Laptop
 	if s.ShipmentType == models.ShipmentTypeBulkToWarehouse && user.Role == models.RoleLogistics {
@@ -530,6 +547,26 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 	if !currentShipment.IsValidStatusTransition(newStatus) {
 		http.Error(w, "Invalid status transition. Status updates must be sequential and cannot skip stages or go backwards.", http.StatusBadRequest)
 		return
+	}
+
+	// Validate that engineer is assigned before updating to in_transit_to_engineer for single_full_journey and warehouse_to_engineer shipments
+	if newStatus == models.ShipmentStatusInTransitToEngineer {
+		if currentShipment.ShipmentType == models.ShipmentTypeSingleFullJourney || 
+		   currentShipment.ShipmentType == models.ShipmentTypeWarehouseToEngineer {
+			var softwareEngineerID sql.NullInt64
+			err = h.DB.QueryRowContext(r.Context(),
+				`SELECT software_engineer_id FROM shipments WHERE id = $1`,
+				shipmentID,
+			).Scan(&softwareEngineerID)
+			if err != nil {
+				http.Error(w, "Failed to fetch shipment engineer information", http.StatusInternalServerError)
+				return
+			}
+			if !softwareEngineerID.Valid {
+				http.Error(w, "Cannot update status to 'in transit to engineer' without an assigned engineer. Please assign an engineer first.", http.StatusBadRequest)
+				return
+			}
+		}
 	}
 
 	// Parse ETA if provided (for in_transit_to_engineer status)
