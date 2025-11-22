@@ -844,11 +844,6 @@ func (et *EmailTemplates) loadTemplates() {
                 <a href="{{.ReportURL}}" class="button">View Reception Report</a>
             </div>
             {{end}}
-            {{if .ApprovalURL}}
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{{.ApprovalURL}}" class="button" style="background-color: #4CAF50;">Approve Report</a>
-            </div>
-            {{end}}
             <p>Please review the reception report and approve it if everything is in order.</p>
         </div>
     `))
