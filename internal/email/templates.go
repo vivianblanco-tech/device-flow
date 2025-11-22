@@ -141,6 +141,20 @@ type InTransitToEngineerData struct {
 	ContactInfo      string
 }
 
+// ReceptionReportApprovalData contains data for reception report approval request emails
+type ReceptionReportApprovalData struct {
+	ShipmentID     int64
+	TrackingNumber string
+	ClientCompany  string
+	ReceivedDate   string
+	WarehouseUser  string
+	Notes          string
+	PhotoURLs      []string
+	SerialNumber   string
+	ReportURL      string
+	ApprovalURL    string
+}
+
 // EmailTemplates holds all compiled email templates
 type EmailTemplates struct {
 	templates map[string]*template.Template
@@ -765,6 +779,79 @@ func (et *EmailTemplates) loadTemplates() {
             <p>We'll notify you once the device has been delivered. Thank you for your patience!</p>
         </div>
     `))
+
+	// Reception Report Approval Request Template
+	et.templates["reception_report_approval_request"] = template.Must(template.New("base").Parse(baseTemplate))
+	template.Must(et.templates["reception_report_approval_request"].New("content").Parse(`
+        <div class="header">
+            <h1>📋 Reception Report Requires Approval</h1>
+        </div>
+        <div class="content">
+            <p>Hello Logistics Team,</p>
+            <div class="info-box">
+                <p>A new reception report has been submitted by the warehouse and requires your review and approval.</p>
+            </div>
+            <div class="info-box">
+                <h3>📦 Shipment Information</h3>
+                {{if .ShipmentID}}
+                <div class="info-row">
+                    <span class="info-label">Shipment ID:</span> #{{.ShipmentID}}
+                </div>
+                {{end}}
+                {{if .TrackingNumber}}
+                <div class="info-row">
+                    <span class="info-label">Tracking Number:</span> {{.TrackingNumber}}
+                </div>
+                {{end}}
+                {{if .ClientCompany}}
+                <div class="info-row">
+                    <span class="info-label">Client Company:</span> {{.ClientCompany}}
+                </div>
+                {{end}}
+                {{if .SerialNumber}}
+                <div class="info-row" style="font-weight: bold;">
+                    <span class="info-label">Serial Number:</span> {{.SerialNumber}}
+                </div>
+                {{end}}
+            </div>
+            <div class="info-box">
+                <h3>📅 Reception Details</h3>
+                <div class="info-row">
+                    <span class="info-label">Received Date:</span> {{.ReceivedDate}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Submitted By:</span> {{.WarehouseUser}}
+                </div>
+                {{if .Notes}}
+                <div class="info-row">
+                    <span class="info-label">Notes:</span> {{.Notes}}
+                </div>
+                {{end}}
+            </div>
+            {{if .PhotoURLs}}
+            <div class="info-box">
+                <h3>📸 Photos</h3>
+                <p>The following photos have been uploaded:</p>
+                <ul>
+                    {{range .PhotoURLs}}
+                    <li><a href="{{.}}" target="_blank">{{.}}</a></li>
+                    {{end}}
+                </ul>
+            </div>
+            {{end}}
+            {{if .ReportURL}}
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{.ReportURL}}" class="button">View Reception Report</a>
+            </div>
+            {{end}}
+            {{if .ApprovalURL}}
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{.ApprovalURL}}" class="button" style="background-color: #4CAF50;">Approve Report</a>
+            </div>
+            {{end}}
+            <p>Please review the reception report and approve it if everything is in order.</p>
+        </div>
+    `))
 }
 
 // RenderTemplate renders an email template with the given data
@@ -891,6 +978,18 @@ func (et *EmailTemplates) RenderTemplate(templateName string, data interface{}) 
 		dataMap["ShipmentURL"] = v.ShipmentURL
 		dataMap["ContactInfo"] = v.ContactInfo
 		dataMap["Subject"] = "Device In Transit - Expected Arrival " + v.ETA
+	case ReceptionReportApprovalData:
+		dataMap["ShipmentID"] = v.ShipmentID
+		dataMap["TrackingNumber"] = v.TrackingNumber
+		dataMap["ClientCompany"] = v.ClientCompany
+		dataMap["ReceivedDate"] = v.ReceivedDate
+		dataMap["WarehouseUser"] = v.WarehouseUser
+		dataMap["Notes"] = v.Notes
+		dataMap["PhotoURLs"] = v.PhotoURLs
+		dataMap["SerialNumber"] = v.SerialNumber
+		dataMap["ReportURL"] = v.ReportURL
+		dataMap["ApprovalURL"] = v.ApprovalURL
+		dataMap["Subject"] = "Reception Report Requires Approval - " + v.SerialNumber
 	default:
 		return "", fmt.Errorf("unsupported data type for template")
 	}
@@ -928,6 +1027,8 @@ func (et *EmailTemplates) GetSubject(templateName string, data interface{}) stri
 		return "Device Delivered to Engineer - " + v.TrackingNumber
 	case InTransitToEngineerData:
 		return "Device In Transit - Expected Arrival " + v.ETA
+	case ReceptionReportApprovalData:
+		return "Reception Report Requires Approval - " + v.SerialNumber
 	default:
 		return "Notification from Laptop Tracking System"
 	}

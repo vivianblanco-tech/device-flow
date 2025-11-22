@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"io"
@@ -290,27 +291,20 @@ func (h *ReceptionReportHandler) handleSinglePhotoUpload(r *http.Request, fieldN
 // sendReceptionReportNotification sends email notification when a reception report is created
 func (h *ReceptionReportHandler) sendReceptionReportNotification(report *models.ReceptionReport, submitter *models.User) {
 	// Email sending is handled asynchronously, errors are logged but don't fail the request
-	// For now, just log that we would send an email
-	// In production, this would integrate with the email service
-	
-	var laptop models.Laptop
-	err := h.DB.QueryRow(
-		`SELECT serial_number, brand, model FROM laptops WHERE id = $1`,
-		report.LaptopID,
-	).Scan(&laptop.SerialNumber, &laptop.Brand, &laptop.Model)
-	
-	if err != nil {
-		fmt.Printf("Error getting laptop details for notification: %v\n", err)
+	if h.Notifier == nil {
+		fmt.Printf("Warning: Email notifier not available, skipping reception report notification\n")
 		return
 	}
 
-	fmt.Printf("📧 Email notification would be sent to international.logistics@bairesdev.com\n")
-	fmt.Printf("   Subject: New Reception Report - Laptop %s\n", laptop.SerialNumber)
-	fmt.Printf("   Submitted by: %s\n", submitter.Email)
-	fmt.Printf("   Report ID: %d\n", report.ID)
-	
-	// TODO: Integrate with actual email service when ready
-	// This is a placeholder for the email notification functionality
+	// Send notification asynchronously
+	go func() {
+		ctx := context.Background()
+		if err := h.Notifier.SendReceptionReportApprovalRequest(ctx, report.ID); err != nil {
+			fmt.Printf("Warning: failed to send reception report approval request: %v\n", err)
+		} else {
+			fmt.Printf("Reception report approval request sent successfully for report %d\n", report.ID)
+		}
+	}()
 }
 
 // ApproveReceptionReport approves a reception report (logistics only)

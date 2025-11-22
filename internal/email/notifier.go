@@ -889,30 +889,80 @@ func (n *Notifier) SendEngineerDeliveryNotificationToClient(ctx context.Context,
 		deliveryDate = deliveredAt.Time.Format("Monday, January 2, 2006")
 	}
 
-	// Fetch pickup form data to get contact email
+	// Try to get contact email from pickup form first
+	contactEmail := ""
+	contactName := clientCompany
+	
 	var formDataJSON string
 	err = n.db.QueryRowContext(ctx,
 		`SELECT form_data FROM pickup_forms WHERE shipment_id = $1 ORDER BY submitted_at DESC LIMIT 1`,
 		shipmentID,
 	).Scan(&formDataJSON)
-	if err != nil {
-		return fmt.Errorf("no pickup form found for shipment %d: cannot send notification without contact email", shipmentID)
+	
+	if err == nil {
+		// Parse form data
+		var formData map[string]interface{}
+		if err := json.Unmarshal([]byte(formDataJSON), &formData); err == nil {
+			if email, ok := formData["contact_email"].(string); ok && email != "" {
+				contactEmail = email
+			}
+			if name, ok := formData["contact_name"].(string); ok && name != "" {
+				contactName = name
+			}
+		}
 	}
-
-	// Parse form data
-	var formData map[string]interface{}
-	if err := json.Unmarshal([]byte(formDataJSON), &formData); err != nil {
-		return fmt.Errorf("failed to parse form data: %w", err)
+	
+	// Fallback: Try to get contact email from client company
+	if contactEmail == "" {
+		var clientContactInfo sql.NullString
+		err = n.db.QueryRowContext(ctx,
+			`SELECT contact_info FROM client_companies WHERE id = $1`,
+			shipment.ClientCompanyID,
+		).Scan(&clientContactInfo)
+		
+		if err == nil && clientContactInfo.Valid && clientContactInfo.String != "" {
+			// Try to extract email from contact_info (could be JSON or plain text)
+			var contactInfoMap map[string]interface{}
+			if err := json.Unmarshal([]byte(clientContactInfo.String), &contactInfoMap); err == nil {
+				// If it's JSON, try to get email field
+				if email, ok := contactInfoMap["email"].(string); ok && email != "" {
+					contactEmail = email
+				} else if email, ok := contactInfoMap["contact_email"].(string); ok && email != "" {
+					contactEmail = email
+				}
+			} else {
+				// If it's plain text, check if it looks like an email
+				contactStr := clientContactInfo.String
+				if strings.Contains(contactStr, "@") {
+					// Simple email extraction - take first email-like string
+					parts := strings.Fields(contactStr)
+					for _, part := range parts {
+						if strings.Contains(part, "@") && strings.Contains(part, ".") {
+							contactEmail = strings.Trim(part, ",;")
+							break
+						}
+					}
+				}
+			}
+		}
 	}
-
-	contactEmail, ok := formData["contact_email"].(string)
-	if !ok || contactEmail == "" {
-		return fmt.Errorf("contact email not found in pickup form")
+	
+	// Final fallback: Try to get email from client company users
+	if contactEmail == "" {
+		var clientUserEmail sql.NullString
+		err = n.db.QueryRowContext(ctx,
+			`SELECT email FROM users WHERE client_company_id = $1 LIMIT 1`,
+			shipment.ClientCompanyID,
+		).Scan(&clientUserEmail)
+		
+		if err == nil && clientUserEmail.Valid && clientUserEmail.String != "" {
+			contactEmail = clientUserEmail.String
+		}
 	}
-
-	contactName, _ := formData["contact_name"].(string)
-	if contactName == "" {
-		contactName = clientCompany
+	
+	// If still no email found, return error
+	if contactEmail == "" {
+		return fmt.Errorf("no contact email found for shipment %d: tried pickup form, client company contact info, and client company users", shipmentID)
 	}
 
 	// Prepare template data
@@ -1112,6 +1162,130 @@ func (n *Notifier) SendInTransitToEngineerNotification(ctx context.Context, ship
 
 	// Log notification
 	if err := n.logNotification(ctx, shipmentID, "in_transit_to_engineer", engineerEmail, "sent"); err != nil {
+		fmt.Printf("Warning: failed to log notification: %v\n", err)
+	}
+
+	return nil
+}
+
+// SendReceptionReportApprovalRequest sends notification to logistics when reception report is created
+func (n *Notifier) SendReceptionReportApprovalRequest(ctx context.Context, reportID int64) error {
+	// Fetch reception report details
+	var report models.ReceptionReport
+	var warehouseUserEmail string
+	err := n.db.QueryRowContext(ctx,
+		`SELECT rr.id, rr.laptop_id, rr.shipment_id, rr.client_company_id, rr.tracking_number,
+		rr.warehouse_user_id, rr.received_at, rr.notes, rr.photo_serial_number, 
+		rr.photo_external_condition, rr.photo_working_condition, rr.status,
+		u.email as warehouse_user_email
+		FROM reception_reports rr
+		LEFT JOIN users u ON u.id = rr.warehouse_user_id
+		WHERE rr.id = $1`,
+		reportID,
+	).Scan(
+		&report.ID, &report.LaptopID, &report.ShipmentID, &report.ClientCompanyID, &report.TrackingNumber,
+		&report.WarehouseUserID, &report.ReceivedAt, &report.Notes, &report.PhotoSerialNumber,
+		&report.PhotoExternalCondition, &report.PhotoWorkingCondition, &report.Status,
+		&warehouseUserEmail,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to fetch reception report: %w", err)
+	}
+
+	// Get laptop serial number
+	var serialNumber string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT serial_number FROM laptops WHERE id = $1`,
+		report.LaptopID,
+	).Scan(&serialNumber)
+	if err != nil {
+		return fmt.Errorf("failed to fetch laptop serial number: %w", err)
+	}
+
+	// Get client company name
+	clientCompany := "Unknown Company"
+	if report.ClientCompanyID != nil {
+		err = n.db.QueryRowContext(ctx,
+			`SELECT name FROM client_companies WHERE id = $1`,
+			*report.ClientCompanyID,
+		).Scan(&clientCompany)
+		if err != nil {
+			// Non-critical, use default
+			clientCompany = "Unknown Company"
+		}
+	}
+
+	// Get warehouse user name/email
+	warehouseUser := warehouseUserEmail
+	if warehouseUser == "" {
+		warehouseUser = "Warehouse Team"
+	}
+
+	// Build photo URLs array
+	photoURLs := []string{}
+	if report.PhotoSerialNumber != "" {
+		photoURLs = append(photoURLs, report.PhotoSerialNumber)
+	}
+	if report.PhotoExternalCondition != "" {
+		photoURLs = append(photoURLs, report.PhotoExternalCondition)
+	}
+	if report.PhotoWorkingCondition != "" {
+		photoURLs = append(photoURLs, report.PhotoWorkingCondition)
+	}
+
+	// Format received date
+	receivedDate := report.ReceivedAt.Format("Monday, January 2, 2006 at 3:04 PM")
+
+	// Build URLs
+	reportURL := fmt.Sprintf("/reception-reports/%d", reportID)
+	approvalURL := fmt.Sprintf("/reception-reports/%d/approve", reportID)
+
+	// Get logistics email
+	logisticsEmail, err := n.getLogisticsEmail(ctx)
+	if err != nil {
+		// Log warning but continue with default email
+		fmt.Printf("Warning: %v\n", err)
+	}
+
+	// Prepare template data
+	data := ReceptionReportApprovalData{
+		ShipmentID:     0, // Will be set if shipment exists
+		TrackingNumber: report.TrackingNumber,
+		ClientCompany:  clientCompany,
+		ReceivedDate:   receivedDate,
+		WarehouseUser:  warehouseUser,
+		Notes:          report.Notes,
+		PhotoURLs:      photoURLs,
+		SerialNumber:   serialNumber,
+		ReportURL:      reportURL,
+		ApprovalURL:    approvalURL,
+	}
+
+	// Set shipment ID if available
+	if report.ShipmentID != nil {
+		data.ShipmentID = *report.ShipmentID
+	}
+
+	// Render template
+	htmlBody, err := n.templates.RenderTemplate("reception_report_approval_request", data)
+	if err != nil {
+		return fmt.Errorf("failed to render template: %w", err)
+	}
+
+	// Send email
+	message := Message{
+		To:       []string{logisticsEmail},
+		Subject:  n.templates.GetSubject("reception_report_approval_request", data),
+		Body:     n.generatePlainTextFromHTML(htmlBody),
+		HTMLBody: htmlBody,
+	}
+
+	if err := n.client.Send(message); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	// Log notification
+	if err := n.logNotification(ctx, data.ShipmentID, "reception_report_approval_request", logisticsEmail, "sent"); err != nil {
 		fmt.Printf("Warning: failed to log notification: %v\n", err)
 	}
 

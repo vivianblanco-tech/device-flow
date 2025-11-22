@@ -1155,3 +1155,183 @@ func TestNotifier_SendInTransitToEngineerNotification(t *testing.T) {
 		t.Logf("Note: Notification was not logged due to mock SMTP server quirk (returns 250 OK as error)")
 	}
 }
+
+func TestNotifier_SendReceptionReportApprovalRequest(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Start a mock SMTP server
+	mockServer, err := newMockSMTPServer(2533)
+	if err != nil {
+		t.Fatalf("Failed to start mock SMTP server: %v", err)
+	}
+	defer mockServer.close()
+
+	// Give the server time to start
+	time.Sleep(100 * time.Millisecond)
+
+	client, err := NewClient(Config{
+		Host: "127.0.0.1",
+		Port: 2533,
+		From: "noreply@example.com",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create email client: %v", err)
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	notifier := NewNotifier(client, db)
+
+	// Create test logistics user
+	logisticsUser := &models.User{
+		Email:        "logistics@example.com",
+		PasswordHash: "hash",
+		Role:         models.RoleLogistics,
+	}
+	logisticsUser.BeforeCreate()
+
+	err = db.QueryRowContext(
+		context.Background(),
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		logisticsUser.Email, logisticsUser.PasswordHash, logisticsUser.Role, logisticsUser.CreatedAt, logisticsUser.UpdatedAt,
+	).Scan(&logisticsUser.ID)
+	if err != nil {
+		t.Fatalf("Failed to create logistics user: %v", err)
+	}
+
+	// Create test warehouse user
+	warehouseUser := &models.User{
+		Email:        "warehouse@example.com",
+		PasswordHash: "hash",
+		Role:         models.RoleWarehouse,
+	}
+	warehouseUser.BeforeCreate()
+
+	err = db.QueryRowContext(
+		context.Background(),
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		warehouseUser.Email, warehouseUser.PasswordHash, warehouseUser.Role, warehouseUser.CreatedAt, warehouseUser.UpdatedAt,
+	).Scan(&warehouseUser.ID)
+	if err != nil {
+		t.Fatalf("Failed to create warehouse user: %v", err)
+	}
+
+	// Create test client company
+	company := &models.ClientCompany{
+		Name:        fmt.Sprintf("Test Company %d", time.Now().UnixNano()),
+		ContactInfo: "contact@test.com",
+	}
+	company.BeforeCreate()
+
+	err = db.QueryRowContext(
+		context.Background(),
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		company.Name, company.ContactInfo, company.CreatedAt,
+	).Scan(&company.ID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test shipment
+	shipment := &models.Shipment{
+		ClientCompanyID:  company.ID,
+		Status:           models.ShipmentStatusAtWarehouse,
+		JiraTicketNumber: "TEST-307",
+		TrackingNumber:   "UPS999888777",
+	}
+	shipment.BeforeCreate()
+
+	err = db.QueryRowContext(
+		context.Background(),
+		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, tracking_number, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		shipment.ClientCompanyID, shipment.Status, shipment.JiraTicketNumber, shipment.TrackingNumber, shipment.CreatedAt, shipment.UpdatedAt,
+	).Scan(&shipment.ID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	// Create test laptop
+	var laptopID int64
+	err = db.QueryRowContext(
+		context.Background(),
+		`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, client_company_id, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		"SN123456789", "Dell", "XPS 15", "Intel i7", "16GB", "512GB", company.ID, models.LaptopStatusAtWarehouse, time.Now(), time.Now(),
+	).Scan(&laptopID)
+	if err != nil {
+		t.Fatalf("Failed to create test laptop: %v", err)
+	}
+
+	// Link laptop to shipment
+	_, err = db.ExecContext(
+		context.Background(),
+		`INSERT INTO shipment_laptops (shipment_id, laptop_id) VALUES ($1, $2)`,
+		shipment.ID, laptopID,
+	)
+	if err != nil {
+		t.Fatalf("Failed to link laptop to shipment: %v", err)
+	}
+
+	// Create test reception report
+	report := &models.ReceptionReport{
+		LaptopID:               laptopID,
+		ShipmentID:             &shipment.ID,
+		ClientCompanyID:        &company.ID,
+		TrackingNumber:         shipment.TrackingNumber,
+		WarehouseUserID:        warehouseUser.ID,
+		Notes:                  "Test reception report notes",
+		PhotoSerialNumber:      "/uploads/reception/serial.jpg",
+		PhotoExternalCondition: "/uploads/reception/external.jpg",
+		PhotoWorkingCondition:  "/uploads/reception/working.jpg",
+		Status:                 models.ReceptionReportStatusPendingApproval,
+	}
+	report.BeforeCreate()
+
+	var reportID int64
+	err = db.QueryRowContext(
+		context.Background(),
+		`INSERT INTO reception_reports (laptop_id, shipment_id, client_company_id, tracking_number, warehouse_user_id, 
+		received_at, notes, photo_serial_number, photo_external_condition, photo_working_condition, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+		report.LaptopID, report.ShipmentID, report.ClientCompanyID, report.TrackingNumber, report.WarehouseUserID,
+		report.ReceivedAt, report.Notes, report.PhotoSerialNumber, report.PhotoExternalCondition, report.PhotoWorkingCondition,
+		report.Status, report.CreatedAt, report.UpdatedAt,
+	).Scan(&reportID)
+	if err != nil {
+		t.Fatalf("Failed to create reception report: %v", err)
+	}
+
+	// Test sending reception report approval request
+	err = notifier.SendReceptionReportApprovalRequest(context.Background(), reportID)
+
+	// Mock SMTP server may return "250 OK" as error message, which is actually success
+	if err != nil && err.Error() != "failed to send email: 250 OK" {
+		t.Errorf("SendReceptionReportApprovalRequest() unexpected error = %v", err)
+	}
+
+	// Verify notification was logged if send was successful
+	if err == nil {
+		var count int
+		err = db.QueryRowContext(
+			context.Background(),
+			`SELECT COUNT(*) FROM notification_logs WHERE type = 'reception_report_approval_request' AND recipient = 'logistics@example.com'`,
+		).Scan(&count)
+
+		if err != nil {
+			t.Fatalf("Failed to query notification log: %v", err)
+		}
+
+		if count == 0 {
+			t.Error("Reception report approval request notification was not logged")
+		}
+	} else {
+		t.Logf("Note: Notification was not logged due to mock SMTP server quirk (returns 250 OK as error)")
+	}
+}
