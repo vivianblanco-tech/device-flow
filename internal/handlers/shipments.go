@@ -670,6 +670,16 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 					fmt.Printf("Warehouse pre-alert sent successfully for shipment %d\n", shipmentID)
 				}
 			}()
+			
+			// Also send notification to client that shipment was picked up
+			go func() {
+				ctx := context.Background()
+				if err := h.EmailNotifier.SendShipmentPickedUpNotification(ctx, shipmentID); err != nil {
+					fmt.Printf("Warning: failed to send shipment picked up notification: %v\n", err)
+				} else {
+					fmt.Printf("Shipment picked up notification sent successfully for shipment %d\n", shipmentID)
+				}
+			}()
 		}
 	}
 
@@ -706,6 +716,16 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 						fmt.Printf("Warning: failed to send delivery confirmation: %v\n", err)
 					} else {
 						fmt.Printf("Delivery confirmation sent successfully for shipment %d\n", shipmentID)
+					}
+				}()
+				
+				// Also send notification to client that device was delivered to engineer
+				go func() {
+					ctx := context.Background()
+					if err := h.EmailNotifier.SendEngineerDeliveryNotificationToClient(ctx, shipmentID); err != nil {
+						fmt.Printf("Warning: failed to send engineer delivery notification to client: %v\n", err)
+					} else {
+						fmt.Printf("Engineer delivery notification to client sent successfully for shipment %d\n", shipmentID)
 					}
 				}()
 			}

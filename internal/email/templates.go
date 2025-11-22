@@ -86,6 +86,44 @@ type DeliveryConfirmationData struct {
 	ProjectName        string
 }
 
+// ShipmentPickedUpData contains data for shipment picked up notification emails
+type ShipmentPickedUpData struct {
+	ContactName     string
+	ClientCompany   string
+	TrackingNumber  string
+	CourierName     string
+	PickedUpDate    string
+	ExpectedArrival string
+	TrackingURL     string
+	ShipmentType    string
+}
+
+// PickupFormSubmittedData contains data for pickup form submitted to logistics notification emails
+type PickupFormSubmittedData struct {
+	ShipmentID      int64
+	ShipmentType    string
+	ClientCompany   string
+	ContactName     string
+	ContactEmail    string
+	ContactPhone    string
+	PickupAddress   string
+	PickupDate      string
+	NumberOfDevices int
+	JiraTicket      string
+	ShipmentURL     string
+}
+
+// EngineerDeliveryClientData contains data for engineer delivery notification to client emails
+type EngineerDeliveryClientData struct {
+	ContactName    string
+	ClientCompany  string
+	EngineerName   string
+	DeliveryDate   string
+	TrackingNumber string
+	JiraTicket     string
+	ProjectName    string
+}
+
 // EmailTemplates holds all compiled email templates
 type EmailTemplates struct {
 	templates map[string]*template.Template
@@ -485,6 +523,149 @@ func (et *EmailTemplates) loadTemplates() {
             <p>If you have any questions or concerns about your device, please contact your project manager.</p>
         </div>
     `))
+
+	// Shipment Picked Up Template
+	et.templates["shipment_picked_up"] = template.Must(template.New("base").Parse(baseTemplate))
+	template.Must(et.templates["shipment_picked_up"].New("content").Parse(`
+        <div class="header">
+            <h1>📦 Shipment Picked Up</h1>
+        </div>
+        <div class="content">
+            <p>Hello {{.ContactName}},</p>
+            <div class="success">
+                Great news! Your shipment has been picked up and is now on its way.
+            </div>
+            <div class="info-box">
+                <h3>📋 Shipment Details</h3>
+                <div class="info-row">
+                    <span class="info-label">Tracking Number:</span> {{.TrackingNumber}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Courier:</span> {{.CourierName}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Picked Up Date:</span> {{.PickedUpDate}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Expected Arrival:</span> {{.ExpectedArrival}}
+                </div>
+                {{if .TrackingURL}}
+                <div class="info-row">
+                    <span class="info-label">Track Your Shipment:</span> <a href="{{.TrackingURL}}" class="button">Track Now</a>
+                </div>
+                {{end}}
+            </div>
+            <div class="info-box">
+                <h3>📬 What's Next?</h3>
+                <p>Your shipment is now in transit. You can track its progress using the tracking number above. We'll notify you once it arrives at the warehouse.</p>
+            </div>
+            <p>If you have any questions about your shipment, please don't hesitate to contact us.</p>
+        </div>
+    `))
+
+	// Pickup Form Submitted to Logistics Template
+	et.templates["pickup_form_submitted_logistics"] = template.Must(template.New("base").Parse(baseTemplate))
+	template.Must(et.templates["pickup_form_submitted_logistics"].New("content").Parse(`
+        <div class="header">
+            <h1>📋 New Pickup Form Submitted</h1>
+        </div>
+        <div class="content">
+            <p>Hello Logistics Team,</p>
+            <div class="info-box">
+                <p>A new pickup form has been submitted and requires your attention.</p>
+            </div>
+            <div class="info-box">
+                <h3>📦 Shipment Information</h3>
+                <div class="info-row">
+                    <span class="info-label">Shipment ID:</span> #{{.ShipmentID}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Shipment Type:</span> {{.ShipmentType}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Client Company:</span> {{.ClientCompany}}
+                </div>
+                {{if .JiraTicket}}
+                <div class="info-row">
+                    <span class="info-label">JIRA Ticket:</span> {{.JiraTicket}}
+                </div>
+                {{end}}
+                <div class="info-row">
+                    <span class="info-label">Number of Devices:</span> {{.NumberOfDevices}}
+                </div>
+            </div>
+            <div class="info-box">
+                <h3>👤 Contact Information</h3>
+                <div class="info-row">
+                    <span class="info-label">Contact Name:</span> {{.ContactName}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email:</span> {{.ContactEmail}}
+                </div>
+                {{if .ContactPhone}}
+                <div class="info-row">
+                    <span class="info-label">Phone:</span> {{.ContactPhone}}
+                </div>
+                {{end}}
+            </div>
+            <div class="info-box">
+                <h3>📍 Pickup Details</h3>
+                <div class="info-row">
+                    <span class="info-label">Pickup Address:</span> {{.PickupAddress}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Pickup Date:</span> {{.PickupDate}}
+                </div>
+            </div>
+            {{if .ShipmentURL}}
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{.ShipmentURL}}" class="button">View Shipment Details</a>
+            </div>
+            {{end}}
+            <p>Please review the pickup form and schedule the pickup accordingly.</p>
+        </div>
+    `))
+
+	// Engineer Delivery Notification to Client Template
+	et.templates["engineer_delivery_notification_to_client"] = template.Must(template.New("base").Parse(baseTemplate))
+	template.Must(et.templates["engineer_delivery_notification_to_client"].New("content").Parse(`
+        <div class="header">
+            <h1>✅ Device Delivered to Engineer</h1>
+        </div>
+        <div class="content">
+            <p>Hello {{.ContactName}},</p>
+            <div class="success">
+                Great news! Your shipment has been successfully delivered to the engineer.
+            </div>
+            <div class="info-box">
+                <h3>📦 Delivery Details</h3>
+                <div class="info-row">
+                    <span class="info-label">Engineer Name:</span> {{.EngineerName}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Delivery Date:</span> {{.DeliveryDate}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Tracking Number:</span> {{.TrackingNumber}}
+                </div>
+                {{if .JiraTicket}}
+                <div class="info-row">
+                    <span class="info-label">JIRA Ticket:</span> {{.JiraTicket}}
+                </div>
+                {{end}}
+                {{if .ProjectName}}
+                <div class="info-row">
+                    <span class="info-label">Project:</span> {{.ProjectName}}
+                </div>
+                {{end}}
+            </div>
+            <div class="info-box">
+                <h3>🎉 What's Next?</h3>
+                <p>The engineer will now set up the device and begin work on the project. You'll be notified of any updates or issues.</p>
+            </div>
+            <p>If you have any questions, please don't hesitate to contact us.</p>
+        </div>
+    `))
 }
 
 // RenderTemplate renders an email template with the given data
@@ -564,6 +745,38 @@ func (et *EmailTemplates) RenderTemplate(templateName string, data interface{}) 
 		dataMap["TrackingNumber"] = v.TrackingNumber
 		dataMap["ProjectName"] = v.ProjectName
 		dataMap["Subject"] = "Device Delivered Successfully"
+	case ShipmentPickedUpData:
+		dataMap["ContactName"] = v.ContactName
+		dataMap["ClientCompany"] = v.ClientCompany
+		dataMap["TrackingNumber"] = v.TrackingNumber
+		dataMap["CourierName"] = v.CourierName
+		dataMap["PickedUpDate"] = v.PickedUpDate
+		dataMap["ExpectedArrival"] = v.ExpectedArrival
+		dataMap["TrackingURL"] = v.TrackingURL
+		dataMap["ShipmentType"] = v.ShipmentType
+		dataMap["Subject"] = "Shipment Picked Up - " + v.TrackingNumber
+	case PickupFormSubmittedData:
+		dataMap["ShipmentID"] = v.ShipmentID
+		dataMap["ShipmentType"] = v.ShipmentType
+		dataMap["ClientCompany"] = v.ClientCompany
+		dataMap["ContactName"] = v.ContactName
+		dataMap["ContactEmail"] = v.ContactEmail
+		dataMap["ContactPhone"] = v.ContactPhone
+		dataMap["PickupAddress"] = v.PickupAddress
+		dataMap["PickupDate"] = v.PickupDate
+		dataMap["NumberOfDevices"] = v.NumberOfDevices
+		dataMap["JiraTicket"] = v.JiraTicket
+		dataMap["ShipmentURL"] = v.ShipmentURL
+		dataMap["Subject"] = "New Pickup Form Submitted - " + v.ClientCompany
+	case EngineerDeliveryClientData:
+		dataMap["ContactName"] = v.ContactName
+		dataMap["ClientCompany"] = v.ClientCompany
+		dataMap["EngineerName"] = v.EngineerName
+		dataMap["DeliveryDate"] = v.DeliveryDate
+		dataMap["TrackingNumber"] = v.TrackingNumber
+		dataMap["JiraTicket"] = v.JiraTicket
+		dataMap["ProjectName"] = v.ProjectName
+		dataMap["Subject"] = "Device Delivered to Engineer - " + v.TrackingNumber
 	default:
 		return "", fmt.Errorf("unsupported data type for template")
 	}
@@ -593,6 +806,12 @@ func (et *EmailTemplates) GetSubject(templateName string, data interface{}) stri
 		return "Hardware Release for Pickup - " + v.TrackingNumber
 	case DeliveryConfirmationData:
 		return "Device Delivered Successfully"
+	case ShipmentPickedUpData:
+		return "Shipment Picked Up - " + v.TrackingNumber
+	case PickupFormSubmittedData:
+		return "New Pickup Form Submitted - " + v.ClientCompany
+	case EngineerDeliveryClientData:
+		return "Device Delivered to Engineer - " + v.TrackingNumber
 	default:
 		return "Notification from Laptop Tracking System"
 	}

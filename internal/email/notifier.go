@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/yourusername/laptop-tracking-system/internal/models"
 )
 
 // Notifier handles sending email notifications for various events
@@ -376,6 +378,261 @@ func (n *Notifier) SendWarehousePreAlert(ctx context.Context, shipmentID int64) 
 	return nil
 }
 
+// SendShipmentPickedUpNotification sends a notification to the client when shipment is picked up
+func (n *Notifier) SendShipmentPickedUpNotification(ctx context.Context, shipmentID int64) error {
+	// Fetch shipment details
+	shipment, err := n.getShipmentDetails(ctx, shipmentID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch shipment details: %w", err)
+	}
+
+	// Fetch client company
+	var clientCompany string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT name FROM client_companies WHERE id = $1`,
+		shipment.ClientCompanyID,
+	).Scan(&clientCompany)
+	if err != nil {
+		return fmt.Errorf("failed to fetch client company: %w", err)
+	}
+
+	// Fetch pickup form data to get contact email
+	var formDataJSON string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT form_data FROM pickup_forms WHERE shipment_id = $1 ORDER BY submitted_at DESC LIMIT 1`,
+		shipmentID,
+	).Scan(&formDataJSON)
+	if err != nil {
+		return fmt.Errorf("no pickup form found for shipment %d: cannot send notification without contact email", shipmentID)
+	}
+
+	// Parse form data to extract contact information
+	var formData map[string]interface{}
+	if err := json.Unmarshal([]byte(formDataJSON), &formData); err != nil {
+		return fmt.Errorf("failed to parse form data: %w", err)
+	}
+
+	contactEmail, ok := formData["contact_email"].(string)
+	if !ok || contactEmail == "" {
+		return fmt.Errorf("contact email not found in pickup form")
+	}
+
+	// Extract contact name from form if available
+	contactName, _ := formData["contact_name"].(string)
+	if contactName == "" {
+		contactName = clientCompany // Fallback to company name
+	}
+
+	// Get picked up date and courier from shipment
+	var pickedUpAt sql.NullTime
+	var courierName sql.NullString
+	var shipmentType string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT picked_up_at, courier_name, shipment_type FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&pickedUpAt, &courierName, &shipmentType)
+	if err != nil {
+		return fmt.Errorf("failed to fetch shipment pickup details: %w", err)
+	}
+
+	// Get picked up date
+	pickedUpDate := time.Now().Format("Monday, January 2, 2006")
+	if pickedUpAt.Valid {
+		pickedUpDate = pickedUpAt.Time.Format("Monday, January 2, 2006")
+	}
+
+	// Calculate expected arrival (typically 3 days after pickup)
+	expectedArrivalDate := time.Now().AddDate(0, 0, 3)
+	if pickedUpAt.Valid {
+		expectedArrivalDate = pickedUpAt.Time.AddDate(0, 0, 3)
+	}
+	expectedArrival := expectedArrivalDate.Format("Monday, January 2, 2006")
+
+	// Build tracking URL based on courier
+	trackingURL := ""
+	courierNameStr := "Courier"
+	if courierName.Valid && courierName.String != "" {
+		courierNameStr = courierName.String
+	}
+	if shipment.TrackingNumber.String != "" {
+		switch strings.ToUpper(courierNameStr) {
+		case "UPS":
+			trackingURL = fmt.Sprintf("https://www.ups.com/track?tracknum=%s", shipment.TrackingNumber.String)
+		case "FEDEX", "FEDEX EXPRESS":
+			trackingURL = fmt.Sprintf("https://www.fedex.com/fedextrack/?trknbr=%s", shipment.TrackingNumber.String)
+		case "DHL":
+			trackingURL = fmt.Sprintf("https://www.dhl.com/en/express/tracking.html?AWB=%s", shipment.TrackingNumber.String)
+		default:
+			trackingURL = fmt.Sprintf("https://www.google.com/search?q=track+%s", shipment.TrackingNumber.String)
+		}
+	}
+
+	// Prepare template data
+	data := ShipmentPickedUpData{
+		ContactName:     contactName,
+		ClientCompany:   clientCompany,
+		TrackingNumber:  shipment.TrackingNumber.String,
+		CourierName:     courierNameStr,
+		PickedUpDate:    pickedUpDate,
+		ExpectedArrival: expectedArrival,
+		TrackingURL:     trackingURL,
+		ShipmentType:    shipmentType,
+	}
+
+	// Render template
+	htmlBody, err := n.templates.RenderTemplate("shipment_picked_up", data)
+	if err != nil {
+		return fmt.Errorf("failed to render template: %w", err)
+	}
+
+	// Send email
+	message := Message{
+		To:       []string{contactEmail},
+		Subject:  n.templates.GetSubject("shipment_picked_up", data),
+		Body:     n.generatePlainTextFromHTML(htmlBody),
+		HTMLBody: htmlBody,
+	}
+
+	if err := n.client.Send(message); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	// Log notification
+	if err := n.logNotification(ctx, shipmentID, "shipment_picked_up", contactEmail, "sent"); err != nil {
+		fmt.Printf("Warning: failed to log notification: %v\n", err)
+	}
+
+	return nil
+}
+
+// SendPickupFormSubmittedNotification sends notification to logistics when pickup form is submitted
+func (n *Notifier) SendPickupFormSubmittedNotification(ctx context.Context, shipmentID int64) error {
+	// Fetch shipment details
+	shipment, err := n.getShipmentDetails(ctx, shipmentID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch shipment details: %w", err)
+	}
+
+	// Get shipment type and other details
+	var shipmentType string
+	var jiraTicket string
+	var laptopCount int
+	err = n.db.QueryRowContext(ctx,
+		`SELECT shipment_type, jira_ticket_number, laptop_count FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&shipmentType, &jiraTicket, &laptopCount)
+	if err != nil {
+		return fmt.Errorf("failed to fetch shipment details: %w", err)
+	}
+
+	// Fetch client company
+	var clientCompany string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT name FROM client_companies WHERE id = $1`,
+		shipment.ClientCompanyID,
+	).Scan(&clientCompany)
+	if err != nil {
+		return fmt.Errorf("failed to fetch client company: %w", err)
+	}
+
+	// Fetch pickup form data
+	var formDataJSON string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT form_data FROM pickup_forms WHERE shipment_id = $1 ORDER BY submitted_at DESC LIMIT 1`,
+		shipmentID,
+	).Scan(&formDataJSON)
+	if err != nil {
+		return fmt.Errorf("no pickup form found for shipment %d", shipmentID)
+	}
+
+	// Parse form data
+	var formData map[string]interface{}
+	if err := json.Unmarshal([]byte(formDataJSON), &formData); err != nil {
+		return fmt.Errorf("failed to parse form data: %w", err)
+	}
+
+	// Extract contact information
+	contactName, _ := formData["contact_name"].(string)
+	contactEmail, _ := formData["contact_email"].(string)
+	contactPhone, _ := formData["contact_phone"].(string)
+
+	// Build pickup address
+	pickupAddress := ""
+	if addr, ok := formData["pickup_address"].(string); ok && addr != "" {
+		pickupAddress = addr
+		if city, ok := formData["pickup_city"].(string); ok && city != "" {
+			pickupAddress += ", " + city
+		}
+		if state, ok := formData["pickup_state"].(string); ok && state != "" {
+			pickupAddress += ", " + state
+		}
+		if zip, ok := formData["pickup_zip"].(string); ok && zip != "" {
+			pickupAddress += " " + zip
+		}
+	}
+
+	// Get pickup date
+	pickupDate := "To be scheduled"
+	if formPickupDate, ok := formData["pickup_date"].(string); ok && formPickupDate != "" {
+		if parsedDate, err := time.Parse("2006-01-02", formPickupDate); err == nil {
+			pickupDate = parsedDate.Format("Monday, January 2, 2006")
+		}
+	}
+
+	// Get logistics email
+	var logisticsEmail string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT email FROM users WHERE role = 'logistics' LIMIT 1`,
+	).Scan(&logisticsEmail)
+	if err != nil {
+		// Fallback to default logistics email
+		logisticsEmail = "international@bairesdev.com"
+	}
+
+	// Build shipment URL (assuming base URL from config or environment)
+	shipmentURL := fmt.Sprintf("/shipments/%d", shipmentID)
+
+	// Prepare template data
+	data := PickupFormSubmittedData{
+		ShipmentID:      shipmentID,
+		ShipmentType:    shipmentType,
+		ClientCompany:   clientCompany,
+		ContactName:     contactName,
+		ContactEmail:    contactEmail,
+		ContactPhone:    contactPhone,
+		PickupAddress:   pickupAddress,
+		PickupDate:      pickupDate,
+		NumberOfDevices: laptopCount,
+		JiraTicket:      jiraTicket,
+		ShipmentURL:     shipmentURL,
+	}
+
+	// Render template
+	htmlBody, err := n.templates.RenderTemplate("pickup_form_submitted_logistics", data)
+	if err != nil {
+		return fmt.Errorf("failed to render template: %w", err)
+	}
+
+	// Send email
+	message := Message{
+		To:       []string{logisticsEmail},
+		Subject:  n.templates.GetSubject("pickup_form_submitted_logistics", data),
+		Body:     n.generatePlainTextFromHTML(htmlBody),
+		HTMLBody: htmlBody,
+	}
+
+	if err := n.client.Send(message); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	// Log notification
+	if err := n.logNotification(ctx, shipmentID, "pickup_form_submitted_logistics", logisticsEmail, "sent"); err != nil {
+		fmt.Printf("Warning: failed to log notification: %v\n", err)
+	}
+
+	return nil
+}
+
 // SendReleaseNotification sends notification when hardware is released from warehouse
 func (n *Notifier) SendReleaseNotification(ctx context.Context, shipmentID int64) error {
 	// Fetch shipment details
@@ -554,6 +811,134 @@ func (n *Notifier) SendDeliveryConfirmation(ctx context.Context, shipmentID int6
 
 	// Log notification
 	if err := n.logNotification(ctx, shipmentID, "delivery_confirmation", engineerEmail, "sent"); err != nil {
+		fmt.Printf("Warning: failed to log notification: %v\n", err)
+	}
+
+	return nil
+}
+
+// SendEngineerDeliveryNotificationToClient sends notification to client when device is delivered to engineer
+func (n *Notifier) SendEngineerDeliveryNotificationToClient(ctx context.Context, shipmentID int64) error {
+	// Fetch shipment details
+	shipment, err := n.getShipmentDetails(ctx, shipmentID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch shipment details: %w", err)
+	}
+
+	// Get shipment type - only send for applicable types
+	var shipmentType string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT shipment_type FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&shipmentType)
+	if err != nil {
+		return fmt.Errorf("failed to fetch shipment type: %w", err)
+	}
+
+	// Only send for single_full_journey and warehouse_to_engineer
+	if shipmentType != string(models.ShipmentTypeSingleFullJourney) && 
+		shipmentType != string(models.ShipmentTypeWarehouseToEngineer) {
+		return fmt.Errorf("engineer delivery notification not applicable for shipment type: %s", shipmentType)
+	}
+
+	// Get engineer details
+	if !shipment.SoftwareEngineerID.Valid {
+		return fmt.Errorf("shipment has no assigned engineer")
+	}
+
+	var engineerName string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT name FROM software_engineers WHERE id = $1`,
+		shipment.SoftwareEngineerID.Int64,
+	).Scan(&engineerName)
+	if err != nil {
+		return fmt.Errorf("failed to fetch engineer details: %w", err)
+	}
+
+	// Fetch client company
+	var clientCompany string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT name FROM client_companies WHERE id = $1`,
+		shipment.ClientCompanyID,
+	).Scan(&clientCompany)
+	if err != nil {
+		return fmt.Errorf("failed to fetch client company: %w", err)
+	}
+
+	// Get JIRA ticket and delivery date
+	var jiraTicket string
+	var deliveredAt sql.NullTime
+	err = n.db.QueryRowContext(ctx,
+		`SELECT jira_ticket_number, delivered_at FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&jiraTicket, &deliveredAt)
+	if err != nil {
+		return fmt.Errorf("failed to fetch shipment details: %w", err)
+	}
+
+	// Get delivery date
+	deliveryDate := time.Now().Format("Monday, January 2, 2006")
+	if deliveredAt.Valid {
+		deliveryDate = deliveredAt.Time.Format("Monday, January 2, 2006")
+	}
+
+	// Fetch pickup form data to get contact email
+	var formDataJSON string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT form_data FROM pickup_forms WHERE shipment_id = $1 ORDER BY submitted_at DESC LIMIT 1`,
+		shipmentID,
+	).Scan(&formDataJSON)
+	if err != nil {
+		return fmt.Errorf("no pickup form found for shipment %d: cannot send notification without contact email", shipmentID)
+	}
+
+	// Parse form data
+	var formData map[string]interface{}
+	if err := json.Unmarshal([]byte(formDataJSON), &formData); err != nil {
+		return fmt.Errorf("failed to parse form data: %w", err)
+	}
+
+	contactEmail, ok := formData["contact_email"].(string)
+	if !ok || contactEmail == "" {
+		return fmt.Errorf("contact email not found in pickup form")
+	}
+
+	contactName, _ := formData["contact_name"].(string)
+	if contactName == "" {
+		contactName = clientCompany
+	}
+
+	// Prepare template data
+	data := EngineerDeliveryClientData{
+		ContactName:    contactName,
+		ClientCompany: clientCompany,
+		EngineerName:  engineerName,
+		DeliveryDate:  deliveryDate,
+		TrackingNumber: shipment.TrackingNumber.String,
+		JiraTicket:    jiraTicket,
+		ProjectName:   "", // Can be added if available
+	}
+
+	// Render template
+	htmlBody, err := n.templates.RenderTemplate("engineer_delivery_notification_to_client", data)
+	if err != nil {
+		return fmt.Errorf("failed to render template: %w", err)
+	}
+
+	// Send email
+	message := Message{
+		To:       []string{contactEmail},
+		Subject:  n.templates.GetSubject("engineer_delivery_notification_to_client", data),
+		Body:     n.generatePlainTextFromHTML(htmlBody),
+		HTMLBody: htmlBody,
+	}
+
+	if err := n.client.Send(message); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	// Log notification
+	if err := n.logNotification(ctx, shipmentID, "engineer_delivery_notification_to_client", contactEmail, "sent"); err != nil {
 		fmt.Printf("Warning: failed to log notification: %v\n", err)
 	}
 

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -533,6 +534,16 @@ func (h *PickupFormHandler) PickupFormSubmit(w http.ResponseWriter, r *http.Requ
 			// Log error but don't fail the request
 			fmt.Printf("Warning: Failed to send pickup confirmation email: %v\n", err)
 		}
+		
+		// Also send notification to logistics team
+		go func() {
+			ctx := context.Background()
+			if err := h.Notifier.SendPickupFormSubmittedNotification(ctx, shipmentID); err != nil {
+				fmt.Printf("Warning: Failed to send pickup form submitted notification to logistics: %v\n", err)
+			} else {
+				fmt.Printf("Pickup form submitted notification sent successfully to logistics for shipment %d\n", shipmentID)
+			}
+		}()
 	}
 
 	// Redirect to success page or shipment detail
