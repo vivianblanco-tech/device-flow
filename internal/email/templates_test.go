@@ -138,6 +138,7 @@ func TestEmailTemplates_RenderTemplate_PickupConfirmation(t *testing.T) {
 func TestEmailTemplates_RenderTemplate_WarehousePreAlert(t *testing.T) {
 	templates := NewEmailTemplates()
 
+	// Test with single shipment
 	data := WarehousePreAlertData{
 		TrackingNumber:    "UPS987654321",
 		ExpectedDate:      "December 22, 2024",
@@ -146,6 +147,13 @@ func TestEmailTemplates_RenderTemplate_WarehousePreAlert(t *testing.T) {
 		DeviceDescription: "Dell Latitude Laptop",
 		ProjectName:       "Project Alpha",
 		TrackingURL:       "https://www.ups.com/track?tracknum=UPS987654321",
+		IsSingleShipment:  true,
+		SerialNumber:      "SN123456789",
+		Brand:             "Dell",
+		Model:             "Latitude",
+		CPU:               "Intel i7",
+		RAMGB:             "16GB",
+		SSDGB:             "512GB",
 	}
 
 	html, err := templates.RenderTemplate("warehouse_pre_alert", data)
@@ -157,10 +165,15 @@ func TestEmailTemplates_RenderTemplate_WarehousePreAlert(t *testing.T) {
 		"UPS987654321",
 		"December 22, 2024",
 		"Bob Wilson",
-		"ClientCorp",
-		"Dell Latitude Laptop",
 		"Project Alpha",
 		"Track Shipment",
+		"Laptop Details",
+		"SN123456789",
+		"Dell",
+		"Latitude",
+		"Intel i7",
+		"16GB",
+		"512GB",
 	}
 
 	for _, expected := range expectedContent {
