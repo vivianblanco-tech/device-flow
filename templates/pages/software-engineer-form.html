@@ -52,10 +52,306 @@
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
                     </div>
 
-                    <div>
-                        <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                        <textarea id="address" name="address" rows="3"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">{{if .IsEdit}}{{.Engineer.Address}}{{end}}</textarea>
+                    <!-- Address Section (International Format) -->
+                    <div class="border-t pt-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Address (International Format)</h3>
+                        
+                        <!-- Street Address -->
+                        <div class="mb-6">
+                            <label for="address_street" class="block text-sm font-medium text-gray-700 mb-2">
+                                Street Address <span class="text-red-600">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="address_street" 
+                                name="address_street" 
+                                required
+                                value="{{if .IsEdit}}{{.Engineer.AddressStreet}}{{end}}"
+                                placeholder="456 Tech Avenue, Apt 12B"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            >
+                        </div>
+
+                        <!-- City and Country (Required) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label for="address_city" class="block text-sm font-medium text-gray-700 mb-2">
+                                    City <span class="text-red-600">*</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="address_city" 
+                                    name="address_city" 
+                                    required
+                                    value="{{if .IsEdit}}{{.Engineer.AddressCity}}{{end}}"
+                                    placeholder="London"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="address_country" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Country <span class="text-red-600">*</span>
+                                </label>
+                                <select 
+                                    id="address_country" 
+                                    name="address_country" 
+                                    required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                >
+                                    <option value="">Select a country...</option>
+                                    
+                                    <!-- North America -->
+                                    <optgroup label="North America">
+                                        <option value="Canada" {{if and .IsEdit (eq .Engineer.AddressCountry "Canada")}}selected{{end}}>Canada</option>
+                                        <option value="Mexico" {{if and .IsEdit (eq .Engineer.AddressCountry "Mexico")}}selected{{end}}>Mexico</option>
+                                        <option value="United States" {{if and .IsEdit (eq .Engineer.AddressCountry "United States")}}selected{{end}}>United States</option>
+                                    </optgroup>
+                                    
+                                    <!-- Central America -->
+                                    <optgroup label="Central America">
+                                        <option value="Belize" {{if and .IsEdit (eq .Engineer.AddressCountry "Belize")}}selected{{end}}>Belize</option>
+                                        <option value="Costa Rica" {{if and .IsEdit (eq .Engineer.AddressCountry "Costa Rica")}}selected{{end}}>Costa Rica</option>
+                                        <option value="El Salvador" {{if and .IsEdit (eq .Engineer.AddressCountry "El Salvador")}}selected{{end}}>El Salvador</option>
+                                        <option value="Guatemala" {{if and .IsEdit (eq .Engineer.AddressCountry "Guatemala")}}selected{{end}}>Guatemala</option>
+                                        <option value="Honduras" {{if and .IsEdit (eq .Engineer.AddressCountry "Honduras")}}selected{{end}}>Honduras</option>
+                                        <option value="Nicaragua" {{if and .IsEdit (eq .Engineer.AddressCountry "Nicaragua")}}selected{{end}}>Nicaragua</option>
+                                        <option value="Panama" {{if and .IsEdit (eq .Engineer.AddressCountry "Panama")}}selected{{end}}>Panama</option>
+                                    </optgroup>
+                                    
+                                    <!-- South America -->
+                                    <optgroup label="South America">
+                                        <option value="Argentina" {{if and .IsEdit (eq .Engineer.AddressCountry "Argentina")}}selected{{end}}>Argentina</option>
+                                        <option value="Bolivia" {{if and .IsEdit (eq .Engineer.AddressCountry "Bolivia")}}selected{{end}}>Bolivia</option>
+                                        <option value="Brazil" {{if and .IsEdit (eq .Engineer.AddressCountry "Brazil")}}selected{{end}}>Brazil</option>
+                                        <option value="Chile" {{if and .IsEdit (eq .Engineer.AddressCountry "Chile")}}selected{{end}}>Chile</option>
+                                        <option value="Colombia" {{if and .IsEdit (eq .Engineer.AddressCountry "Colombia")}}selected{{end}}>Colombia</option>
+                                        <option value="Ecuador" {{if and .IsEdit (eq .Engineer.AddressCountry "Ecuador")}}selected{{end}}>Ecuador</option>
+                                        <option value="French Guiana" {{if and .IsEdit (eq .Engineer.AddressCountry "French Guiana")}}selected{{end}}>French Guiana</option>
+                                        <option value="Guyana" {{if and .IsEdit (eq .Engineer.AddressCountry "Guyana")}}selected{{end}}>Guyana</option>
+                                        <option value="Paraguay" {{if and .IsEdit (eq .Engineer.AddressCountry "Paraguay")}}selected{{end}}>Paraguay</option>
+                                        <option value="Peru" {{if and .IsEdit (eq .Engineer.AddressCountry "Peru")}}selected{{end}}>Peru</option>
+                                        <option value="Suriname" {{if and .IsEdit (eq .Engineer.AddressCountry "Suriname")}}selected{{end}}>Suriname</option>
+                                        <option value="Uruguay" {{if and .IsEdit (eq .Engineer.AddressCountry "Uruguay")}}selected{{end}}>Uruguay</option>
+                                        <option value="Venezuela" {{if and .IsEdit (eq .Engineer.AddressCountry "Venezuela")}}selected{{end}}>Venezuela</option>
+                                    </optgroup>
+                                    
+                                    <!-- Caribbean -->
+                                    <optgroup label="Caribbean">
+                                        <option value="Antigua and Barbuda" {{if and .IsEdit (eq .Engineer.AddressCountry "Antigua and Barbuda")}}selected{{end}}>Antigua and Barbuda</option>
+                                        <option value="Bahamas" {{if and .IsEdit (eq .Engineer.AddressCountry "Bahamas")}}selected{{end}}>Bahamas</option>
+                                        <option value="Barbados" {{if and .IsEdit (eq .Engineer.AddressCountry "Barbados")}}selected{{end}}>Barbados</option>
+                                        <option value="Cuba" {{if and .IsEdit (eq .Engineer.AddressCountry "Cuba")}}selected{{end}}>Cuba</option>
+                                        <option value="Dominica" {{if and .IsEdit (eq .Engineer.AddressCountry "Dominica")}}selected{{end}}>Dominica</option>
+                                        <option value="Dominican Republic" {{if and .IsEdit (eq .Engineer.AddressCountry "Dominican Republic")}}selected{{end}}>Dominican Republic</option>
+                                        <option value="Grenada" {{if and .IsEdit (eq .Engineer.AddressCountry "Grenada")}}selected{{end}}>Grenada</option>
+                                        <option value="Haiti" {{if and .IsEdit (eq .Engineer.AddressCountry "Haiti")}}selected{{end}}>Haiti</option>
+                                        <option value="Jamaica" {{if and .IsEdit (eq .Engineer.AddressCountry "Jamaica")}}selected{{end}}>Jamaica</option>
+                                        <option value="Saint Kitts and Nevis" {{if and .IsEdit (eq .Engineer.AddressCountry "Saint Kitts and Nevis")}}selected{{end}}>Saint Kitts and Nevis</option>
+                                        <option value="Saint Lucia" {{if and .IsEdit (eq .Engineer.AddressCountry "Saint Lucia")}}selected{{end}}>Saint Lucia</option>
+                                        <option value="Saint Vincent and the Grenadines" {{if and .IsEdit (eq .Engineer.AddressCountry "Saint Vincent and the Grenadines")}}selected{{end}}>Saint Vincent and the Grenadines</option>
+                                        <option value="Trinidad and Tobago" {{if and .IsEdit (eq .Engineer.AddressCountry "Trinidad and Tobago")}}selected{{end}}>Trinidad and Tobago</option>
+                                    </optgroup>
+                                    
+                                    <!-- Rest of the World -->
+                                    <optgroup label="Rest of the World">
+                                        <option value="Afghanistan" {{if and .IsEdit (eq .Engineer.AddressCountry "Afghanistan")}}selected{{end}}>Afghanistan</option>
+                                        <option value="Albania" {{if and .IsEdit (eq .Engineer.AddressCountry "Albania")}}selected{{end}}>Albania</option>
+                                        <option value="Algeria" {{if and .IsEdit (eq .Engineer.AddressCountry "Algeria")}}selected{{end}}>Algeria</option>
+                                        <option value="Andorra" {{if and .IsEdit (eq .Engineer.AddressCountry "Andorra")}}selected{{end}}>Andorra</option>
+                                        <option value="Angola" {{if and .IsEdit (eq .Engineer.AddressCountry "Angola")}}selected{{end}}>Angola</option>
+                                        <option value="Armenia" {{if and .IsEdit (eq .Engineer.AddressCountry "Armenia")}}selected{{end}}>Armenia</option>
+                                        <option value="Australia" {{if and .IsEdit (eq .Engineer.AddressCountry "Australia")}}selected{{end}}>Australia</option>
+                                        <option value="Austria" {{if and .IsEdit (eq .Engineer.AddressCountry "Austria")}}selected{{end}}>Austria</option>
+                                        <option value="Azerbaijan" {{if and .IsEdit (eq .Engineer.AddressCountry "Azerbaijan")}}selected{{end}}>Azerbaijan</option>
+                                        <option value="Bahrain" {{if and .IsEdit (eq .Engineer.AddressCountry "Bahrain")}}selected{{end}}>Bahrain</option>
+                                        <option value="Bangladesh" {{if and .IsEdit (eq .Engineer.AddressCountry "Bangladesh")}}selected{{end}}>Bangladesh</option>
+                                        <option value="Belarus" {{if and .IsEdit (eq .Engineer.AddressCountry "Belarus")}}selected{{end}}>Belarus</option>
+                                        <option value="Belgium" {{if and .IsEdit (eq .Engineer.AddressCountry "Belgium")}}selected{{end}}>Belgium</option>
+                                        <option value="Benin" {{if and .IsEdit (eq .Engineer.AddressCountry "Benin")}}selected{{end}}>Benin</option>
+                                        <option value="Bhutan" {{if and .IsEdit (eq .Engineer.AddressCountry "Bhutan")}}selected{{end}}>Bhutan</option>
+                                        <option value="Bosnia and Herzegovina" {{if and .IsEdit (eq .Engineer.AddressCountry "Bosnia and Herzegovina")}}selected{{end}}>Bosnia and Herzegovina</option>
+                                        <option value="Botswana" {{if and .IsEdit (eq .Engineer.AddressCountry "Botswana")}}selected{{end}}>Botswana</option>
+                                        <option value="Brunei" {{if and .IsEdit (eq .Engineer.AddressCountry "Brunei")}}selected{{end}}>Brunei</option>
+                                        <option value="Bulgaria" {{if and .IsEdit (eq .Engineer.AddressCountry "Bulgaria")}}selected{{end}}>Bulgaria</option>
+                                        <option value="Burkina Faso" {{if and .IsEdit (eq .Engineer.AddressCountry "Burkina Faso")}}selected{{end}}>Burkina Faso</option>
+                                        <option value="Burundi" {{if and .IsEdit (eq .Engineer.AddressCountry "Burundi")}}selected{{end}}>Burundi</option>
+                                        <option value="Cambodia" {{if and .IsEdit (eq .Engineer.AddressCountry "Cambodia")}}selected{{end}}>Cambodia</option>
+                                        <option value="Cameroon" {{if and .IsEdit (eq .Engineer.AddressCountry "Cameroon")}}selected{{end}}>Cameroon</option>
+                                        <option value="Cape Verde" {{if and .IsEdit (eq .Engineer.AddressCountry "Cape Verde")}}selected{{end}}>Cape Verde</option>
+                                        <option value="Central African Republic" {{if and .IsEdit (eq .Engineer.AddressCountry "Central African Republic")}}selected{{end}}>Central African Republic</option>
+                                        <option value="Chad" {{if and .IsEdit (eq .Engineer.AddressCountry "Chad")}}selected{{end}}>Chad</option>
+                                        <option value="China" {{if and .IsEdit (eq .Engineer.AddressCountry "China")}}selected{{end}}>China</option>
+                                        <option value="Comoros" {{if and .IsEdit (eq .Engineer.AddressCountry "Comoros")}}selected{{end}}>Comoros</option>
+                                        <option value="Congo" {{if and .IsEdit (eq .Engineer.AddressCountry "Congo")}}selected{{end}}>Congo</option>
+                                        <option value="Croatia" {{if and .IsEdit (eq .Engineer.AddressCountry "Croatia")}}selected{{end}}>Croatia</option>
+                                        <option value="Cyprus" {{if and .IsEdit (eq .Engineer.AddressCountry "Cyprus")}}selected{{end}}>Cyprus</option>
+                                        <option value="Czech Republic" {{if and .IsEdit (eq .Engineer.AddressCountry "Czech Republic")}}selected{{end}}>Czech Republic</option>
+                                        <option value="Denmark" {{if and .IsEdit (eq .Engineer.AddressCountry "Denmark")}}selected{{end}}>Denmark</option>
+                                        <option value="Djibouti" {{if and .IsEdit (eq .Engineer.AddressCountry "Djibouti")}}selected{{end}}>Djibouti</option>
+                                        <option value="East Timor" {{if and .IsEdit (eq .Engineer.AddressCountry "East Timor")}}selected{{end}}>East Timor</option>
+                                        <option value="Egypt" {{if and .IsEdit (eq .Engineer.AddressCountry "Egypt")}}selected{{end}}>Egypt</option>
+                                        <option value="Equatorial Guinea" {{if and .IsEdit (eq .Engineer.AddressCountry "Equatorial Guinea")}}selected{{end}}>Equatorial Guinea</option>
+                                        <option value="Eritrea" {{if and .IsEdit (eq .Engineer.AddressCountry "Eritrea")}}selected{{end}}>Eritrea</option>
+                                        <option value="Estonia" {{if and .IsEdit (eq .Engineer.AddressCountry "Estonia")}}selected{{end}}>Estonia</option>
+                                        <option value="Ethiopia" {{if and .IsEdit (eq .Engineer.AddressCountry "Ethiopia")}}selected{{end}}>Ethiopia</option>
+                                        <option value="Fiji" {{if and .IsEdit (eq .Engineer.AddressCountry "Fiji")}}selected{{end}}>Fiji</option>
+                                        <option value="Finland" {{if and .IsEdit (eq .Engineer.AddressCountry "Finland")}}selected{{end}}>Finland</option>
+                                        <option value="France" {{if and .IsEdit (eq .Engineer.AddressCountry "France")}}selected{{end}}>France</option>
+                                        <option value="Gabon" {{if and .IsEdit (eq .Engineer.AddressCountry "Gabon")}}selected{{end}}>Gabon</option>
+                                        <option value="Gambia" {{if and .IsEdit (eq .Engineer.AddressCountry "Gambia")}}selected{{end}}>Gambia</option>
+                                        <option value="Georgia" {{if and .IsEdit (eq .Engineer.AddressCountry "Georgia")}}selected{{end}}>Georgia</option>
+                                        <option value="Germany" {{if and .IsEdit (eq .Engineer.AddressCountry "Germany")}}selected{{end}}>Germany</option>
+                                        <option value="Ghana" {{if and .IsEdit (eq .Engineer.AddressCountry "Ghana")}}selected{{end}}>Ghana</option>
+                                        <option value="Greece" {{if and .IsEdit (eq .Engineer.AddressCountry "Greece")}}selected{{end}}>Greece</option>
+                                        <option value="Guinea" {{if and .IsEdit (eq .Engineer.AddressCountry "Guinea")}}selected{{end}}>Guinea</option>
+                                        <option value="Guinea-Bissau" {{if and .IsEdit (eq .Engineer.AddressCountry "Guinea-Bissau")}}selected{{end}}>Guinea-Bissau</option>
+                                        <option value="Hungary" {{if and .IsEdit (eq .Engineer.AddressCountry "Hungary")}}selected{{end}}>Hungary</option>
+                                        <option value="Iceland" {{if and .IsEdit (eq .Engineer.AddressCountry "Iceland")}}selected{{end}}>Iceland</option>
+                                        <option value="India" {{if and .IsEdit (eq .Engineer.AddressCountry "India")}}selected{{end}}>India</option>
+                                        <option value="Indonesia" {{if and .IsEdit (eq .Engineer.AddressCountry "Indonesia")}}selected{{end}}>Indonesia</option>
+                                        <option value="Iran" {{if and .IsEdit (eq .Engineer.AddressCountry "Iran")}}selected{{end}}>Iran</option>
+                                        <option value="Iraq" {{if and .IsEdit (eq .Engineer.AddressCountry "Iraq")}}selected{{end}}>Iraq</option>
+                                        <option value="Ireland" {{if and .IsEdit (eq .Engineer.AddressCountry "Ireland")}}selected{{end}}>Ireland</option>
+                                        <option value="Israel" {{if and .IsEdit (eq .Engineer.AddressCountry "Israel")}}selected{{end}}>Israel</option>
+                                        <option value="Italy" {{if and .IsEdit (eq .Engineer.AddressCountry "Italy")}}selected{{end}}>Italy</option>
+                                        <option value="Ivory Coast" {{if and .IsEdit (eq .Engineer.AddressCountry "Ivory Coast")}}selected{{end}}>Ivory Coast</option>
+                                        <option value="Japan" {{if and .IsEdit (eq .Engineer.AddressCountry "Japan")}}selected{{end}}>Japan</option>
+                                        <option value="Jordan" {{if and .IsEdit (eq .Engineer.AddressCountry "Jordan")}}selected{{end}}>Jordan</option>
+                                        <option value="Kazakhstan" {{if and .IsEdit (eq .Engineer.AddressCountry "Kazakhstan")}}selected{{end}}>Kazakhstan</option>
+                                        <option value="Kenya" {{if and .IsEdit (eq .Engineer.AddressCountry "Kenya")}}selected{{end}}>Kenya</option>
+                                        <option value="Kiribati" {{if and .IsEdit (eq .Engineer.AddressCountry "Kiribati")}}selected{{end}}>Kiribati</option>
+                                        <option value="Kosovo" {{if and .IsEdit (eq .Engineer.AddressCountry "Kosovo")}}selected{{end}}>Kosovo</option>
+                                        <option value="Kuwait" {{if and .IsEdit (eq .Engineer.AddressCountry "Kuwait")}}selected{{end}}>Kuwait</option>
+                                        <option value="Kyrgyzstan" {{if and .IsEdit (eq .Engineer.AddressCountry "Kyrgyzstan")}}selected{{end}}>Kyrgyzstan</option>
+                                        <option value="Laos" {{if and .IsEdit (eq .Engineer.AddressCountry "Laos")}}selected{{end}}>Laos</option>
+                                        <option value="Latvia" {{if and .IsEdit (eq .Engineer.AddressCountry "Latvia")}}selected{{end}}>Latvia</option>
+                                        <option value="Lebanon" {{if and .IsEdit (eq .Engineer.AddressCountry "Lebanon")}}selected{{end}}>Lebanon</option>
+                                        <option value="Lesotho" {{if and .IsEdit (eq .Engineer.AddressCountry "Lesotho")}}selected{{end}}>Lesotho</option>
+                                        <option value="Liberia" {{if and .IsEdit (eq .Engineer.AddressCountry "Liberia")}}selected{{end}}>Liberia</option>
+                                        <option value="Libya" {{if and .IsEdit (eq .Engineer.AddressCountry "Libya")}}selected{{end}}>Libya</option>
+                                        <option value="Liechtenstein" {{if and .IsEdit (eq .Engineer.AddressCountry "Liechtenstein")}}selected{{end}}>Liechtenstein</option>
+                                        <option value="Lithuania" {{if and .IsEdit (eq .Engineer.AddressCountry "Lithuania")}}selected{{end}}>Lithuania</option>
+                                        <option value="Luxembourg" {{if and .IsEdit (eq .Engineer.AddressCountry "Luxembourg")}}selected{{end}}>Luxembourg</option>
+                                        <option value="Madagascar" {{if and .IsEdit (eq .Engineer.AddressCountry "Madagascar")}}selected{{end}}>Madagascar</option>
+                                        <option value="Malawi" {{if and .IsEdit (eq .Engineer.AddressCountry "Malawi")}}selected{{end}}>Malawi</option>
+                                        <option value="Malaysia" {{if and .IsEdit (eq .Engineer.AddressCountry "Malaysia")}}selected{{end}}>Malaysia</option>
+                                        <option value="Maldives" {{if and .IsEdit (eq .Engineer.AddressCountry "Maldives")}}selected{{end}}>Maldives</option>
+                                        <option value="Mali" {{if and .IsEdit (eq .Engineer.AddressCountry "Mali")}}selected{{end}}>Mali</option>
+                                        <option value="Malta" {{if and .IsEdit (eq .Engineer.AddressCountry "Malta")}}selected{{end}}>Malta</option>
+                                        <option value="Marshall Islands" {{if and .IsEdit (eq .Engineer.AddressCountry "Marshall Islands")}}selected{{end}}>Marshall Islands</option>
+                                        <option value="Mauritania" {{if and .IsEdit (eq .Engineer.AddressCountry "Mauritania")}}selected{{end}}>Mauritania</option>
+                                        <option value="Mauritius" {{if and .IsEdit (eq .Engineer.AddressCountry "Mauritius")}}selected{{end}}>Mauritius</option>
+                                        <option value="Micronesia" {{if and .IsEdit (eq .Engineer.AddressCountry "Micronesia")}}selected{{end}}>Micronesia</option>
+                                        <option value="Moldova" {{if and .IsEdit (eq .Engineer.AddressCountry "Moldova")}}selected{{end}}>Moldova</option>
+                                        <option value="Monaco" {{if and .IsEdit (eq .Engineer.AddressCountry "Monaco")}}selected{{end}}>Monaco</option>
+                                        <option value="Mongolia" {{if and .IsEdit (eq .Engineer.AddressCountry "Mongolia")}}selected{{end}}>Mongolia</option>
+                                        <option value="Montenegro" {{if and .IsEdit (eq .Engineer.AddressCountry "Montenegro")}}selected{{end}}>Montenegro</option>
+                                        <option value="Morocco" {{if and .IsEdit (eq .Engineer.AddressCountry "Morocco")}}selected{{end}}>Morocco</option>
+                                        <option value="Mozambique" {{if and .IsEdit (eq .Engineer.AddressCountry "Mozambique")}}selected{{end}}>Mozambique</option>
+                                        <option value="Myanmar" {{if and .IsEdit (eq .Engineer.AddressCountry "Myanmar")}}selected{{end}}>Myanmar</option>
+                                        <option value="Namibia" {{if and .IsEdit (eq .Engineer.AddressCountry "Namibia")}}selected{{end}}>Namibia</option>
+                                        <option value="Nauru" {{if and .IsEdit (eq .Engineer.AddressCountry "Nauru")}}selected{{end}}>Nauru</option>
+                                        <option value="Nepal" {{if and .IsEdit (eq .Engineer.AddressCountry "Nepal")}}selected{{end}}>Nepal</option>
+                                        <option value="Netherlands" {{if and .IsEdit (eq .Engineer.AddressCountry "Netherlands")}}selected{{end}}>Netherlands</option>
+                                        <option value="New Zealand" {{if and .IsEdit (eq .Engineer.AddressCountry "New Zealand")}}selected{{end}}>New Zealand</option>
+                                        <option value="Niger" {{if and .IsEdit (eq .Engineer.AddressCountry "Niger")}}selected{{end}}>Niger</option>
+                                        <option value="Nigeria" {{if and .IsEdit (eq .Engineer.AddressCountry "Nigeria")}}selected{{end}}>Nigeria</option>
+                                        <option value="North Korea" {{if and .IsEdit (eq .Engineer.AddressCountry "North Korea")}}selected{{end}}>North Korea</option>
+                                        <option value="North Macedonia" {{if and .IsEdit (eq .Engineer.AddressCountry "North Macedonia")}}selected{{end}}>North Macedonia</option>
+                                        <option value="Norway" {{if and .IsEdit (eq .Engineer.AddressCountry "Norway")}}selected{{end}}>Norway</option>
+                                        <option value="Oman" {{if and .IsEdit (eq .Engineer.AddressCountry "Oman")}}selected{{end}}>Oman</option>
+                                        <option value="Pakistan" {{if and .IsEdit (eq .Engineer.AddressCountry "Pakistan")}}selected{{end}}>Pakistan</option>
+                                        <option value="Palau" {{if and .IsEdit (eq .Engineer.AddressCountry "Palau")}}selected{{end}}>Palau</option>
+                                        <option value="Palestine" {{if and .IsEdit (eq .Engineer.AddressCountry "Palestine")}}selected{{end}}>Palestine</option>
+                                        <option value="Papua New Guinea" {{if and .IsEdit (eq .Engineer.AddressCountry "Papua New Guinea")}}selected{{end}}>Papua New Guinea</option>
+                                        <option value="Philippines" {{if and .IsEdit (eq .Engineer.AddressCountry "Philippines")}}selected{{end}}>Philippines</option>
+                                        <option value="Poland" {{if and .IsEdit (eq .Engineer.AddressCountry "Poland")}}selected{{end}}>Poland</option>
+                                        <option value="Portugal" {{if and .IsEdit (eq .Engineer.AddressCountry "Portugal")}}selected{{end}}>Portugal</option>
+                                        <option value="Qatar" {{if and .IsEdit (eq .Engineer.AddressCountry "Qatar")}}selected{{end}}>Qatar</option>
+                                        <option value="Romania" {{if and .IsEdit (eq .Engineer.AddressCountry "Romania")}}selected{{end}}>Romania</option>
+                                        <option value="Russia" {{if and .IsEdit (eq .Engineer.AddressCountry "Russia")}}selected{{end}}>Russia</option>
+                                        <option value="Rwanda" {{if and .IsEdit (eq .Engineer.AddressCountry "Rwanda")}}selected{{end}}>Rwanda</option>
+                                        <option value="Samoa" {{if and .IsEdit (eq .Engineer.AddressCountry "Samoa")}}selected{{end}}>Samoa</option>
+                                        <option value="San Marino" {{if and .IsEdit (eq .Engineer.AddressCountry "San Marino")}}selected{{end}}>San Marino</option>
+                                        <option value="Sao Tome and Principe" {{if and .IsEdit (eq .Engineer.AddressCountry "Sao Tome and Principe")}}selected{{end}}>Sao Tome and Principe</option>
+                                        <option value="Saudi Arabia" {{if and .IsEdit (eq .Engineer.AddressCountry "Saudi Arabia")}}selected{{end}}>Saudi Arabia</option>
+                                        <option value="Senegal" {{if and .IsEdit (eq .Engineer.AddressCountry "Senegal")}}selected{{end}}>Senegal</option>
+                                        <option value="Serbia" {{if and .IsEdit (eq .Engineer.AddressCountry "Serbia")}}selected{{end}}>Serbia</option>
+                                        <option value="Seychelles" {{if and .IsEdit (eq .Engineer.AddressCountry "Seychelles")}}selected{{end}}>Seychelles</option>
+                                        <option value="Sierra Leone" {{if and .IsEdit (eq .Engineer.AddressCountry "Sierra Leone")}}selected{{end}}>Sierra Leone</option>
+                                        <option value="Singapore" {{if and .IsEdit (eq .Engineer.AddressCountry "Singapore")}}selected{{end}}>Singapore</option>
+                                        <option value="Slovakia" {{if and .IsEdit (eq .Engineer.AddressCountry "Slovakia")}}selected{{end}}>Slovakia</option>
+                                        <option value="Slovenia" {{if and .IsEdit (eq .Engineer.AddressCountry "Slovenia")}}selected{{end}}>Slovenia</option>
+                                        <option value="Solomon Islands" {{if and .IsEdit (eq .Engineer.AddressCountry "Solomon Islands")}}selected{{end}}>Solomon Islands</option>
+                                        <option value="Somalia" {{if and .IsEdit (eq .Engineer.AddressCountry "Somalia")}}selected{{end}}>Somalia</option>
+                                        <option value="South Africa" {{if and .IsEdit (eq .Engineer.AddressCountry "South Africa")}}selected{{end}}>South Africa</option>
+                                        <option value="South Korea" {{if and .IsEdit (eq .Engineer.AddressCountry "South Korea")}}selected{{end}}>South Korea</option>
+                                        <option value="South Sudan" {{if and .IsEdit (eq .Engineer.AddressCountry "South Sudan")}}selected{{end}}>South Sudan</option>
+                                        <option value="Spain" {{if and .IsEdit (eq .Engineer.AddressCountry "Spain")}}selected{{end}}>Spain</option>
+                                        <option value="Sri Lanka" {{if and .IsEdit (eq .Engineer.AddressCountry "Sri Lanka")}}selected{{end}}>Sri Lanka</option>
+                                        <option value="Sudan" {{if and .IsEdit (eq .Engineer.AddressCountry "Sudan")}}selected{{end}}>Sudan</option>
+                                        <option value="Sweden" {{if and .IsEdit (eq .Engineer.AddressCountry "Sweden")}}selected{{end}}>Sweden</option>
+                                        <option value="Switzerland" {{if and .IsEdit (eq .Engineer.AddressCountry "Switzerland")}}selected{{end}}>Switzerland</option>
+                                        <option value="Syria" {{if and .IsEdit (eq .Engineer.AddressCountry "Syria")}}selected{{end}}>Syria</option>
+                                        <option value="Taiwan" {{if and .IsEdit (eq .Engineer.AddressCountry "Taiwan")}}selected{{end}}>Taiwan</option>
+                                        <option value="Tajikistan" {{if and .IsEdit (eq .Engineer.AddressCountry "Tajikistan")}}selected{{end}}>Tajikistan</option>
+                                        <option value="Tanzania" {{if and .IsEdit (eq .Engineer.AddressCountry "Tanzania")}}selected{{end}}>Tanzania</option>
+                                        <option value="Thailand" {{if and .IsEdit (eq .Engineer.AddressCountry "Thailand")}}selected{{end}}>Thailand</option>
+                                        <option value="Togo" {{if and .IsEdit (eq .Engineer.AddressCountry "Togo")}}selected{{end}}>Togo</option>
+                                        <option value="Tonga" {{if and .IsEdit (eq .Engineer.AddressCountry "Tonga")}}selected{{end}}>Tonga</option>
+                                        <option value="Tunisia" {{if and .IsEdit (eq .Engineer.AddressCountry "Tunisia")}}selected{{end}}>Tunisia</option>
+                                        <option value="Turkey" {{if and .IsEdit (eq .Engineer.AddressCountry "Turkey")}}selected{{end}}>Turkey</option>
+                                        <option value="Turkmenistan" {{if and .IsEdit (eq .Engineer.AddressCountry "Turkmenistan")}}selected{{end}}>Turkmenistan</option>
+                                        <option value="Tuvalu" {{if and .IsEdit (eq .Engineer.AddressCountry "Tuvalu")}}selected{{end}}>Tuvalu</option>
+                                        <option value="Uganda" {{if and .IsEdit (eq .Engineer.AddressCountry "Uganda")}}selected{{end}}>Uganda</option>
+                                        <option value="Ukraine" {{if and .IsEdit (eq .Engineer.AddressCountry "Ukraine")}}selected{{end}}>Ukraine</option>
+                                        <option value="United Arab Emirates" {{if and .IsEdit (eq .Engineer.AddressCountry "United Arab Emirates")}}selected{{end}}>United Arab Emirates</option>
+                                        <option value="United Kingdom" {{if and .IsEdit (eq .Engineer.AddressCountry "United Kingdom")}}selected{{end}}>United Kingdom</option>
+                                        <option value="Uzbekistan" {{if and .IsEdit (eq .Engineer.AddressCountry "Uzbekistan")}}selected{{end}}>Uzbekistan</option>
+                                        <option value="Vanuatu" {{if and .IsEdit (eq .Engineer.AddressCountry "Vanuatu")}}selected{{end}}>Vanuatu</option>
+                                        <option value="Vatican City" {{if and .IsEdit (eq .Engineer.AddressCountry "Vatican City")}}selected{{end}}>Vatican City</option>
+                                        <option value="Vietnam" {{if and .IsEdit (eq .Engineer.AddressCountry "Vietnam")}}selected{{end}}>Vietnam</option>
+                                        <option value="Yemen" {{if and .IsEdit (eq .Engineer.AddressCountry "Yemen")}}selected{{end}}>Yemen</option>
+                                        <option value="Zambia" {{if and .IsEdit (eq .Engineer.AddressCountry "Zambia")}}selected{{end}}>Zambia</option>
+                                        <option value="Zimbabwe" {{if and .IsEdit (eq .Engineer.AddressCountry "Zimbabwe")}}selected{{end}}>Zimbabwe</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- State and Postal Code (Optional) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="address_state" class="block text-sm font-medium text-gray-700 mb-2">
+                                    State/Province <span class="text-gray-500 text-xs">(Optional)</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="address_state" 
+                                    name="address_state" 
+                                    value="{{if .IsEdit}}{{.Engineer.AddressState}}{{end}}"
+                                    placeholder="Buenos Aires"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                >
+                                <p class="mt-1 text-sm text-gray-500">Not required for all countries</p>
+                            </div>
+
+                            <div>
+                                <label for="address_postal_code" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Postal Code <span class="text-gray-500 text-xs">(Optional)</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="address_postal_code" 
+                                    name="address_postal_code" 
+                                    value="{{if .IsEdit}}{{.Engineer.AddressPostalCode}}{{end}}"
+                                    placeholder="C1000ABC"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                >
+                                <p class="mt-1 text-sm text-gray-500">Format varies by country</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div>

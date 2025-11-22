@@ -528,11 +528,16 @@ func (h *FormsHandler) SoftwareEngineerAddSubmit(w http.ResponseWriter, r *http.
 
 	addressConfirmed := r.FormValue("address_confirmed") == "on"
 	engineer := &models.SoftwareEngineer{
-		Name:           r.FormValue("name"),
-		Email:          r.FormValue("email"),
-		Address:        r.FormValue("address"),
-		Phone:          r.FormValue("phone"),
-		EmployeeNumber: r.FormValue("employee_number"),
+		Name:             r.FormValue("name"),
+		Email:            r.FormValue("email"),
+		Address:          r.FormValue("address"), // Legacy field
+		AddressStreet:    r.FormValue("address_street"),
+		AddressCity:      r.FormValue("address_city"),
+		AddressCountry:   r.FormValue("address_country"),
+		AddressState:     r.FormValue("address_state"),
+		AddressPostalCode: r.FormValue("address_postal_code"),
+		Phone:            r.FormValue("phone"),
+		EmployeeNumber:   r.FormValue("employee_number"),
 		AddressConfirmed: addressConfirmed,
 	}
 
@@ -615,7 +620,12 @@ func (h *FormsHandler) SoftwareEngineerEditSubmit(w http.ResponseWriter, r *http
 
 	engineer.Name = r.FormValue("name")
 	engineer.Email = r.FormValue("email")
-	engineer.Address = r.FormValue("address")
+	engineer.Address = r.FormValue("address") // Legacy field
+	engineer.AddressStreet = r.FormValue("address_street")
+	engineer.AddressCity = r.FormValue("address_city")
+	engineer.AddressCountry = r.FormValue("address_country")
+	engineer.AddressState = r.FormValue("address_state")
+	engineer.AddressPostalCode = r.FormValue("address_postal_code")
 	engineer.Phone = r.FormValue("phone")
 	engineer.EmployeeNumber = r.FormValue("employee_number")
 	

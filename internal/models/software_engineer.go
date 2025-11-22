@@ -13,7 +13,12 @@ type SoftwareEngineer struct {
 	ID                    int64      `json:"id" db:"id"`
 	Name                  string     `json:"name" db:"name"`
 	Email                 string     `json:"email" db:"email"`
-	Address               string     `json:"address,omitempty" db:"address"`
+	Address               string     `json:"address,omitempty" db:"address"` // Legacy field, kept for backward compatibility
+	AddressStreet         string     `json:"address_street,omitempty" db:"address_street"`
+	AddressCity           string     `json:"address_city,omitempty" db:"address_city"`
+	AddressCountry        string     `json:"address_country,omitempty" db:"address_country"`
+	AddressState          string     `json:"address_state,omitempty" db:"address_state"`
+	AddressPostalCode     string     `json:"address_postal_code,omitempty" db:"address_postal_code"`
 	Phone                 string     `json:"phone,omitempty" db:"phone"`
 	EmployeeNumber        string     `json:"employee_number,omitempty" db:"employee_number"`
 	AddressConfirmed      bool       `json:"address_confirmed" db:"address_confirmed"`
@@ -79,7 +84,7 @@ type SoftwareEngineerFilter struct {
 // GetAllSoftwareEngineers retrieves all software engineers from the database with optional filtering
 func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface{}) (*sql.Rows, error) }, filter *SoftwareEngineerFilter) ([]SoftwareEngineer, error) {
 	query := `
-		SELECT id, name, email, phone, address, employee_number, address_confirmed, address_confirmation_at, created_at, updated_at
+		SELECT id, name, email, phone, address, address_street, address_city, address_country, address_state, address_postal_code, employee_number, address_confirmed, address_confirmation_at, created_at, updated_at
 		FROM software_engineers
 	`
 	
@@ -121,6 +126,11 @@ func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface
 		var engineer SoftwareEngineer
 		var phone sql.NullString
 		var address sql.NullString
+		var addressStreet sql.NullString
+		var addressCity sql.NullString
+		var addressCountry sql.NullString
+		var addressState sql.NullString
+		var addressPostalCode sql.NullString
 		var employeeNumber sql.NullString
 		var addressConfirmationAt sql.NullTime
 
@@ -130,6 +140,11 @@ func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface
 			&engineer.Email,
 			&phone,
 			&address,
+			&addressStreet,
+			&addressCity,
+			&addressCountry,
+			&addressState,
+			&addressPostalCode,
 			&employeeNumber,
 			&engineer.AddressConfirmed,
 			&addressConfirmationAt,
@@ -146,6 +161,21 @@ func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface
 		}
 		if address.Valid {
 			engineer.Address = address.String
+		}
+		if addressStreet.Valid {
+			engineer.AddressStreet = addressStreet.String
+		}
+		if addressCity.Valid {
+			engineer.AddressCity = addressCity.String
+		}
+		if addressCountry.Valid {
+			engineer.AddressCountry = addressCountry.String
+		}
+		if addressState.Valid {
+			engineer.AddressState = addressState.String
+		}
+		if addressPostalCode.Valid {
+			engineer.AddressPostalCode = addressPostalCode.String
 		}
 		if employeeNumber.Valid {
 			engineer.EmployeeNumber = employeeNumber.String
@@ -167,7 +197,7 @@ func GetAllSoftwareEngineers(db interface{ Query(query string, args ...interface
 // GetSoftwareEngineerByID retrieves a software engineer by its ID
 func GetSoftwareEngineerByID(db *sql.DB, id int64) (*SoftwareEngineer, error) {
 	query := `
-		SELECT id, name, email, phone, address, employee_number, address_confirmed, address_confirmation_at, created_at, updated_at
+		SELECT id, name, email, phone, address, address_street, address_city, address_country, address_state, address_postal_code, employee_number, address_confirmed, address_confirmation_at, created_at, updated_at
 		FROM software_engineers
 		WHERE id = $1
 	`
@@ -175,6 +205,11 @@ func GetSoftwareEngineerByID(db *sql.DB, id int64) (*SoftwareEngineer, error) {
 	var engineer SoftwareEngineer
 	var phone sql.NullString
 	var address sql.NullString
+	var addressStreet sql.NullString
+	var addressCity sql.NullString
+	var addressCountry sql.NullString
+	var addressState sql.NullString
+	var addressPostalCode sql.NullString
 	var employeeNumber sql.NullString
 	var addressConfirmationAt sql.NullTime
 
@@ -184,6 +219,11 @@ func GetSoftwareEngineerByID(db *sql.DB, id int64) (*SoftwareEngineer, error) {
 		&engineer.Email,
 		&phone,
 		&address,
+		&addressStreet,
+		&addressCity,
+		&addressCountry,
+		&addressState,
+		&addressPostalCode,
 		&employeeNumber,
 		&engineer.AddressConfirmed,
 		&addressConfirmationAt,
@@ -204,6 +244,21 @@ func GetSoftwareEngineerByID(db *sql.DB, id int64) (*SoftwareEngineer, error) {
 	}
 	if address.Valid {
 		engineer.Address = address.String
+	}
+	if addressStreet.Valid {
+		engineer.AddressStreet = addressStreet.String
+	}
+	if addressCity.Valid {
+		engineer.AddressCity = addressCity.String
+	}
+	if addressCountry.Valid {
+		engineer.AddressCountry = addressCountry.String
+	}
+	if addressState.Valid {
+		engineer.AddressState = addressState.String
+	}
+	if addressPostalCode.Valid {
+		engineer.AddressPostalCode = addressPostalCode.String
 	}
 	if employeeNumber.Valid {
 		engineer.EmployeeNumber = employeeNumber.String
@@ -226,8 +281,8 @@ func CreateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
 	engineer.BeforeCreate()
 
 	query := `
-		INSERT INTO software_engineers (name, email, address, phone, employee_number, address_confirmed, address_confirmation_at, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO software_engineers (name, email, address, address_street, address_city, address_country, address_state, address_postal_code, phone, employee_number, address_confirmed, address_confirmation_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id
 	`
 
@@ -236,6 +291,11 @@ func CreateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
 		engineer.Name,
 		engineer.Email,
 		engineer.Address,
+		engineer.AddressStreet,
+		engineer.AddressCity,
+		engineer.AddressCountry,
+		engineer.AddressState,
+		engineer.AddressPostalCode,
 		engineer.Phone,
 		engineer.EmployeeNumber,
 		engineer.AddressConfirmed,
@@ -263,8 +323,8 @@ func UpdateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
 
 	query := `
 		UPDATE software_engineers
-		SET name = $1, email = $2, address = $3, phone = $4, employee_number = $5, address_confirmed = $6, address_confirmation_at = $7, updated_at = $8
-		WHERE id = $9
+		SET name = $1, email = $2, address = $3, address_street = $4, address_city = $5, address_country = $6, address_state = $7, address_postal_code = $8, phone = $9, employee_number = $10, address_confirmed = $11, address_confirmation_at = $12, updated_at = $13
+		WHERE id = $14
 	`
 
 	result, err := db.Exec(
@@ -272,6 +332,11 @@ func UpdateSoftwareEngineer(db *sql.DB, engineer *SoftwareEngineer) error {
 		engineer.Name,
 		engineer.Email,
 		engineer.Address,
+		engineer.AddressStreet,
+		engineer.AddressCity,
+		engineer.AddressCountry,
+		engineer.AddressState,
+		engineer.AddressPostalCode,
 		engineer.Phone,
 		engineer.EmployeeNumber,
 		engineer.AddressConfirmed,

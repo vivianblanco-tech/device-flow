@@ -609,3 +609,177 @@ func TestSoftwareEngineerEditSubmit_PreservesAddressConfirmationTimestampWhenSti
 		t.Errorf("Expected address_confirmation_at to be preserved, but got difference of %v", timeDiff)
 	}
 }
+
+// # RED: Test that software engineer can be created with international address format
+func TestSoftwareEngineerAddSubmit_WithInternationalAddressFormat(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	user := &models.User{
+		ID:    1,
+		Email: "logistics@bairesdev.com",
+		Role:  models.RoleLogistics,
+	}
+	var userID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		user.Email, "$2a$12$test.hash", user.Role, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+	user.ID = userID
+
+	templates := loadTestTemplates(t)
+	handler := NewFormsHandler(db, templates)
+
+	// Prepare form data with international address format
+	formData := url.Values{}
+	formData.Set("name", "Jane Smith")
+	formData.Set("email", "jane@bairesdev.com")
+	formData.Set("phone", "+1-555-0100")
+	formData.Set("address_street", "456 Tech Avenue, Apt 12B")
+	formData.Set("address_city", "Buenos Aires")
+	formData.Set("address_country", "Argentina")
+	formData.Set("address_state", "Buenos Aires")
+	formData.Set("address_postal_code", "C1000ABC")
+
+	req := httptest.NewRequest("POST", "/forms/software-engineers/add", strings.NewReader(formData.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+	req = req.WithContext(reqCtx)
+
+	rr := httptest.NewRecorder()
+	handler.SoftwareEngineerAddSubmit(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected status %d, got %d", http.StatusSeeOther, rr.Code)
+	}
+
+	// Verify the engineer was created with international address fields
+	var addressStreet, addressCity, addressCountry, addressState, addressPostalCode sql.NullString
+	err = db.QueryRowContext(ctx,
+		`SELECT address_street, address_city, address_country, address_state, address_postal_code 
+		FROM software_engineers WHERE email = $1`,
+		"jane@bairesdev.com",
+	).Scan(&addressStreet, &addressCity, &addressCountry, &addressState, &addressPostalCode)
+	if err != nil {
+		t.Fatalf("Failed to retrieve created engineer: %v", err)
+	}
+
+	if !addressStreet.Valid || addressStreet.String != "456 Tech Avenue, Apt 12B" {
+		t.Errorf("Expected address_street to be '456 Tech Avenue, Apt 12B', got %v", addressStreet)
+	}
+	if !addressCity.Valid || addressCity.String != "Buenos Aires" {
+		t.Errorf("Expected address_city to be 'Buenos Aires', got %v", addressCity)
+	}
+	if !addressCountry.Valid || addressCountry.String != "Argentina" {
+		t.Errorf("Expected address_country to be 'Argentina', got %v", addressCountry)
+	}
+	if !addressState.Valid || addressState.String != "Buenos Aires" {
+		t.Errorf("Expected address_state to be 'Buenos Aires', got %v", addressState)
+	}
+	if !addressPostalCode.Valid || addressPostalCode.String != "C1000ABC" {
+		t.Errorf("Expected address_postal_code to be 'C1000ABC', got %v", addressPostalCode)
+	}
+}
+
+// # RED: Test that software engineer can be updated with international address format
+func TestSoftwareEngineerEditSubmit_WithInternationalAddressFormat(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	user := &models.User{
+		ID:    1,
+		Email: "logistics@bairesdev.com",
+		Role:  models.RoleLogistics,
+	}
+	var userID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		user.Email, "$2a$12$test.hash", user.Role, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+	user.ID = userID
+
+	// Create engineer with old address format
+	var engineerID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO software_engineers (name, email, phone, address, address_confirmed, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		"Bob Johnson", "bob@bairesdev.com", "+1-555-0200", "789 Old St", false, time.Now(), time.Now(),
+	).Scan(&engineerID)
+	if err != nil {
+		t.Fatalf("Failed to create test engineer: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewFormsHandler(db, templates)
+
+	// Prepare form data with international address format
+	formData := url.Values{}
+	formData.Set("name", "Bob Johnson")
+	formData.Set("email", "bob@bairesdev.com")
+	formData.Set("phone", "+1-555-0200")
+	formData.Set("address_street", "123 Main Street")
+	formData.Set("address_city", "London")
+	formData.Set("address_country", "United Kingdom")
+	formData.Set("address_state", "")
+	formData.Set("address_postal_code", "SW1A 1AA")
+
+	req := httptest.NewRequest("POST", "/forms/software-engineers/"+strconv.FormatInt(engineerID, 10)+"/edit", strings.NewReader(formData.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(engineerID, 10)})
+	reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+	req = req.WithContext(reqCtx)
+
+	rr := httptest.NewRecorder()
+	handler.SoftwareEngineerEditSubmit(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("expected status %d, got %d", http.StatusSeeOther, rr.Code)
+	}
+
+	// Verify the engineer was updated with international address fields
+	var addressStreet, addressCity, addressCountry, addressState, addressPostalCode sql.NullString
+	err = db.QueryRowContext(ctx,
+		`SELECT address_street, address_city, address_country, address_state, address_postal_code 
+		FROM software_engineers WHERE id = $1`,
+		engineerID,
+	).Scan(&addressStreet, &addressCity, &addressCountry, &addressState, &addressPostalCode)
+	if err != nil {
+		t.Fatalf("Failed to retrieve updated engineer: %v", err)
+	}
+
+	if !addressStreet.Valid || addressStreet.String != "123 Main Street" {
+		t.Errorf("Expected address_street to be '123 Main Street', got %v", addressStreet)
+	}
+	if !addressCity.Valid || addressCity.String != "London" {
+		t.Errorf("Expected address_city to be 'London', got %v", addressCity)
+	}
+	if !addressCountry.Valid || addressCountry.String != "United Kingdom" {
+		t.Errorf("Expected address_country to be 'United Kingdom', got %v", addressCountry)
+	}
+	if addressState.Valid && addressState.String != "" {
+		t.Errorf("Expected address_state to be empty, got %v", addressState)
+	}
+	if !addressPostalCode.Valid || addressPostalCode.String != "SW1A 1AA" {
+		t.Errorf("Expected address_postal_code to be 'SW1A 1AA', got %v", addressPostalCode)
+	}
+}
