@@ -60,6 +60,19 @@ type WarehousePreAlertData struct {
 	DeviceDescription string
 	ProjectName       string
 	TrackingURL       string
+	// For single shipments
+	IsSingleShipment  bool
+	SerialNumber      string
+	Brand             string
+	Model             string
+	CPU               string
+	RAMGB             string
+	SSDGB             string
+	SKU               string
+	// For bulk shipments
+	IsBulkShipment    bool
+	LaptopCount       int
+	BulkDescription   string
 }
 
 // ReleaseNotificationData contains data for release notification emails
@@ -430,9 +443,62 @@ func (et *EmailTemplates) loadTemplates() {
                 <div class="info-row">
                     <span class="info-label">Shipper:</span> {{.ShipperName}}
                 </div>
+                {{if .IsSingleShipment}}
+                <div class="info-box" style="border: 2px solid #2196F3; background-color: #f0f7ff; margin-top: 15px;">
+                    <h3>💻 Laptop Details</h3>
+                    {{if .SerialNumber}}
+                    <div class="info-row" style="font-size: 1.1em; font-weight: bold; color: #1976D2; margin-bottom: 10px;">
+                        <span class="info-label">Serial Number:</span> <span style="font-family: monospace; background-color: #fff; padding: 4px 8px; border-radius: 4px;">{{.SerialNumber}}</span>
+                    </div>
+                    {{end}}
+                    {{if .Brand}}
+                    <div class="info-row">
+                        <span class="info-label">Brand:</span> {{.Brand}}
+                    </div>
+                    {{end}}
+                    {{if .Model}}
+                    <div class="info-row">
+                        <span class="info-label">Model:</span> {{.Model}}
+                    </div>
+                    {{end}}
+                    {{if .CPU}}
+                    <div class="info-row">
+                        <span class="info-label">CPU:</span> {{.CPU}}
+                    </div>
+                    {{end}}
+                    {{if .RAMGB}}
+                    <div class="info-row">
+                        <span class="info-label">RAM:</span> {{.RAMGB}}
+                    </div>
+                    {{end}}
+                    {{if .SSDGB}}
+                    <div class="info-row">
+                        <span class="info-label">Storage:</span> {{.SSDGB}}
+                    </div>
+                    {{end}}
+                    {{if .SKU}}
+                    <div class="info-row">
+                        <span class="info-label">SKU:</span> {{.SKU}}
+                    </div>
+                    {{end}}
+                </div>
+                {{else if .IsBulkShipment}}
+                <div class="info-box" style="border: 2px solid #FF9800; background-color: #fff8f0; margin-top: 15px;">
+                    <h3>📦 Bulk Shipment Information</h3>
+                    <div class="info-row">
+                        <span class="info-label">Number of Devices:</span> <strong>{{.LaptopCount}}</strong>
+                    </div>
+                    {{if .BulkDescription}}
+                    <div class="info-row">
+                        <span class="info-label">Description:</span> {{.BulkDescription}}
+                    </div>
+                    {{end}}
+                </div>
+                {{else}}
                 <div class="info-row">
                     <span class="info-label">Contents:</span> {{.DeviceDescription}}
                 </div>
+                {{end}}
                 {{if .ProjectName}}
                 <div class="info-row">
                     <span class="info-label">Project:</span> {{.ProjectName}}
@@ -900,6 +966,17 @@ func (et *EmailTemplates) RenderTemplate(templateName string, data interface{}) 
 		dataMap["DeviceDescription"] = v.DeviceDescription
 		dataMap["ProjectName"] = v.ProjectName
 		dataMap["TrackingURL"] = v.TrackingURL
+		dataMap["IsSingleShipment"] = v.IsSingleShipment
+		dataMap["IsBulkShipment"] = v.IsBulkShipment
+		dataMap["SerialNumber"] = v.SerialNumber
+		dataMap["Brand"] = v.Brand
+		dataMap["Model"] = v.Model
+		dataMap["CPU"] = v.CPU
+		dataMap["RAMGB"] = v.RAMGB
+		dataMap["SSDGB"] = v.SSDGB
+		dataMap["SKU"] = v.SKU
+		dataMap["LaptopCount"] = v.LaptopCount
+		dataMap["BulkDescription"] = v.BulkDescription
 		dataMap["Subject"] = "Incoming Shipment Alert - " + v.TrackingNumber
 	case ReleaseNotificationData:
 		dataMap["CourierName"] = v.CourierName

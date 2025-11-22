@@ -271,10 +271,20 @@ func (n *Notifier) SendPickupScheduledNotification(ctx context.Context, shipment
 
 // SendWarehousePreAlert sends a pre-alert email to warehouse about incoming shipment
 func (n *Notifier) SendWarehousePreAlert(ctx context.Context, shipmentID int64) error {
-	// Fetch shipment details
+	// Fetch shipment details including shipment type
+	var shipmentType string
 	shipment, err := n.getShipmentDetails(ctx, shipmentID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch shipment details: %w", err)
+	}
+	
+	// Get shipment type
+	err = n.db.QueryRowContext(ctx,
+		`SELECT shipment_type FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&shipmentType)
+	if err != nil {
+		return fmt.Errorf("failed to fetch shipment type: %w", err)
 	}
 
 	// Fetch client company
@@ -353,6 +363,11 @@ func (n *Notifier) SendWarehousePreAlert(ctx context.Context, shipmentID int64) 
 		expectedDate = pickupDate.AddDate(0, 0, 1).Format("Monday, January 2, 2006")
 	}
 
+	// Determine if single or bulk shipment
+	isSingleShipment := shipmentType == string(models.ShipmentTypeSingleFullJourney) || 
+		shipmentType == string(models.ShipmentTypeWarehouseToEngineer)
+	isBulkShipment := shipmentType == string(models.ShipmentTypeBulkToWarehouse)
+
 	data := WarehousePreAlertData{
 		TrackingNumber:    shipment.TrackingNumber.String,
 		ExpectedDate:      expectedDate,
@@ -361,6 +376,51 @@ func (n *Notifier) SendWarehousePreAlert(ctx context.Context, shipmentID int64) 
 		DeviceDescription: fmt.Sprintf("%d device(s)", shipment.LaptopCount),
 		ProjectName:       "", // Can be added if needed
 		TrackingURL:       fmt.Sprintf("https://www.ups.com/track?tracknum=%s", shipment.TrackingNumber.String),
+		IsSingleShipment:  isSingleShipment,
+		IsBulkShipment:    isBulkShipment,
+		LaptopCount:       shipment.LaptopCount,
+	}
+
+	// Fetch laptop details for single shipments
+	if isSingleShipment {
+		var serialNumber, brand, model, cpu, ramGB, ssdGB, sku sql.NullString
+		err = n.db.QueryRowContext(ctx,
+			`SELECT l.serial_number, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb, l.sku
+			FROM laptops l
+			JOIN shipment_laptops sl ON sl.laptop_id = l.id
+			WHERE sl.shipment_id = $1
+			LIMIT 1`,
+			shipmentID,
+		).Scan(&serialNumber, &brand, &model, &cpu, &ramGB, &ssdGB, &sku)
+		
+		if err == nil {
+			if serialNumber.Valid {
+				data.SerialNumber = serialNumber.String
+			}
+			if brand.Valid {
+				data.Brand = brand.String
+			}
+			if model.Valid {
+				data.Model = model.String
+			}
+			if cpu.Valid {
+				data.CPU = cpu.String
+			}
+			if ramGB.Valid {
+				data.RAMGB = ramGB.String
+			}
+			if ssdGB.Valid {
+				data.SSDGB = ssdGB.String
+			}
+			if sku.Valid {
+				data.SKU = sku.String
+			}
+		}
+	}
+
+	// For bulk shipments, create description
+	if isBulkShipment {
+		data.BulkDescription = fmt.Sprintf("Bulk shipment containing %d device(s)", shipment.LaptopCount)
 	}
 
 	// Render template
