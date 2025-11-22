@@ -491,12 +491,23 @@ func (n *Notifier) SendDeliveryConfirmation(ctx context.Context, shipmentID int6
 		return fmt.Errorf("failed to fetch engineer details: %w", err)
 	}
 
+	// Get actual delivery date from shipment
+	deliveryDate := time.Now().Format("Monday, January 2, 2006") // Default to current date
+	var deliveredAt sql.NullTime
+	err = n.db.QueryRowContext(ctx,
+		`SELECT delivered_at FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&deliveredAt)
+	if err == nil && deliveredAt.Valid {
+		deliveryDate = deliveredAt.Time.Format("Monday, January 2, 2006")
+	}
+
 	// Prepare template data
 	data := DeliveryConfirmationData{
 		EngineerName:       engineerName,
 		DeviceSerialNumber: "SN-" + shipment.TrackingNumber.String,
 		DeviceModel:        "Configured Laptop",
-		DeliveryDate:       time.Now().Format("Monday, January 2, 2006"),
+		DeliveryDate:       deliveryDate,
 		TrackingNumber:     shipment.TrackingNumber.String,
 		ProjectName:        "",
 	}
