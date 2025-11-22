@@ -1203,11 +1203,27 @@ func (n *Notifier) SendReceptionReportApprovalRequest(ctx context.Context, repor
 	}
 
 	// Get client company name
+	// First try from reception report, then fall back to laptop's client_company_id
 	clientCompany := "Unknown Company"
-	if report.ClientCompanyID != nil {
+	var clientCompanyID *int64 = report.ClientCompanyID
+	
+	// If reception report doesn't have client_company_id, get it from laptop
+	if clientCompanyID == nil {
+		var laptopClientCompanyID sql.NullInt64
+		err = n.db.QueryRowContext(ctx,
+			`SELECT client_company_id FROM laptops WHERE id = $1`,
+			report.LaptopID,
+		).Scan(&laptopClientCompanyID)
+		if err == nil && laptopClientCompanyID.Valid {
+			clientCompanyID = &laptopClientCompanyID.Int64
+		}
+	}
+	
+	// Fetch company name if we have an ID
+	if clientCompanyID != nil {
 		err = n.db.QueryRowContext(ctx,
 			`SELECT name FROM client_companies WHERE id = $1`,
-			*report.ClientCompanyID,
+			*clientCompanyID,
 		).Scan(&clientCompany)
 		if err != nil {
 			// Non-critical, use default

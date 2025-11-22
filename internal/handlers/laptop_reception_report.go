@@ -175,21 +175,23 @@ func (h *ReceptionReportHandler) LaptopReceptionReportSubmit(w http.ResponseWrit
 
 	// Get laptop and shipment details
 	var shipmentID sql.NullInt64
-	var clientCompanyID sql.NullInt64
+	var shipmentClientCompanyID sql.NullInt64
+	var laptopClientCompanyID sql.NullInt64
 	var trackingNumber sql.NullString
 	
 	err = h.DB.QueryRowContext(r.Context(),
 		`SELECT 
 			s.id as shipment_id,
-			s.client_company_id,
+			s.client_company_id as shipment_client_company_id,
+			l.client_company_id as laptop_client_company_id,
 			s.tracking_number
 		FROM laptops l
 		LEFT JOIN shipment_laptops sl ON sl.laptop_id = l.id
 		LEFT JOIN shipments s ON s.id = sl.shipment_id
-		WHERE l.id = $1 AND s.status != 'delivered'
+		WHERE l.id = $1 AND (s.status IS NULL OR s.status != 'delivered')
 		LIMIT 1`,
 		laptopID,
-	).Scan(&shipmentID, &clientCompanyID, &trackingNumber)
+	).Scan(&shipmentID, &shipmentClientCompanyID, &laptopClientCompanyID, &trackingNumber)
 
 	// It's okay if there's no shipment (could be ErrNoRows)
 	if err != nil && err != sql.ErrNoRows {
@@ -202,13 +204,17 @@ func (h *ReceptionReportHandler) LaptopReceptionReportSubmit(w http.ResponseWrit
 	}
 
 	// Create reception report
+	// Use shipment's client_company_id if available, otherwise fall back to laptop's client_company_id
 	var shipmentIDPtr *int64
 	var clientCompanyIDPtr *int64
 	if shipmentID.Valid {
 		shipmentIDPtr = &shipmentID.Int64
 	}
-	if clientCompanyID.Valid {
-		clientCompanyIDPtr = &clientCompanyID.Int64
+	// Prefer shipment's client_company_id, but fall back to laptop's if shipment doesn't have one
+	if shipmentClientCompanyID.Valid {
+		clientCompanyIDPtr = &shipmentClientCompanyID.Int64
+	} else if laptopClientCompanyID.Valid {
+		clientCompanyIDPtr = &laptopClientCompanyID.Int64
 	}
 
 	report := &models.ReceptionReport{
