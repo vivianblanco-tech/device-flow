@@ -158,6 +158,14 @@
                                     data-name="{{.Name}}" 
                                     data-email="{{.Email}}"
                                     data-employee-number="{{.EmployeeNumber}}"
+                                    data-phone="{{.Phone}}"
+                                    data-address-street="{{.AddressStreet}}"
+                                    data-address-city="{{.AddressCity}}"
+                                    data-address-country="{{.AddressCountry}}"
+                                    data-address-state="{{.AddressState}}"
+                                    data-address-postal-code="{{.AddressPostalCode}}"
+                                    data-address-confirmed="{{.AddressConfirmed}}"
+                                    data-address-confirmation-at="{{if .AddressConfirmationAt}}{{.AddressConfirmationAt.Format "2006-01-02 15:04:05"}}{{end}}"
                                 >
                                     {{.Name}}{{if .EmployeeNumber}} ({{.EmployeeNumber}}){{end}}
                                 </option>
@@ -199,7 +207,24 @@
 
                 <!-- Delivery Address Section -->
                 <div class="border-t pt-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Delivery Address (International Format)</h3>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Delivery Address (International Format)</h3>
+                        <div id="address-confirmation-status" class="hidden">
+                            <span id="address-confirmed-badge" class="hidden inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                Address Confirmed
+                            </span>
+                            <span id="address-not-confirmed-badge" class="hidden inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                Address Not Confirmed
+                            </span>
+                            <span id="address-confirmation-date" class="ml-2 text-xs text-gray-600"></span>
+                        </div>
+                    </div>
                     
                     <!-- Delivery Address -->
                     <div class="mb-6">
@@ -591,12 +616,85 @@
         function updateEngineerDetails(selectElement) {
             const selectedOption = selectElement.options[selectElement.selectedIndex];
             const emailField = document.getElementById('engineer_email');
+            const phoneField = document.getElementById('engineer_phone');
             
-            if (selectedOption.value && emailField) {
+            // Address fields
+            const addressStreetField = document.getElementById('engineer_address');
+            const addressCityField = document.getElementById('engineer_city');
+            const addressCountryField = document.getElementById('engineer_country');
+            const addressStateField = document.getElementById('engineer_state');
+            const addressPostalCodeField = document.getElementById('engineer_zip');
+            
+            // Address confirmation status
+            const addressConfirmationStatus = document.getElementById('address-confirmation-status');
+            const addressConfirmedBadge = document.getElementById('address-confirmed-badge');
+            const addressNotConfirmedBadge = document.getElementById('address-not-confirmed-badge');
+            const addressConfirmationDate = document.getElementById('address-confirmation-date');
+            
+            if (selectedOption.value) {
                 // Auto-populate email if available
-                if (selectedOption.dataset.email) {
+                if (emailField && selectedOption.dataset.email) {
                     emailField.value = selectedOption.dataset.email;
                 }
+                
+                // Auto-populate phone if available
+                if (phoneField && selectedOption.dataset.phone) {
+                    phoneField.value = selectedOption.dataset.phone;
+                }
+                
+                // Auto-populate address fields if available
+                if (addressStreetField && selectedOption.dataset.addressStreet) {
+                    addressStreetField.value = selectedOption.dataset.addressStreet;
+                }
+                
+                if (addressCityField && selectedOption.dataset.addressCity) {
+                    addressCityField.value = selectedOption.dataset.addressCity;
+                }
+                
+                if (addressCountryField && selectedOption.dataset.addressCountry) {
+                    addressCountryField.value = selectedOption.dataset.addressCountry;
+                }
+                
+                if (addressStateField && selectedOption.dataset.addressState) {
+                    addressStateField.value = selectedOption.dataset.addressState;
+                }
+                
+                if (addressPostalCodeField && selectedOption.dataset.addressPostalCode) {
+                    addressPostalCodeField.value = selectedOption.dataset.addressPostalCode;
+                }
+                
+                // Show address confirmation status
+                if (addressConfirmationStatus) {
+                    const isConfirmed = selectedOption.dataset.addressConfirmed === 'true';
+                    const confirmationDate = selectedOption.dataset.addressConfirmationAt;
+                    
+                    if (isConfirmed && confirmationDate) {
+                        addressConfirmedBadge.classList.remove('hidden');
+                        addressNotConfirmedBadge.classList.add('hidden');
+                        addressConfirmationDate.textContent = 'Confirmed on: ' + confirmationDate;
+                        addressConfirmationStatus.classList.remove('hidden');
+                    } else if (isConfirmed) {
+                        addressConfirmedBadge.classList.remove('hidden');
+                        addressNotConfirmedBadge.classList.add('hidden');
+                        addressConfirmationDate.textContent = '';
+                        addressConfirmationStatus.classList.remove('hidden');
+                    } else {
+                        addressConfirmedBadge.classList.add('hidden');
+                        addressNotConfirmedBadge.classList.remove('hidden');
+                        addressConfirmationDate.textContent = '';
+                        addressConfirmationStatus.classList.remove('hidden');
+                    }
+                }
+            } else {
+                // Clear fields when no engineer is selected
+                if (emailField) emailField.value = '';
+                if (phoneField) phoneField.value = '';
+                if (addressStreetField) addressStreetField.value = '';
+                if (addressCityField) addressCityField.value = '';
+                if (addressCountryField) addressCountryField.value = '';
+                if (addressStateField) addressStateField.value = '';
+                if (addressPostalCodeField) addressPostalCodeField.value = '';
+                if (addressConfirmationStatus) addressConfirmationStatus.classList.add('hidden');
             }
         }
 
