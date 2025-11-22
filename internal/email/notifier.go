@@ -304,11 +304,40 @@ func (n *Notifier) SendWarehousePreAlert(ctx context.Context, shipmentID int64) 
 		return fmt.Errorf("no warehouse user found: %w", err)
 	}
 
+	// Get pickup date from form data (preferred) or shipment
+	var pickupDate time.Time
+	pickupDateFound := false
+	
+	// Try to get pickup date from pickup form first
+	var formDataJSON string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT form_data FROM pickup_forms WHERE shipment_id = $1 ORDER BY submitted_at DESC LIMIT 1`,
+		shipmentID,
+	).Scan(&formDataJSON)
+	if err == nil {
+		var formData map[string]interface{}
+		if err := json.Unmarshal([]byte(formDataJSON), &formData); err == nil {
+			if formPickupDate, ok := formData["pickup_date"].(string); ok && formPickupDate != "" {
+				// Parse the date from form (format: "2006-01-02")
+				if parsedDate, err := time.Parse("2006-01-02", formPickupDate); err == nil {
+					pickupDate = parsedDate
+					pickupDateFound = true
+				}
+			}
+		}
+	}
+	
+	// Fallback to shipment.PickupScheduledDate if form date not available
+	if !pickupDateFound && shipment.PickupScheduledDate.Valid {
+		pickupDate = shipment.PickupScheduledDate.Time
+		pickupDateFound = true
+	}
+
 	// Prepare template data
 	expectedDate := "To be determined"
-	if shipment.PickupScheduledDate.Valid {
-		// Estimate arrival as 3 days after pickup
-		expectedDate = shipment.PickupScheduledDate.Time.AddDate(0, 0, 3).Format("Monday, January 2, 2006")
+	if pickupDateFound {
+		// Expected delivery is pickup date + 1 day
+		expectedDate = pickupDate.AddDate(0, 0, 1).Format("Monday, January 2, 2006")
 	}
 
 	data := WarehousePreAlertData{
