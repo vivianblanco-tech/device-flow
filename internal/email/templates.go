@@ -460,9 +460,6 @@ func (et *EmailTemplates) loadTemplates() {
                 <div class="info-row">
                     <span class="info-label">Time Slot:</span> {{.PickupTimeSlot}}
                 </div>
-                <div class="info-row">
-                    <span class="info-label">Tracking Number:</span> {{.TrackingNumber}}
-                </div>
             </div>
             <div class="info-box">
                 <h3>📍 Pickup Location</h3>
