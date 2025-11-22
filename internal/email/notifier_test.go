@@ -432,7 +432,7 @@ func TestNotifier_SendPickupScheduledNotification(t *testing.T) {
 
 	// Create test pickup form with contact email
 	formDataJSON := `{"contact_name": "John Doe", "contact_email": "john.doe@clientcompany.com", "contact_phone": "+1-555-0123", "pickup_date": "2025-11-15", "pickup_time_slot": "morning", "pickup_address": "123 Test St", "pickup_city": "New York", "pickup_state": "NY", "pickup_zip": "10001"}`
-	
+
 	// Insert pickup form
 	_, err = db.ExecContext(
 		context.Background(),
@@ -692,12 +692,12 @@ func TestNotifier_SendShipmentPickedUpNotification(t *testing.T) {
 	// Create test shipment with picked_up status
 	pickedUpAt := time.Now()
 	shipment := &models.Shipment{
-		ClientCompanyID:     company.ID,
-		Status:              models.ShipmentStatusPickedUpFromClient,
-		JiraTicketNumber:    "TEST-303",
-		TrackingNumber:      "UPS111222333",
-		CourierName:         "UPS",
-		PickedUpAt:          &pickedUpAt,
+		ClientCompanyID:  company.ID,
+		Status:           models.ShipmentStatusPickedUpFromClient,
+		JiraTicketNumber: "TEST-303",
+		TrackingNumber:   "UPS111222333",
+		CourierName:      "UPS",
+		PickedUpAt:       &pickedUpAt,
 	}
 	shipment.BeforeCreate()
 
@@ -715,7 +715,7 @@ func TestNotifier_SendShipmentPickedUpNotification(t *testing.T) {
 
 	// Create test pickup form with contact email
 	formDataJSON := `{"contact_name": "Jane Smith", "contact_email": "jane.smith@clientcompany.com", "contact_phone": "+1-555-0456", "pickup_date": "2025-11-15", "pickup_time_slot": "afternoon", "pickup_address": "456 Test Ave", "pickup_city": "Los Angeles", "pickup_state": "CA", "pickup_zip": "90001"}`
-	
+
 	// Insert pickup form
 	_, err = db.ExecContext(
 		context.Background(),
@@ -859,7 +859,7 @@ func TestNotifier_SendPickupFormSubmittedNotification(t *testing.T) {
 
 	// Create test pickup form with contact email
 	formDataJSON := `{"contact_name": "Bob Johnson", "contact_email": "bob.johnson@clientcompany.com", "contact_phone": "+1-555-0789", "pickup_date": "2025-11-20", "pickup_time_slot": "morning", "pickup_address": "789 Test Blvd", "pickup_city": "Chicago", "pickup_state": "IL", "pickup_zip": "60601"}`
-	
+
 	// Insert pickup form
 	_, err = db.ExecContext(
 		context.Background(),
@@ -1002,7 +1002,7 @@ func TestNotifier_SendEngineerDeliveryNotificationToClient(t *testing.T) {
 
 	// Create test pickup form with contact email
 	formDataJSON := `{"contact_name": "Alice Brown", "contact_email": "alice.brown@clientcompany.com", "contact_phone": "+1-555-0321", "pickup_date": "2025-11-25", "pickup_time_slot": "afternoon", "pickup_address": "321 Test Lane", "pickup_city": "Miami", "pickup_state": "FL", "pickup_zip": "33101"}`
-	
+
 	// Insert pickup form
 	_, err = db.ExecContext(
 		context.Background(),
@@ -1036,6 +1036,120 @@ func TestNotifier_SendEngineerDeliveryNotificationToClient(t *testing.T) {
 
 		if count == 0 {
 			t.Error("Engineer delivery notification to client was not logged")
+		}
+	} else {
+		t.Logf("Note: Notification was not logged due to mock SMTP server quirk (returns 250 OK as error)")
+	}
+}
+
+func TestNotifier_SendInTransitToEngineerNotification(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Start a mock SMTP server
+	mockServer, err := newMockSMTPServer(2532)
+	if err != nil {
+		t.Fatalf("Failed to start mock SMTP server: %v", err)
+	}
+	defer mockServer.close()
+
+	// Give the server time to start
+	time.Sleep(100 * time.Millisecond)
+
+	client, err := NewClient(Config{
+		Host: "127.0.0.1",
+		Port: 2532,
+		From: "noreply@example.com",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create email client: %v", err)
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	notifier := NewNotifier(client, db)
+
+	// Create test software engineer
+	var engineerID int64
+	engineerEmail := "engineer@example.com"
+	err = db.QueryRowContext(
+		context.Background(),
+		`INSERT INTO software_engineers (name, email, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Jane Engineer", engineerEmail, time.Now(),
+	).Scan(&engineerID)
+	if err != nil {
+		t.Fatalf("Failed to create engineer: %v", err)
+	}
+
+	// Create test client company
+	company := &models.ClientCompany{
+		Name:        fmt.Sprintf("Test Company %d", time.Now().UnixNano()),
+		ContactInfo: "contact@test.com",
+	}
+	company.BeforeCreate()
+
+	err = db.QueryRowContext(
+		context.Background(),
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		company.Name, company.ContactInfo, company.CreatedAt,
+	).Scan(&company.ID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test shipment with in_transit_to_engineer status
+	etaToEngineer := time.Now().AddDate(0, 0, 2) // 2 days from now
+	shipment := &models.Shipment{
+		ClientCompanyID:    company.ID,
+		SoftwareEngineerID: &engineerID,
+		Status:              models.ShipmentStatusInTransitToEngineer,
+		JiraTicketNumber:    "TEST-306",
+		TrackingNumber:      "UPS777888999",
+		CourierName:         "UPS",
+		ShipmentType:        models.ShipmentTypeSingleFullJourney,
+		ETAToEngineer:       &etaToEngineer,
+	}
+	shipment.BeforeCreate()
+
+	err = db.QueryRowContext(
+		context.Background(),
+		`INSERT INTO shipments (client_company_id, software_engineer_id, status, jira_ticket_number, 
+		tracking_number, courier_name, shipment_type, eta_to_engineer, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		shipment.ClientCompanyID, shipment.SoftwareEngineerID, shipment.Status, shipment.JiraTicketNumber,
+		shipment.TrackingNumber, shipment.CourierName, shipment.ShipmentType, shipment.ETAToEngineer, shipment.CreatedAt, shipment.UpdatedAt,
+	).Scan(&shipment.ID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	// Test sending in transit to engineer notification
+	err = notifier.SendInTransitToEngineerNotification(context.Background(), shipment.ID)
+
+	// Mock SMTP server may return "250 OK" as error message, which is actually success
+	if err != nil && err.Error() != "failed to send email: 250 OK" {
+		t.Errorf("SendInTransitToEngineerNotification() unexpected error = %v", err)
+	}
+
+	// Verify notification was logged if send was successful
+	if err == nil {
+		var count int
+		err = db.QueryRowContext(
+			context.Background(),
+			`SELECT COUNT(*) FROM notification_logs WHERE type = 'in_transit_to_engineer' AND recipient = $1`,
+			engineerEmail,
+		).Scan(&count)
+
+		if err != nil {
+			t.Fatalf("Failed to query notification log: %v", err)
+		}
+
+		if count == 0 {
+			t.Error("In transit to engineer notification was not logged")
 		}
 	} else {
 		t.Logf("Note: Notification was not logged due to mock SMTP server quirk (returns 250 OK as error)")

@@ -124,6 +124,17 @@ type EngineerDeliveryClientData struct {
 	ProjectName    string
 }
 
+// InTransitToEngineerData contains data for in transit to engineer notification emails
+type InTransitToEngineerData struct {
+	EngineerName     string
+	DeviceModel      string
+	TrackingNumber   string
+	CourierName      string
+	ETA              string
+	ShipmentURL      string
+	ContactInfo      string
+}
+
 // EmailTemplates holds all compiled email templates
 type EmailTemplates struct {
 	templates map[string]*template.Template
@@ -666,6 +677,58 @@ func (et *EmailTemplates) loadTemplates() {
             <p>If you have any questions, please don't hesitate to contact us.</p>
         </div>
     `))
+
+	// In Transit to Engineer Template
+	et.templates["in_transit_to_engineer"] = template.Must(template.New("base").Parse(baseTemplate))
+	template.Must(et.templates["in_transit_to_engineer"].New("content").Parse(`
+        <div class="header">
+            <h1>🚚 Device In Transit to You</h1>
+        </div>
+        <div class="content">
+            <p>Hello {{.EngineerName}},</p>
+            <div class="info-box">
+                <p>Your device is on its way! We wanted to let you know so you can prepare for its arrival.</p>
+            </div>
+            <div class="info-box">
+                <h3>📦 Shipment Details</h3>
+                <div class="info-row">
+                    <span class="info-label">Tracking Number:</span> {{.TrackingNumber}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Courier:</span> {{.CourierName}}
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Expected Arrival (ETA):</span> {{.ETA}}
+                </div>
+                {{if .DeviceModel}}
+                <div class="info-row">
+                    <span class="info-label">Device Model:</span> {{.DeviceModel}}
+                </div>
+                {{end}}
+            </div>
+            <div class="info-box">
+                <h3>📋 What to Expect</h3>
+                <ul>
+                    <li>The device will arrive at your specified delivery address</li>
+                    <li>Please be available to receive the package</li>
+                    <li>Inspect the device for any shipping damage upon arrival</li>
+                    <li>Contact us immediately if there are any issues</li>
+                </ul>
+            </div>
+            {{if .ContactInfo}}
+            <div class="info-box">
+                <h3>📞 Contact Information</h3>
+                <p>{{.ContactInfo}}</p>
+            </div>
+            {{end}}
+            {{if .ShipmentURL}}
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{.ShipmentURL}}" class="button">Track Shipment</a>
+            </div>
+            {{end}}
+            <p>We'll notify you once the device has been delivered. Thank you for your patience!</p>
+        </div>
+    `))
 }
 
 // RenderTemplate renders an email template with the given data
@@ -777,6 +840,15 @@ func (et *EmailTemplates) RenderTemplate(templateName string, data interface{}) 
 		dataMap["JiraTicket"] = v.JiraTicket
 		dataMap["ProjectName"] = v.ProjectName
 		dataMap["Subject"] = "Device Delivered to Engineer - " + v.TrackingNumber
+	case InTransitToEngineerData:
+		dataMap["EngineerName"] = v.EngineerName
+		dataMap["DeviceModel"] = v.DeviceModel
+		dataMap["TrackingNumber"] = v.TrackingNumber
+		dataMap["CourierName"] = v.CourierName
+		dataMap["ETA"] = v.ETA
+		dataMap["ShipmentURL"] = v.ShipmentURL
+		dataMap["ContactInfo"] = v.ContactInfo
+		dataMap["Subject"] = "Device In Transit - Expected Arrival " + v.ETA
 	default:
 		return "", fmt.Errorf("unsupported data type for template")
 	}
@@ -812,6 +884,8 @@ func (et *EmailTemplates) GetSubject(templateName string, data interface{}) stri
 		return "New Pickup Form Submitted - " + v.ClientCompany
 	case EngineerDeliveryClientData:
 		return "Device Delivered to Engineer - " + v.TrackingNumber
+	case InTransitToEngineerData:
+		return "Device In Transit - Expected Arrival " + v.ETA
 	default:
 		return "Notification from Laptop Tracking System"
 	}

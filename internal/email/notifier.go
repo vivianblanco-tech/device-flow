@@ -945,6 +945,142 @@ func (n *Notifier) SendEngineerDeliveryNotificationToClient(ctx context.Context,
 	return nil
 }
 
+// SendInTransitToEngineerNotification sends notification to engineer when device is in transit
+func (n *Notifier) SendInTransitToEngineerNotification(ctx context.Context, shipmentID int64) error {
+	// Fetch shipment details
+	shipment, err := n.getShipmentDetails(ctx, shipmentID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch shipment details: %w", err)
+	}
+
+	// Get shipment type - only send for applicable types
+	var shipmentType string
+	var courierName sql.NullString
+	var etaToEngineer sql.NullTime
+	err = n.db.QueryRowContext(ctx,
+		`SELECT shipment_type, courier_name, eta_to_engineer FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&shipmentType, &courierName, &etaToEngineer)
+	if err != nil {
+		return fmt.Errorf("failed to fetch shipment details: %w", err)
+	}
+
+	// Only send for single_full_journey and warehouse_to_engineer
+	if shipmentType != string(models.ShipmentTypeSingleFullJourney) && 
+		shipmentType != string(models.ShipmentTypeWarehouseToEngineer) {
+		return fmt.Errorf("in transit to engineer notification not applicable for shipment type: %s", shipmentType)
+	}
+
+	// Get engineer details
+	if !shipment.SoftwareEngineerID.Valid {
+		return fmt.Errorf("shipment has no assigned engineer")
+	}
+
+	var engineerName, engineerEmail string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT name, email FROM software_engineers WHERE id = $1`,
+		shipment.SoftwareEngineerID.Int64,
+	).Scan(&engineerName, &engineerEmail)
+	if err != nil {
+		return fmt.Errorf("failed to fetch engineer details: %w", err)
+	}
+
+	// Get ETA - this is required
+	eta := "To be determined"
+	if etaToEngineer.Valid {
+		eta = etaToEngineer.Time.Format("Monday, January 2, 2006 at 3:04 PM")
+	}
+
+	// Get courier name
+	courierNameStr := "Courier"
+	if courierName.Valid && courierName.String != "" {
+		courierNameStr = courierName.String
+	}
+
+	// Get laptop model from the first laptop in the shipment
+	deviceModel := ""
+	var laptopBrand, laptopModel string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT l.brand, l.model 
+		FROM laptops l
+		JOIN shipment_laptops sl ON sl.laptop_id = l.id
+		WHERE sl.shipment_id = $1
+		LIMIT 1`,
+		shipmentID,
+	).Scan(&laptopBrand, &laptopModel)
+	if err == nil {
+		// Format as "Brand Model" if both available, otherwise just model
+		if laptopBrand != "" && laptopModel != "" {
+			deviceModel = fmt.Sprintf("%s %s", laptopBrand, laptopModel)
+		} else if laptopModel != "" {
+			deviceModel = laptopModel
+		} else if laptopBrand != "" {
+			deviceModel = laptopBrand
+		}
+	}
+
+	// Build tracking URL based on courier
+	trackingURL := ""
+	if shipment.TrackingNumber.String != "" {
+		switch strings.ToUpper(courierNameStr) {
+		case "UPS":
+			trackingURL = fmt.Sprintf("https://www.ups.com/track?tracknum=%s", shipment.TrackingNumber.String)
+		case "FEDEX", "FEDEX EXPRESS":
+			trackingURL = fmt.Sprintf("https://www.fedex.com/fedextrack/?trknbr=%s", shipment.TrackingNumber.String)
+		case "DHL":
+			trackingURL = fmt.Sprintf("https://www.dhl.com/en/express/tracking.html?AWB=%s", shipment.TrackingNumber.String)
+		default:
+			trackingURL = fmt.Sprintf("https://www.google.com/search?q=track+%s", shipment.TrackingNumber.String)
+		}
+	}
+
+	// Get logistics contact info for support
+	var logisticsEmail string
+	err = n.db.QueryRowContext(ctx,
+		`SELECT email FROM users WHERE role = 'logistics' LIMIT 1`,
+	).Scan(&logisticsEmail)
+	if err != nil {
+		logisticsEmail = "international@bairesdev.com" // Default fallback
+	}
+	contactInfo := fmt.Sprintf("If you have any questions or concerns, please contact logistics at %s", logisticsEmail)
+
+	// Prepare template data
+	data := InTransitToEngineerData{
+		EngineerName:   engineerName,
+		DeviceModel:    deviceModel,
+		TrackingNumber: shipment.TrackingNumber.String,
+		CourierName:    courierNameStr,
+		ETA:            eta,
+		ShipmentURL:    trackingURL, // Use tracking URL for shipment tracking
+		ContactInfo:    contactInfo,
+	}
+
+	// Render template
+	htmlBody, err := n.templates.RenderTemplate("in_transit_to_engineer", data)
+	if err != nil {
+		return fmt.Errorf("failed to render template: %w", err)
+	}
+
+	// Send email
+	message := Message{
+		To:       []string{engineerEmail},
+		Subject:  n.templates.GetSubject("in_transit_to_engineer", data),
+		Body:     n.generatePlainTextFromHTML(htmlBody),
+		HTMLBody: htmlBody,
+	}
+
+	if err := n.client.Send(message); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	// Log notification
+	if err := n.logNotification(ctx, shipmentID, "in_transit_to_engineer", engineerEmail, "sent"); err != nil {
+		fmt.Printf("Warning: failed to log notification: %v\n", err)
+	}
+
+	return nil
+}
+
 // SendMagicLink sends a magic link email for form access
 func (n *Notifier) SendMagicLink(ctx context.Context, recipientEmail, recipientName, magicLink, formType string, expiresAt time.Time) error {
 	// Prepare template data

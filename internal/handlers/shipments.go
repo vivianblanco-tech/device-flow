@@ -697,6 +697,31 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	// Send in transit to engineer notification when status changes to in_transit_to_engineer
+	// Only for shipment types that involve engineer delivery
+	if newStatus == models.ShipmentStatusInTransitToEngineer {
+		if h.EmailNotifier != nil {
+			// Check shipment type to ensure we only send for applicable types
+			var shipmentType models.ShipmentType
+			err := h.DB.QueryRowContext(r.Context(),
+				`SELECT shipment_type FROM shipments WHERE id = $1`,
+				shipmentID,
+			).Scan(&shipmentType)
+
+			if err == nil && (shipmentType == models.ShipmentTypeSingleFullJourney ||
+				shipmentType == models.ShipmentTypeWarehouseToEngineer) {
+				go func() {
+					ctx := context.Background()
+					if err := h.EmailNotifier.SendInTransitToEngineerNotification(ctx, shipmentID); err != nil {
+						fmt.Printf("Warning: failed to send in transit to engineer notification: %v\n", err)
+					} else {
+						fmt.Printf("In transit to engineer notification sent successfully for shipment %d\n", shipmentID)
+					}
+				}()
+			}
+		}
+	}
+
 	// Send delivery confirmation email when status changes to delivered
 	// Only for shipment types that involve engineer delivery
 	if newStatus == models.ShipmentStatusDelivered {
