@@ -379,6 +379,7 @@ func (n *Notifier) SendWarehousePreAlert(ctx context.Context, shipmentID int64) 
 		IsSingleShipment:  isSingleShipment,
 		IsBulkShipment:    isBulkShipment,
 		LaptopCount:       shipment.LaptopCount,
+		NumberOfBoxes:     0, // Will be set for bulk shipments below
 	}
 
 	// Fetch laptop details for single shipments
@@ -418,9 +419,49 @@ func (n *Notifier) SendWarehousePreAlert(ctx context.Context, shipmentID int64) 
 		}
 	}
 
-	// For bulk shipments, create description
+	// For bulk shipments, fetch actual count from pickup form data
 	if isBulkShipment {
-		data.BulkDescription = fmt.Sprintf("Bulk shipment containing %d device(s)", shipment.LaptopCount)
+		// Try to get actual laptop count and number of boxes from pickup form
+		var numberOfLaptops, numberOfBoxes int
+		if formDataJSON != "" {
+			var formData map[string]interface{}
+			if err := json.Unmarshal([]byte(formDataJSON), &formData); err == nil {
+				// Get number_of_laptops from form data
+				if laptops, ok := formData["number_of_laptops"].(float64); ok {
+					numberOfLaptops = int(laptops)
+				} else if laptops, ok := formData["number_of_laptops"].(int); ok {
+					numberOfLaptops = laptops
+				}
+				
+				// Get number_of_boxes from form data
+				if boxes, ok := formData["number_of_boxes"].(float64); ok {
+					numberOfBoxes = int(boxes)
+				} else if boxes, ok := formData["number_of_boxes"].(int); ok {
+					numberOfBoxes = boxes
+				}
+			}
+		}
+		
+		// Use form data if available, otherwise fall back to shipment.LaptopCount
+		if numberOfLaptops > 0 {
+			data.LaptopCount = numberOfLaptops
+		} else if shipment.LaptopCount > 0 {
+			data.LaptopCount = shipment.LaptopCount
+		}
+		
+		// Set number of boxes
+		if numberOfBoxes > 0 {
+			data.NumberOfBoxes = numberOfBoxes
+		}
+		
+		// Build bulk description with laptop count and boxes if available
+		if numberOfBoxes > 0 && data.LaptopCount > 0 {
+			data.BulkDescription = fmt.Sprintf("Bulk shipment containing %d device(s) in %d box(es)", data.LaptopCount, numberOfBoxes)
+		} else if data.LaptopCount > 0 {
+			data.BulkDescription = fmt.Sprintf("Bulk shipment containing %d device(s)", data.LaptopCount)
+		} else {
+			data.BulkDescription = "Bulk shipment"
+		}
 	}
 
 	// Render template

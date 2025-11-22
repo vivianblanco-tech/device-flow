@@ -72,6 +72,7 @@ type WarehousePreAlertData struct {
 	// For bulk shipments
 	IsBulkShipment    bool
 	LaptopCount       int
+	NumberOfBoxes     int
 	BulkDescription   string
 }
 
@@ -485,9 +486,16 @@ func (et *EmailTemplates) loadTemplates() {
                 {{else if .IsBulkShipment}}
                 <div class="info-box" style="border: 2px solid #FF9800; background-color: #fff8f0; margin-top: 15px;">
                     <h3>📦 Bulk Shipment Information</h3>
+                    {{if .LaptopCount}}
                     <div class="info-row">
-                        <span class="info-label">Number of Devices:</span> <strong>{{.LaptopCount}}</strong>
+                        <span class="info-label">Number of Laptops:</span> <strong>{{.LaptopCount}}</strong>
                     </div>
+                    {{end}}
+                    {{if .NumberOfBoxes}}
+                    <div class="info-row">
+                        <span class="info-label">Number of Boxes:</span> <strong>{{.NumberOfBoxes}}</strong>
+                    </div>
+                    {{end}}
                     {{if .BulkDescription}}
                     <div class="info-row">
                         <span class="info-label">Description:</span> {{.BulkDescription}}
@@ -976,6 +984,7 @@ func (et *EmailTemplates) RenderTemplate(templateName string, data interface{}) 
 		dataMap["SSDGB"] = v.SSDGB
 		dataMap["SKU"] = v.SKU
 		dataMap["LaptopCount"] = v.LaptopCount
+		dataMap["NumberOfBoxes"] = v.NumberOfBoxes
 		dataMap["BulkDescription"] = v.BulkDescription
 		dataMap["Subject"] = "Incoming Shipment Alert - " + v.TrackingNumber
 	case ReleaseNotificationData:
