@@ -1106,12 +1106,12 @@ func TestNotifier_SendInTransitToEngineerNotification(t *testing.T) {
 	shipment := &models.Shipment{
 		ClientCompanyID:    company.ID,
 		SoftwareEngineerID: &engineerID,
-		Status:              models.ShipmentStatusInTransitToEngineer,
-		JiraTicketNumber:    "TEST-306",
-		TrackingNumber:      "UPS777888999",
-		CourierName:         "UPS",
-		ShipmentType:        models.ShipmentTypeSingleFullJourney,
-		ETAToEngineer:       &etaToEngineer,
+		Status:             models.ShipmentStatusInTransitToEngineer,
+		JiraTicketNumber:   "TEST-306",
+		TrackingNumber:     "UPS777888999",
+		CourierName:        "UPS",
+		ShipmentType:       models.ShipmentTypeSingleFullJourney,
+		ETAToEngineer:      &etaToEngineer,
 	}
 	shipment.BeforeCreate()
 

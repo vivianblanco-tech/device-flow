@@ -276,7 +276,8 @@ func main() {
 
 	var notifier *email.Notifier
 	if emailClient != nil {
-		notifier = email.NewNotifier(emailClient, db)
+		// Use NewNotifierWithConfig to pass SMTP config for default emails
+		notifier = email.NewNotifierWithConfig(emailClient, db, &cfg.SMTP)
 		log.Println("Email notifications enabled")
 	}
 

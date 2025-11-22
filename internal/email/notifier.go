@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yourusername/laptop-tracking-system/internal/config"
 	"github.com/yourusername/laptop-tracking-system/internal/models"
 )
 
@@ -16,6 +17,7 @@ type Notifier struct {
 	client    *Client
 	templates *EmailTemplates
 	db        *sql.DB
+	config    *config.SMTPConfig // Optional config for default emails
 }
 
 // NewNotifier creates a new email notifier instance
@@ -24,6 +26,17 @@ func NewNotifier(client *Client, db *sql.DB) *Notifier {
 		client:    client,
 		templates: NewEmailTemplates(),
 		db:        db,
+		config:    nil, // Config is optional for backward compatibility
+	}
+}
+
+// NewNotifierWithConfig creates a new email notifier instance with config
+func NewNotifierWithConfig(client *Client, db *sql.DB, cfg *config.SMTPConfig) *Notifier {
+	return &Notifier{
+		client:    client,
+		templates: NewEmailTemplates(),
+		db:        db,
+		config:    cfg,
 	}
 }
 
@@ -298,12 +311,10 @@ func (n *Notifier) SendWarehousePreAlert(ctx context.Context, shipmentID int64) 
 	}
 
 	// Get warehouse email
-	var warehouseEmail string
-	err = n.db.QueryRowContext(ctx,
-		`SELECT email FROM users WHERE role = 'warehouse' LIMIT 1`,
-	).Scan(&warehouseEmail)
+	warehouseEmail, err := n.getWarehouseEmail(ctx)
 	if err != nil {
-		return fmt.Errorf("no warehouse user found: %w", err)
+		// Log warning but continue with default email
+		fmt.Printf("Warning: %v\n", err)
 	}
 
 	// Get pickup date from form data (preferred) or shipment
@@ -642,12 +653,10 @@ func (n *Notifier) SendReleaseNotification(ctx context.Context, shipmentID int64
 	}
 
 	// Get courier/logistics email
-	var courierEmail string
-	err = n.db.QueryRowContext(ctx,
-		`SELECT email FROM users WHERE role = 'logistics' LIMIT 1`,
-	).Scan(&courierEmail)
+	courierEmail, err := n.getLogisticsEmail(ctx)
 	if err != nil {
-		return fmt.Errorf("no logistics user found: %w", err)
+		// Log warning but continue with default email
+		fmt.Printf("Warning: %v\n", err)
 	}
 
 	// Get engineer name if assigned
@@ -666,12 +675,10 @@ func (n *Notifier) SendReleaseNotification(ctx context.Context, shipmentID int64
 
 	// Get warehouse user email for contact details
 	// Note: users table doesn't have a name field, so we'll use email
-	var warehouseUserEmail string
-	err = n.db.QueryRowContext(ctx,
-		`SELECT email FROM users WHERE role = 'warehouse' LIMIT 1`,
-	).Scan(&warehouseUserEmail)
+	warehouseUserEmail, err := n.getWarehouseEmail(ctx)
 	if err != nil {
-		warehouseUserEmail = "warehouse@bairesdev.com" // Default fallback
+		// Log warning but continue with default email
+		fmt.Printf("Warning: %v\n", err)
 	}
 
 	// Get shipment release date for pickup date
@@ -1035,12 +1042,10 @@ func (n *Notifier) SendInTransitToEngineerNotification(ctx context.Context, ship
 	}
 
 	// Get logistics contact info for support
-	var logisticsEmail string
-	err = n.db.QueryRowContext(ctx,
-		`SELECT email FROM users WHERE role = 'logistics' LIMIT 1`,
-	).Scan(&logisticsEmail)
+	logisticsEmail, err := n.getLogisticsEmail(ctx)
 	if err != nil {
-		logisticsEmail = "international@bairesdev.com" // Default fallback
+		// Log warning but continue with default email
+		fmt.Printf("Warning: %v\n", err)
 	}
 	contactInfo := fmt.Sprintf("If you have any questions or concerns, please contact logistics at %s", logisticsEmail)
 
@@ -1158,6 +1163,81 @@ func (n *Notifier) getShipmentDetails(ctx context.Context, shipmentID int64) (*s
 	}
 
 	return &details, nil
+}
+
+// getLogisticsEmail retrieves the logistics team email
+// First tries to get from users table, falls back to config if available
+func (n *Notifier) getLogisticsEmail(ctx context.Context) (string, error) {
+	var logisticsEmail string
+	err := n.db.QueryRowContext(ctx,
+		`SELECT email FROM users WHERE role = 'logistics' LIMIT 1`,
+	).Scan(&logisticsEmail)
+	
+	if err == nil && logisticsEmail != "" {
+		return logisticsEmail, nil
+	}
+	
+	// Fallback to config if available
+	if n.config != nil && n.config.LogisticsEmail != "" {
+		return n.config.LogisticsEmail, nil
+	}
+	
+	// Final fallback
+	if err != nil {
+		return "international@bairesdev.com", fmt.Errorf("no logistics user found, using default: %w", err)
+	}
+	
+	return logisticsEmail, nil
+}
+
+// getWarehouseEmail retrieves a warehouse user email
+// First tries to get from users table, falls back to config if available
+func (n *Notifier) getWarehouseEmail(ctx context.Context) (string, error) {
+	var warehouseEmail string
+	err := n.db.QueryRowContext(ctx,
+		`SELECT email FROM users WHERE role = 'warehouse' LIMIT 1`,
+	).Scan(&warehouseEmail)
+	
+	if err == nil && warehouseEmail != "" {
+		return warehouseEmail, nil
+	}
+	
+	// Fallback to config if available
+	if n.config != nil && n.config.WarehouseEmail != "" {
+		return n.config.WarehouseEmail, nil
+	}
+	
+	// Final fallback
+	if err != nil {
+		return "warehouse@bairesdev.com", fmt.Errorf("no warehouse user found, using default: %w", err)
+	}
+	
+	return warehouseEmail, nil
+}
+
+// getContactEmailFromForm retrieves contact email from pickup form
+func (n *Notifier) getContactEmailFromForm(ctx context.Context, shipmentID int64) (string, error) {
+	var formDataJSON string
+	err := n.db.QueryRowContext(ctx,
+		`SELECT form_data FROM pickup_forms WHERE shipment_id = $1 ORDER BY submitted_at DESC LIMIT 1`,
+		shipmentID,
+	).Scan(&formDataJSON)
+	if err != nil {
+		return "", fmt.Errorf("no pickup form found for shipment %d: %w", shipmentID, err)
+	}
+
+	// Parse form data to extract contact email
+	var formData map[string]interface{}
+	if err := json.Unmarshal([]byte(formDataJSON), &formData); err != nil {
+		return "", fmt.Errorf("failed to parse form data: %w", err)
+	}
+
+	contactEmail, ok := formData["contact_email"].(string)
+	if !ok || contactEmail == "" {
+		return "", fmt.Errorf("contact email not found in pickup form")
+	}
+
+	return contactEmail, nil
 }
 
 func (n *Notifier) logNotification(ctx context.Context, shipmentID int64, notificationType, recipient, status string) error {

@@ -57,12 +57,14 @@ type GoogleOAuthConfig struct {
 
 // SMTPConfig contains email server settings
 type SMTPConfig struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	From     string
-	FromName string
+	Host           string
+	Port           string
+	User           string
+	Password       string
+	From           string
+	FromName       string
+	LogisticsEmail string // Default logistics team email
+	WarehouseEmail string // Default warehouse email (for fallback)
 }
 
 // JIRAConfig contains JIRA integration settings
@@ -124,12 +126,14 @@ func Load() *Config {
 			AllowedDomain: getEnv("GOOGLE_ALLOWED_DOMAIN", "bairesdev.com"),
 		},
 		SMTP: SMTPConfig{
-			Host:     getEnv("SMTP_HOST", "localhost"),
-			Port:     getEnv("SMTP_PORT", "1025"),
-			User:     getEnv("SMTP_USER", ""),
-			Password: getEnv("SMTP_PASSWORD", ""),
-			From:     getEnv("SMTP_FROM", "noreply@laptop-tracking.com"),
-			FromName: getEnv("SMTP_FROM_NAME", "Laptop Tracking System"),
+			Host:           getEnv("SMTP_HOST", "localhost"),
+			Port:           getEnv("SMTP_PORT", "1025"),
+			User:           getEnv("SMTP_USER", ""),
+			Password:       getEnv("SMTP_PASSWORD", ""),
+			From:           getEnv("SMTP_FROM", "noreply@laptop-tracking.com"),
+			FromName:       getEnv("SMTP_FROM_NAME", "Laptop Tracking System"),
+			LogisticsEmail: getEnv("LOGISTICS_EMAIL", "international@bairesdev.com"),
+			WarehouseEmail: getEnv("WAREHOUSE_EMAIL", "warehouse@bairesdev.com"),
 		},
 		JIRA: JIRAConfig{
 			URL:            getEnv("JIRA_URL", ""),
