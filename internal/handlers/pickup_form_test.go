@@ -1263,9 +1263,9 @@ func TestWarehouseToEngineerFormPage(t *testing.T) {
 	// Create laptop at warehouse (from bulk shipment)
 	var laptopID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO laptops (serial_number, brand, model, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-		"TEST123", "Dell", "Latitude 5420", "16", "512", models.LaptopStatusAtWarehouse, 1, time.Now(), time.Now(),
+		`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		"TEST123", "Dell", "Latitude 5420", "Intel i7", "16", "512", models.LaptopStatusAtWarehouse, 1, time.Now(), time.Now(),
 	).Scan(&laptopID)
 	if err != nil {
 		t.Fatalf("Failed to create test laptop: %v", err)
@@ -1326,10 +1326,18 @@ func TestWarehouseToEngineerFormPage(t *testing.T) {
 			t.Error("Expected form to have shipment_type set to warehouse_to_engineer")
 		}
 
-		// laptop_id field is conditional on available laptops
-		// TODO: The inventory query needs refinement to correctly find available laptops from bulk shipments
+		// Verify laptop is available in the dropdown
+		// The laptop should appear because it has:
+		// - status = 'at_warehouse'
+		// - reception report exists (directly linked via laptop_id)
+		// - shipment status = 'at_warehouse' (so NOT excluded by active shipment check)
 		if strings.Contains(body, "No available laptops") {
-			t.Log("Note: No available laptops found - this is expected behavior when inventory is empty or laptops are in active shipments")
+			t.Error("Laptop with at_warehouse status and reception report should be available, but query shows 'No available laptops'")
+		}
+		
+		// Verify the laptop appears in the dropdown
+		if !strings.Contains(body, "TEST123") {
+			t.Error("Expected laptop TEST123 to appear in the dropdown, but it was not found")
 		} else if !strings.Contains(body, "laptop_id") {
 			t.Error("Expected form to contain laptop_id field when laptops are available")
 		}

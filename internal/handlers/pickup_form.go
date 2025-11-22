@@ -283,14 +283,13 @@ func (h *PickupFormHandler) WarehouseToEngineerFormPage(w http.ResponseWriter, r
 		FROM laptops l
 		LEFT JOIN client_companies cc ON cc.id = l.client_company_id
 		WHERE l.status IN ('available', 'at_warehouse')
-		  -- Must have a reception report
+		  -- Must have a reception report (reception_reports has direct laptop_id link)
 		  AND EXISTS (
 			  SELECT 1 FROM reception_reports rr
-			  JOIN shipments s ON s.id = rr.shipment_id
-			  JOIN shipment_laptops sl ON sl.shipment_id = s.id
-			  WHERE sl.laptop_id = l.id
+			  WHERE rr.laptop_id = l.id
 		  )
 		  -- Must not be in any active shipment (except bulk shipments at warehouse)
+		  -- A laptop is considered "in active shipment" if it's in a shipment that's not delivered or at_warehouse
 		  AND NOT EXISTS (
 			  SELECT 1 FROM shipment_laptops sl
 			  JOIN shipments s ON s.id = sl.shipment_id
@@ -308,19 +307,30 @@ func (h *PickupFormHandler) WarehouseToEngineerFormPage(w http.ResponseWriter, r
 	for rows.Next() {
 		var laptop models.Laptop
 		var clientCompanyName sql.NullString
+		var sku sql.NullString
 		err := rows.Scan(
-			&laptop.ID, &laptop.SerialNumber, &laptop.SKU, &laptop.Brand,
+			&laptop.ID, &laptop.SerialNumber, &sku, &laptop.Brand,
 			&laptop.Model, &laptop.CPU, &laptop.RAMGB, &laptop.SSDGB, &laptop.Status, &laptop.ClientCompanyID,
 			&laptop.SoftwareEngineerID, &laptop.CreatedAt, &laptop.UpdatedAt,
 			&clientCompanyName,
 		)
 		if err != nil {
+			// Log scanning errors for debugging
+			fmt.Printf("Warning: Failed to scan laptop row: %v\n", err)
 			continue
+		}
+		if sku.Valid {
+			laptop.SKU = sku.String
 		}
 		if clientCompanyName.Valid {
 			laptop.ClientCompanyName = clientCompanyName.String
 		}
 		laptops = append(laptops, laptop)
+	}
+	
+	// Check for iteration errors
+	if err := rows.Err(); err != nil {
+		fmt.Printf("Warning: Error iterating laptop rows: %v\n", err)
 	}
 
 	data := map[string]interface{}{
