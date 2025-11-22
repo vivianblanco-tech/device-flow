@@ -4499,3 +4499,137 @@ func TestUpdateShipmentStatus_DeliveryConfirmation(t *testing.T) {
 		}
 	})
 }
+
+// TestUpdateShipmentStatus_InTransitToEngineerNotification tests that "Device In Transit to You" notification is triggered
+// when warehouse-to-engineer shipment status changes to in_transit_to_engineer
+func TestUpdateShipmentStatus_InTransitToEngineerNotification(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test logistics user
+	var logisticsUserID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test software engineer
+	var engineerID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO software_engineers (name, email, created_at, updated_at)
+		VALUES ($1, $2, $3, $4) RETURNING id`,
+		"Test Engineer", "engineer@example.com", time.Now(), time.Now(),
+	).Scan(&engineerID)
+	if err != nil {
+		t.Fatalf("Failed to create test engineer: %v", err)
+	}
+
+	// Create test laptop
+	var laptopID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO laptops (serial_number, brand, model, status, client_company_id, ram_gb, ssd_gb, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+		"TEST-LAPTOP-001", "Dell", "XPS 15", models.LaptopStatusAtWarehouse, companyID, 16, 512, time.Now(), time.Now(),
+	).Scan(&laptopID)
+	if err != nil {
+		t.Fatalf("Failed to create test laptop: %v", err)
+	}
+
+	// Create test shipment with warehouse_to_engineer type at released_from_warehouse status
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (shipment_type, client_company_id, software_engineer_id, status, jira_ticket_number, 
+		tracking_number, released_warehouse_at, laptop_count, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		models.ShipmentTypeWarehouseToEngineer, companyID, engineerID, models.ShipmentStatusReleasedFromWarehouse,
+		"TEST-W2E-001", "TRACK-W2E-001", time.Now(), 1, time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	// Link laptop to shipment
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at)
+		VALUES ($1, $2, $3)`,
+		shipmentID, laptopID, time.Now(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to link laptop to shipment: %v", err)
+	}
+
+	// Create email notifier
+	emailClient, err := email.NewClient(email.Config{
+		Host: "localhost",
+		Port: 1025,
+		From: "noreply@example.com",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create email client: %v", err)
+	}
+
+	emailNotifier := email.NewNotifier(emailClient, db)
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, emailNotifier)
+
+	t.Run("in transit to engineer notification is triggered for warehouse_to_engineer when status changes to in_transit_to_engineer", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusInTransitToEngineer))
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Wait a bit for async email goroutine to complete
+		time.Sleep(300 * time.Millisecond)
+
+		// Verify in transit to engineer notification was logged
+		var count int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM notification_logs 
+			WHERE type = 'in_transit_to_engineer' AND shipment_id = $1`,
+			shipmentID,
+		).Scan(&count)
+
+		if err != nil {
+			t.Fatalf("Failed to query notification log: %v", err)
+		}
+
+		if count == 0 {
+			t.Error("In transit to engineer notification was not logged - trigger may not be working for warehouse_to_engineer shipments")
+		}
+	})
+}

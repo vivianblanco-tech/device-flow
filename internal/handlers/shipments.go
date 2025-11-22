@@ -701,15 +701,9 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 	// Only for shipment types that involve engineer delivery
 	if newStatus == models.ShipmentStatusInTransitToEngineer {
 		if h.EmailNotifier != nil {
-			// Check shipment type to ensure we only send for applicable types
-			var shipmentType models.ShipmentType
-			err := h.DB.QueryRowContext(r.Context(),
-				`SELECT shipment_type FROM shipments WHERE id = $1`,
-				shipmentID,
-			).Scan(&shipmentType)
-
-			if err == nil && (shipmentType == models.ShipmentTypeSingleFullJourney ||
-				shipmentType == models.ShipmentTypeWarehouseToEngineer) {
+			// Use the shipment type we already fetched earlier (more efficient and avoids potential query issues)
+			if currentShipment.ShipmentType == models.ShipmentTypeSingleFullJourney ||
+				currentShipment.ShipmentType == models.ShipmentTypeWarehouseToEngineer {
 				go func() {
 					ctx := context.Background()
 					if err := h.EmailNotifier.SendInTransitToEngineerNotification(ctx, shipmentID); err != nil {
@@ -718,7 +712,11 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 						fmt.Printf("In transit to engineer notification sent successfully for shipment %d\n", shipmentID)
 					}
 				}()
+			} else {
+				fmt.Printf("Info: in transit to engineer notification skipped for shipment type: %s (shipment ID: %d)\n", currentShipment.ShipmentType, shipmentID)
 			}
+		} else {
+			fmt.Printf("Warning: EmailNotifier is nil, cannot send in transit to engineer notification for shipment %d\n", shipmentID)
 		}
 	}
 
