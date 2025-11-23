@@ -164,7 +164,7 @@
                                     data-address-country="{{.AddressCountry}}"
                                     data-address-state="{{.AddressState}}"
                                     data-address-postal-code="{{.AddressPostalCode}}"
-                                    data-address-confirmed="{{.AddressConfirmed}}"
+                                    data-address-confirmed="{{if .AddressConfirmed}}true{{else}}false{{end}}"
                                     data-address-confirmation-at="{{if .AddressConfirmationAt}}{{.AddressConfirmationAt.Format "2006-01-02 15:04:05"}}{{end}}"
                                 >
                                     {{.Name}}{{if .EmployeeNumber}} ({{.EmployeeNumber}}){{end}}
@@ -665,18 +665,20 @@
                 
                 // Show address confirmation status
                 if (addressConfirmationStatus) {
-                    const isConfirmed = selectedOption.dataset.addressConfirmed === 'true';
+                    // Get the raw value and normalize it
+                    const addressConfirmedValue = selectedOption.dataset.addressConfirmed;
+                    const isConfirmed = addressConfirmedValue === 'true' || addressConfirmedValue === 'True';
                     const confirmationDate = selectedOption.dataset.addressConfirmationAt;
                     
-                    if (isConfirmed && confirmationDate) {
+                    // Always ensure only one badge is visible
+                    if (isConfirmed) {
                         addressConfirmedBadge.classList.remove('hidden');
                         addressNotConfirmedBadge.classList.add('hidden');
-                        addressConfirmationDate.textContent = 'Confirmed on: ' + confirmationDate;
-                        addressConfirmationStatus.classList.remove('hidden');
-                    } else if (isConfirmed) {
-                        addressConfirmedBadge.classList.remove('hidden');
-                        addressNotConfirmedBadge.classList.add('hidden');
-                        addressConfirmationDate.textContent = '';
+                        if (confirmationDate) {
+                            addressConfirmationDate.textContent = 'Confirmed on: ' + confirmationDate;
+                        } else {
+                            addressConfirmationDate.textContent = '';
+                        }
                         addressConfirmationStatus.classList.remove('hidden');
                     } else {
                         addressConfirmedBadge.classList.add('hidden');
@@ -694,7 +696,13 @@
                 if (addressCountryField) addressCountryField.value = '';
                 if (addressStateField) addressStateField.value = '';
                 if (addressPostalCodeField) addressPostalCodeField.value = '';
-                if (addressConfirmationStatus) addressConfirmationStatus.classList.add('hidden');
+                // Hide both badges and the status container when no engineer is selected
+                if (addressConfirmationStatus) {
+                    addressConfirmationStatus.classList.add('hidden');
+                    addressConfirmedBadge.classList.add('hidden');
+                    addressNotConfirmedBadge.classList.add('hidden');
+                    if (addressConfirmationDate) addressConfirmationDate.textContent = '';
+                }
             }
         }
 
