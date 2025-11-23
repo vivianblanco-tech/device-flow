@@ -664,27 +664,35 @@
                 }
                 
                 // Show address confirmation status
-                if (addressConfirmationStatus) {
+                if (addressConfirmationStatus && addressConfirmedBadge && addressNotConfirmedBadge) {
                     // Get the raw value and normalize it
                     const addressConfirmedValue = selectedOption.dataset.addressConfirmed;
                     const isConfirmed = addressConfirmedValue === 'true' || addressConfirmedValue === 'True';
                     const confirmationDate = selectedOption.dataset.addressConfirmationAt;
                     
-                    // Always ensure only one badge is visible
+                    // Always ensure only one badge is visible - use both class and style for reliability
                     if (isConfirmed) {
+                        // Show confirmed badge, hide not confirmed badge
                         addressConfirmedBadge.classList.remove('hidden');
+                        addressConfirmedBadge.style.display = 'inline-flex';
                         addressNotConfirmedBadge.classList.add('hidden');
+                        addressNotConfirmedBadge.style.display = 'none';
                         if (confirmationDate) {
                             addressConfirmationDate.textContent = 'Confirmed on: ' + confirmationDate;
                         } else {
                             addressConfirmationDate.textContent = '';
                         }
                         addressConfirmationStatus.classList.remove('hidden');
+                        addressConfirmationStatus.style.display = '';
                     } else {
+                        // Hide confirmed badge, show not confirmed badge
                         addressConfirmedBadge.classList.add('hidden');
+                        addressConfirmedBadge.style.display = 'none';
                         addressNotConfirmedBadge.classList.remove('hidden');
+                        addressNotConfirmedBadge.style.display = 'inline-flex';
                         addressConfirmationDate.textContent = '';
                         addressConfirmationStatus.classList.remove('hidden');
+                        addressConfirmationStatus.style.display = '';
                     }
                 }
             } else {
@@ -699,8 +707,14 @@
                 // Hide both badges and the status container when no engineer is selected
                 if (addressConfirmationStatus) {
                     addressConfirmationStatus.classList.add('hidden');
-                    addressConfirmedBadge.classList.add('hidden');
-                    addressNotConfirmedBadge.classList.add('hidden');
+                    if (addressConfirmedBadge) {
+                        addressConfirmedBadge.classList.add('hidden');
+                        addressConfirmedBadge.style.display = 'none';
+                    }
+                    if (addressNotConfirmedBadge) {
+                        addressNotConfirmedBadge.classList.add('hidden');
+                        addressNotConfirmedBadge.style.display = 'none';
+                    }
                     if (addressConfirmationDate) addressConfirmationDate.textContent = '';
                 }
             }
@@ -749,6 +763,28 @@
                 detailsDiv.classList.add('hidden');
             }
         }
+
+        // Initialize badges on page load to ensure proper state
+        document.addEventListener('DOMContentLoaded', function() {
+            const addressConfirmedBadge = document.getElementById('address-confirmed-badge');
+            const addressNotConfirmedBadge = document.getElementById('address-not-confirmed-badge');
+            
+            // Ensure both badges start hidden
+            if (addressConfirmedBadge) {
+                addressConfirmedBadge.classList.add('hidden');
+                addressConfirmedBadge.style.display = 'none';
+            }
+            if (addressNotConfirmedBadge) {
+                addressNotConfirmedBadge.classList.add('hidden');
+                addressNotConfirmedBadge.style.display = 'none';
+            }
+            
+            // If an engineer is already selected, trigger the update
+            const engineerSelect = document.getElementById('engineer_name');
+            if (engineerSelect && engineerSelect.value) {
+                updateEngineerDetails(engineerSelect);
+            }
+        });
     </script>
 </body>
 </html>
