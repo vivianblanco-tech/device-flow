@@ -56,8 +56,8 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		nav.Dashboard = false
 		nav.Shipments = true
 		nav.Inventory = true // Client users can view their company's laptops
-		nav.Calendar = true
-		nav.PickupForms = true
+		nav.Calendar = false // Calendar removed for Client users
+		nav.PickupForms = false // Pickup Forms removed for Client users
 		nav.ReceptionReports = false
 		nav.MagicLinks = false
 		nav.Reports = true // Client users can access reports

@@ -58,8 +58,8 @@ func TestGetNavigationLinks(t *testing.T) {
 				"dashboard":         false,
 				"shipments":         true,
 				"inventory":         true, // Client users should now see inventory
-				"calendar":          true,
-				"pickup_forms":      true,
+				"calendar":          false, // Calendar removed for Client users
+				"pickup_forms":      false, // Pickup Forms removed for Client users
 				"reception_reports": false,
 				"magic_links":       false,
 			},
