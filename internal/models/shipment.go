@@ -52,6 +52,7 @@ type Shipment struct {
 	CourierName         string          `json:"courier_name,omitempty" db:"courier_name"`
 	TrackingNumber      string          `json:"tracking_number,omitempty" db:"tracking_number"`
 	SecondTrackingNumber string         `json:"second_tracking_number,omitempty" db:"second_tracking_number"`
+	SecondCourierName   string          `json:"second_courier_name,omitempty" db:"second_courier_name"`
 	
 	// Tracking dates for each step
 	PickupScheduledDate *time.Time      `json:"pickup_scheduled_date,omitempty" db:"pickup_scheduled_date"`
@@ -493,15 +494,25 @@ func (s *Shipment) GetTrackingURL() string {
 }
 
 // GetSecondTrackingURL returns the courier's tracking URL for the second tracking number
-// Uses the same courier as the first tracking number
+// Uses SecondCourierName if available, otherwise falls back to CourierName
 // Returns an empty string if the courier is not recognized, courier name is empty, or second tracking number is empty
 func (s *Shipment) GetSecondTrackingURL() string {
-	if s.CourierName == "" || s.SecondTrackingNumber == "" {
+	if s.SecondTrackingNumber == "" {
+		return ""
+	}
+
+	// Use SecondCourierName if available, otherwise fall back to CourierName
+	courierName := s.SecondCourierName
+	if courierName == "" {
+		courierName = s.CourierName
+	}
+
+	if courierName == "" {
 		return ""
 	}
 
 	// Normalize courier name to lowercase for comparison
-	courierLower := strings.ToLower(strings.TrimSpace(s.CourierName))
+	courierLower := strings.ToLower(strings.TrimSpace(courierName))
 
 	// Check for courier name using substring matching to support service types
 	// e.g., "FedEx Express", "UPS Next Day Air", "DHL Express"

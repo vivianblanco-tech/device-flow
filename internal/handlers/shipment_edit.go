@@ -56,6 +56,7 @@ func (h *ShipmentsHandler) EditShipmentGET(w http.ResponseWriter, r *http.Reques
 		        COALESCE(s.courier_name, '') as courier_name, 
 		        COALESCE(s.tracking_number, '') as tracking_number,
 		        COALESCE(s.second_tracking_number, '') as second_tracking_number,
+		        COALESCE(s.second_courier_name, '') as second_courier_name,
 		        s.pickup_scheduled_date,
 		        s.picked_up_at, s.arrived_warehouse_at, s.released_warehouse_at, 
 		        s.eta_to_engineer, s.delivered_at, COALESCE(s.notes, '') as notes, 
@@ -68,7 +69,7 @@ func (h *ShipmentsHandler) EditShipmentGET(w http.ResponseWriter, r *http.Reques
 		shipmentID,
 	).Scan(
 		&s.ID, &s.ShipmentType, &s.LaptopCount, &s.ClientCompanyID, &s.SoftwareEngineerID, &s.Status,
-		&s.JiraTicketNumber, &s.CourierName, &s.TrackingNumber, &s.SecondTrackingNumber, &s.PickupScheduledDate,
+		&s.JiraTicketNumber, &s.CourierName, &s.TrackingNumber, &s.SecondTrackingNumber, &s.SecondCourierName, &s.PickupScheduledDate,
 		&s.PickedUpAt, &s.ArrivedWarehouseAt, &s.ReleasedWarehouseAt,
 		&s.ETAToEngineer, &s.DeliveredAt, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
 		&companyName, &engineerID, &engineerName,
@@ -125,6 +126,14 @@ func (h *ShipmentsHandler) EditShipmentGET(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
+	// Get list of couriers from database
+	couriers, err := models.GetAllCouriers(h.DB)
+	if err != nil {
+		// Non-critical error, log but continue with empty list
+		fmt.Printf("Warning: Failed to load couriers: %v\n", err)
+		couriers = []models.Courier{}
+	}
+
 	data := map[string]interface{}{
 		"User":           user,
 		"Nav":            views.GetNavigationLinks(user.Role),
@@ -136,7 +145,7 @@ func (h *ShipmentsHandler) EditShipmentGET(w http.ResponseWriter, r *http.Reques
 		"Engineers":      engineers,
 		"PickupFormData": pickupFormData,
 		"TimeSlots":      []string{"morning", "afternoon", "evening"},
-		"Couriers":       []string{"UPS", "FedEx", "DHL"},
+		"Couriers":       couriers,
 	}
 
 	if h.Templates != nil {
@@ -262,6 +271,41 @@ func (h *ShipmentsHandler) EditShipmentPOST(w http.ResponseWriter, r *http.Reque
 		fmt.Printf("Error updating second tracking number: %v\n", err)
 		http.Error(w, "Failed to update second tracking number", http.StatusInternalServerError)
 		return
+	}
+
+	// Update second courier name if provided
+	secondCourierName := r.FormValue("second_courier_name")
+	if secondCourierName != "" {
+		// Validate second courier name
+		valid, err := models.IsValidCourierName(h.DB, secondCourierName)
+		if err != nil {
+			http.Error(w, "Failed to validate second courier name", http.StatusInternalServerError)
+			return
+		}
+		if !valid {
+			http.Error(w, "Invalid second courier name. Courier must exist in the system", http.StatusBadRequest)
+			return
+		}
+
+		_, err = h.DB.ExecContext(r.Context(),
+			`UPDATE shipments SET second_courier_name = $1, updated_at = $2 WHERE id = $3`,
+			secondCourierName, time.Now(), shipmentID,
+		)
+		if err != nil {
+			fmt.Printf("Error updating second courier name: %v\n", err)
+			http.Error(w, "Failed to update second courier name", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Clear second courier name if empty string is provided
+		_, err = h.DB.ExecContext(r.Context(),
+			`UPDATE shipments SET second_courier_name = NULL, updated_at = $1 WHERE id = $2`,
+			time.Now(), shipmentID,
+		)
+		if err != nil {
+			fmt.Printf("Error clearing second courier name: %v\n", err)
+			// Non-critical error, continue
+		}
 	}
 
 	// Update pickup form data if pickup form exists

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -515,4 +516,213 @@ func TestEditShipmentAvailability(t *testing.T) {
 			t.Errorf("Expected status 400, got %d", w.Code)
 		}
 	})
+}
+
+func TestEditShipmentGET_LoadsCouriersFromDatabase(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create logistics user
+	var logisticsUserID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create logistics user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create couriers in database with unique names
+	timestamp := time.Now().Unix()
+	courierNames := []string{
+		fmt.Sprintf("Test Courier A %d", timestamp),
+		fmt.Sprintf("Test Courier B %d", timestamp),
+		fmt.Sprintf("Test Courier C %d", timestamp),
+	}
+	var courierIDs []int64
+	for _, name := range courierNames {
+		var courierID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO couriers (name, contact_info, created_at, updated_at)
+			VALUES ($1, $2, $3, $4) RETURNING id`,
+			name, "Contact info", time.Now(), time.Now(),
+		).Scan(&courierID)
+		if err != nil {
+			t.Fatalf("Failed to create courier %s: %v", name, err)
+		}
+		courierIDs = append(courierIDs, courierID)
+	}
+
+	// Create shipment with pickup form
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, courier_name, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPickupScheduled, 1, "TEST-123", "Test Courier A", time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create shipment: %v", err)
+	}
+
+	// Create pickup form
+	formData := map[string]interface{}{"contact_name": "Test"}
+	formDataJSON, _ := json.Marshal(formData)
+
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+		VALUES ($1, $2, $3, $4)`,
+		shipmentID, logisticsUserID, time.Now(), formDataJSON,
+	)
+	if err != nil {
+		t.Fatalf("Failed to create pickup form: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/shipments/%d/edit", shipmentID), nil)
+	req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", shipmentID)})
+
+	user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+	reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+	req = req.WithContext(reqCtx)
+
+	w := httptest.NewRecorder()
+	handler.EditShipmentGET(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+
+	// Verify couriers from database are present in response
+	body := w.Body.String()
+	for _, courierName := range courierNames {
+		if !strings.Contains(body, courierName) {
+			t.Errorf("Expected courier '%s' to be present in dropdown, but it was not found in response", courierName)
+		}
+	}
+}
+
+func TestEditShipmentPOST_SavesSecondCourierName(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create logistics user
+	var logisticsUserID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create logistics user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create courier in database
+	courierName := fmt.Sprintf("Test Courier %d", time.Now().Unix())
+	var courierID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO couriers (name, contact_info, created_at, updated_at)
+		VALUES ($1, $2, $3, $4) RETURNING id`,
+		courierName, "Contact info", time.Now(), time.Now(),
+	).Scan(&courierID)
+	if err != nil {
+		t.Fatalf("Failed to create courier: %v", err)
+	}
+
+	// Create shipment with pickup form
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (shipment_type, client_company_id, status, laptop_count, jira_ticket_number, courier_name, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPickupScheduled, 1, "TEST-123", courierName, time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create shipment: %v", err)
+	}
+
+	// Create pickup form
+	formData := map[string]interface{}{"contact_name": "Test"}
+	formDataJSON, _ := json.Marshal(formData)
+
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+		VALUES ($1, $2, $3, $4)`,
+		shipmentID, logisticsUserID, time.Now(), formDataJSON,
+	)
+	if err != nil {
+		t.Fatalf("Failed to create pickup form: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	form := url.Values{}
+	form.Add("courier_name", courierName)
+	form.Add("second_courier_name", courierName)
+	form.Add("second_tracking_number", "TRACK123")
+
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/shipments/%d/edit", shipmentID), strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", shipmentID)})
+
+	user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+	reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+	req = req.WithContext(reqCtx)
+
+	w := httptest.NewRecorder()
+	handler.EditShipmentPOST(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("Expected status 303, got %d", w.Code)
+	}
+
+	// Verify second courier name was saved
+	var savedSecondCourierName sql.NullString
+	err = db.QueryRowContext(ctx,
+		`SELECT second_courier_name FROM shipments WHERE id = $1`,
+		shipmentID,
+	).Scan(&savedSecondCourierName)
+	if err != nil {
+		t.Fatalf("Failed to query updated shipment: %v", err)
+	}
+
+	if !savedSecondCourierName.Valid || savedSecondCourierName.String != courierName {
+		t.Errorf("Expected second courier name '%s', got '%s'", courierName, savedSecondCourierName.String)
+	}
 }
