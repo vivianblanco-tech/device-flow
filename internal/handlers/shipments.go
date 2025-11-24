@@ -423,6 +423,44 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	// Check if approved reception report is required for single_full_journey shipments at at_warehouse status
+	// Filter out 'released_from_warehouse' from NextAllowedStatuses if no approved reception report exists
+	if s.ShipmentType == models.ShipmentTypeSingleFullJourney && s.Status == models.ShipmentStatusAtWarehouse {
+		// Get the laptop ID for this shipment
+		var laptopID int64
+		err := h.DB.QueryRowContext(r.Context(),
+			`SELECT laptop_id FROM shipment_laptops WHERE shipment_id = $1 LIMIT 1`,
+			shipmentID,
+		).Scan(&laptopID)
+		if err == nil {
+			// Check if there's an approved reception report for this laptop
+			receptionReport, err := models.GetLaptopReceptionReport(r.Context(), h.DB, laptopID)
+			if err == nil {
+				if receptionReport == nil || !receptionReport.IsApproved() {
+					// Filter out released_from_warehouse from the list
+					filteredStatuses := []models.ShipmentStatus{}
+					for _, status := range nextAllowedStatuses {
+						if status != models.ShipmentStatusReleasedFromWarehouse {
+							filteredStatuses = append(filteredStatuses, status)
+						}
+					}
+					nextAllowedStatuses = filteredStatuses
+					
+					// Show warning message if released_from_warehouse would have been available
+					if warningMsg == "" {
+						originalNextAllowedStatuses := s.GetNextAllowedStatuses()
+						for _, status := range originalNextAllowedStatuses {
+							if status == models.ShipmentStatusReleasedFromWarehouse {
+								warningMsg = "⚠️ An approved reception report is required before updating the status to 'Released from Warehouse'. Please ensure the reception report is created and approved first."
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Get available laptops for bulk shipments (only for logistics users)
 	var availableLaptops []models.Laptop
 	if s.ShipmentType == models.ShipmentTypeBulkToWarehouse && user.Role == models.RoleLogistics {
@@ -576,6 +614,38 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 				http.Error(w, "Cannot update status to 'in transit to engineer' without an assigned engineer. Please assign an engineer first.", http.StatusBadRequest)
 				return
 			}
+		}
+	}
+
+	// Validate that approved reception report exists before updating from at_warehouse to released_from_warehouse
+	// Only for single_full_journey shipments
+	if currentShipment.Status == models.ShipmentStatusAtWarehouse && 
+	   newStatus == models.ShipmentStatusReleasedFromWarehouse &&
+	   currentShipment.ShipmentType == models.ShipmentTypeSingleFullJourney {
+		// Get the laptop ID for this shipment
+		var laptopID int64
+		err = h.DB.QueryRowContext(r.Context(),
+			`SELECT laptop_id FROM shipment_laptops WHERE shipment_id = $1 LIMIT 1`,
+			shipmentID,
+		).Scan(&laptopID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Shipment has no laptops associated", http.StatusBadRequest)
+				return
+			}
+			http.Error(w, "Failed to fetch shipment laptop information", http.StatusInternalServerError)
+			return
+		}
+
+		// Check if there's an approved reception report for this laptop
+		receptionReport, err := models.GetLaptopReceptionReport(r.Context(), h.DB, laptopID)
+		if err != nil {
+			http.Error(w, "Failed to check reception report status", http.StatusInternalServerError)
+			return
+		}
+		if receptionReport == nil || !receptionReport.IsApproved() {
+			http.Error(w, "Cannot update status to 'Released from Warehouse' without an approved reception report for the laptop. Please ensure the reception report is created and approved first.", http.StatusBadRequest)
+			return
 		}
 	}
 

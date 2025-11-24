@@ -2170,9 +2170,42 @@ func TestUpdateShipmentStatus(t *testing.T) {
 			t.Fatalf("Failed to create test engineer: %v", err)
 		}
 
+		// Create a laptop for this shipment
+		var laptopID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+			"TEST-LAPTOP-ETA", "Dell", "Latitude 5520", "Intel i7", 16, 512, models.LaptopStatusAtWarehouse, companyID, time.Now(), time.Now(),
+		).Scan(&laptopID)
+		if err != nil {
+			t.Fatalf("Failed to create test laptop: %v", err)
+		}
+
+		// Link laptop to shipment
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at) VALUES ($1, $2, $3)`,
+			shipmentID, laptopID, time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to link laptop to shipment: %v", err)
+		}
+
+		// Create approved reception report for the laptop
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO reception_reports (laptop_id, shipment_id, client_company_id, warehouse_user_id, received_at, 
+			 photo_serial_number, photo_external_condition, photo_working_condition, status, approved_by, approved_at, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+			laptopID, shipmentID, companyID, logisticsUserID, time.Now(),
+			"/uploads/test-serial.jpg", "/uploads/test-ext.jpg", "/uploads/test-work.jpg",
+			models.ReceptionReportStatusApproved, logisticsUserID, time.Now(), time.Now(), time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to create approved reception report: %v", err)
+		}
+
 		// Update shipment to warehouse first and set shipment type and engineer
 		_, err = db.ExecContext(ctx,
-			`UPDATE shipments SET status = $1, shipment_type = $2, software_engineer_id = $3 WHERE id = $4`,
+			`UPDATE shipments SET status = $1, shipment_type = $2, software_engineer_id = $3, laptop_count = 1 WHERE id = $4`,
 			models.ShipmentStatusAtWarehouse, models.ShipmentTypeSingleFullJourney, engineerID, shipmentID,
 		)
 		if err != nil {
@@ -2260,12 +2293,45 @@ func TestUpdateShipmentStatus(t *testing.T) {
 		// Create another test shipment at warehouse with shipment type and engineer
 		var shipmentID2 int64
 		err = db.QueryRowContext(ctx,
-			`INSERT INTO shipments (client_company_id, status, shipment_type, software_engineer_id, jira_ticket_number, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-			companyID, models.ShipmentStatusAtWarehouse, models.ShipmentTypeSingleFullJourney, engineerID, "TEST-998", time.Now(), time.Now(),
+			`INSERT INTO shipments (client_company_id, status, shipment_type, software_engineer_id, jira_ticket_number, laptop_count, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+			companyID, models.ShipmentStatusAtWarehouse, models.ShipmentTypeSingleFullJourney, engineerID, "TEST-998", 1, time.Now(), time.Now(),
 		).Scan(&shipmentID2)
 		if err != nil {
 			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		// Create a laptop for this shipment
+		var laptopID2 int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+			"TEST-LAPTOP-NO-ETA", "Dell", "Latitude 5520", "Intel i7", 16, 512, models.LaptopStatusAtWarehouse, companyID, time.Now(), time.Now(),
+		).Scan(&laptopID2)
+		if err != nil {
+			t.Fatalf("Failed to create test laptop: %v", err)
+		}
+
+		// Link laptop to shipment
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at) VALUES ($1, $2, $3)`,
+			shipmentID2, laptopID2, time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to link laptop to shipment: %v", err)
+		}
+
+		// Create approved reception report for the laptop
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO reception_reports (laptop_id, shipment_id, client_company_id, warehouse_user_id, received_at, 
+			 photo_serial_number, photo_external_condition, photo_working_condition, status, approved_by, approved_at, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+			laptopID2, shipmentID2, companyID, logisticsUserID, time.Now(),
+			"/uploads/test-serial.jpg", "/uploads/test-ext.jpg", "/uploads/test-work.jpg",
+			models.ReceptionReportStatusApproved, logisticsUserID, time.Now(), time.Now(), time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to create approved reception report: %v", err)
 		}
 
 		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
@@ -4791,16 +4857,50 @@ func TestUpdateShipmentStatus_ReleaseNotification(t *testing.T) {
 	}
 
 	// Create test shipment with at_warehouse status (to transition to released_from_warehouse)
+	// For single_full_journey shipments, we need a laptop and approved reception report
 	var shipmentID int64
 	err = db.QueryRowContext(ctx,
-		`INSERT INTO shipments (client_company_id, status, jira_ticket_number, tracking_number, 
-		arrived_warehouse_at, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-		companyID, models.ShipmentStatusAtWarehouse, "TEST-RELEASE", "TRACK789",
-		time.Now(), time.Now(), time.Now(),
+		`INSERT INTO shipments (client_company_id, status, shipment_type, jira_ticket_number, tracking_number, 
+		arrived_warehouse_at, laptop_count, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+		companyID, models.ShipmentStatusAtWarehouse, models.ShipmentTypeSingleFullJourney, "TEST-RELEASE", "TRACK789",
+		time.Now(), 1, time.Now(), time.Now(),
 	).Scan(&shipmentID)
 	if err != nil {
 		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	// Create a laptop for this shipment
+	var laptopID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		"TEST-LAPTOP-RELEASE", "Dell", "Latitude 5520", "Intel i7", 16, 512, models.LaptopStatusAtWarehouse, companyID, time.Now(), time.Now(),
+	).Scan(&laptopID)
+	if err != nil {
+		t.Fatalf("Failed to create test laptop: %v", err)
+	}
+
+	// Link laptop to shipment
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at) VALUES ($1, $2, $3)`,
+		shipmentID, laptopID, time.Now(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to link laptop to shipment: %v", err)
+	}
+
+	// Create approved reception report for the laptop
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO reception_reports (laptop_id, shipment_id, client_company_id, warehouse_user_id, received_at, 
+		 photo_serial_number, photo_external_condition, photo_working_condition, status, approved_by, approved_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+		laptopID, shipmentID, companyID, logisticsUserID, time.Now(),
+		"/uploads/test-serial.jpg", "/uploads/test-ext.jpg", "/uploads/test-work.jpg",
+		models.ReceptionReportStatusApproved, logisticsUserID, time.Now(), time.Now(), time.Now(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create approved reception report: %v", err)
 	}
 
 	// Create email notifier
@@ -5100,6 +5200,360 @@ func TestUpdateShipmentStatus_InTransitToEngineerNotification(t *testing.T) {
 
 		if count == 0 {
 			t.Error("In transit to engineer notification was not logged - trigger may not be working for warehouse_to_engineer shipments")
+		}
+	})
+}
+
+// 🟥 RED: Test that updating single_full_journey shipment from at_warehouse to released_from_warehouse
+// requires an approved reception report for the laptop
+func TestUpdateShipmentStatus_RequiresApprovedReceptionReport(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test logistics user
+	var logisticsUserID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test warehouse user
+	var warehouseUserID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"warehouse@example.com", "hashedpassword", models.RoleWarehouse, time.Now(), time.Now(),
+	).Scan(&warehouseUserID)
+	if err != nil {
+		t.Fatalf("Failed to create warehouse user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test laptop
+	var laptopID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		"TEST-LAPTOP-001", "Dell", "Latitude 5520", "Intel i7", 16, 512, models.LaptopStatusAtWarehouse, companyID, time.Now(), time.Now(),
+	).Scan(&laptopID)
+	if err != nil {
+		t.Fatalf("Failed to create test laptop: %v", err)
+	}
+
+	// Create single_full_journey shipment at at_warehouse status
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, laptop_count, created_at, updated_at, arrived_warehouse_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusAtWarehouse, "TEST-RR-001", 1, time.Now(), time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	// Link laptop to shipment
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at) VALUES ($1, $2, $3)`,
+		shipmentID, laptopID, time.Now(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to link laptop to shipment: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	t.Run("cannot update to released_from_warehouse without approved reception report", func(t *testing.T) {
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusReleasedFromWarehouse))
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		// Should return error - cannot update without approved reception report
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400, got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		// Verify error message mentions reception report
+		body := w.Body.String()
+		if !strings.Contains(strings.ToLower(body), "reception report") {
+			t.Errorf("Expected error message about reception report, got: %s", body)
+		}
+	})
+
+	t.Run("can update to released_from_warehouse with approved reception report", func(t *testing.T) {
+		// Create a new laptop for this test
+		var laptopID2 int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+			"TEST-LAPTOP-002", "Dell", "Latitude 5520", "Intel i7", 16, 512, models.LaptopStatusAtWarehouse, companyID, time.Now(), time.Now(),
+		).Scan(&laptopID2)
+		if err != nil {
+			t.Fatalf("Failed to create test laptop: %v", err)
+		}
+
+		// Create a new shipment for this test
+		var shipmentID2 int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, laptop_count, created_at, updated_at, arrived_warehouse_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+			models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusAtWarehouse, "TEST-RR-002", 1, time.Now(), time.Now(), time.Now(),
+		).Scan(&shipmentID2)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		// Link laptop to shipment
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at) VALUES ($1, $2, $3)`,
+			shipmentID2, laptopID2, time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to link laptop to shipment: %v", err)
+		}
+
+		// Create approved reception report for the laptop
+		var reportID int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO reception_reports (laptop_id, shipment_id, client_company_id, warehouse_user_id, received_at, 
+			 photo_serial_number, photo_external_condition, photo_working_condition, status, approved_by, approved_at, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+			laptopID2, shipmentID2, companyID, warehouseUserID, time.Now(),
+			"/uploads/test-serial.jpg", "/uploads/test-ext.jpg", "/uploads/test-work.jpg",
+			models.ReceptionReportStatusApproved, logisticsUserID, time.Now(), time.Now(), time.Now(),
+		).Scan(&reportID)
+		if err != nil {
+			t.Fatalf("Failed to create approved reception report: %v", err)
+		}
+
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID2, 10))
+		formData.Set("status", string(models.ShipmentStatusReleasedFromWarehouse))
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		// Should succeed with approved reception report
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		// Verify status was updated
+		var status models.ShipmentStatus
+		err = db.QueryRowContext(ctx,
+			`SELECT status FROM shipments WHERE id = $1`,
+			shipmentID2,
+		).Scan(&status)
+		if err != nil {
+			t.Fatalf("Failed to query shipment status: %v", err)
+		}
+		if status != models.ShipmentStatusReleasedFromWarehouse {
+			t.Errorf("Expected status 'released_from_warehouse', got '%s'", status)
+		}
+	})
+}
+
+// 🟥 RED: Test that warning is shown in ShipmentDetail when single_full_journey shipment
+// is at_warehouse status without approved reception report
+func TestShipmentDetailWarningForMissingReceptionReport(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test user
+	var userID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create test laptop
+	var laptopID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		"TEST-LAPTOP-002", "Dell", "Latitude 5520", "Intel i7", 16, 512, models.LaptopStatusAtWarehouse, companyID, time.Now(), time.Now(),
+	).Scan(&laptopID)
+	if err != nil {
+		t.Fatalf("Failed to create test laptop: %v", err)
+	}
+
+	t.Run("warning shown for single_full_journey shipment at at_warehouse without approved reception report", func(t *testing.T) {
+		// Create a single_full_journey shipment at at_warehouse status without approved reception report
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, laptop_count, created_at, updated_at, arrived_warehouse_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+			models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusAtWarehouse, "TEST-WARN-RR-1", 1, time.Now(), time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		// Link laptop to shipment
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at) VALUES ($1, $2, $3)`,
+			shipmentID, laptopID, time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to link laptop to shipment: %v", err)
+		}
+
+		templates := loadTestTemplates(t)
+		handler := NewShipmentsHandler(db, templates, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		// Check that warning message is present in the response
+		// The warning should indicate that approved reception report is required
+		if !strings.Contains(strings.ToLower(body), "reception report") || !strings.Contains(strings.ToLower(body), "released") {
+			t.Errorf("Expected warning message about approved reception report requirement, but not found in response body. Body contains: %s", body[:500])
+		}
+	})
+
+	t.Run("no warning shown when approved reception report exists", func(t *testing.T) {
+		// Create another shipment
+		var shipmentID int64
+		err := db.QueryRowContext(ctx,
+			`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, laptop_count, created_at, updated_at, arrived_warehouse_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+			models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusAtWarehouse, "TEST-WARN-RR-2", 1, time.Now(), time.Now(), time.Now(),
+		).Scan(&shipmentID)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		// Create another laptop
+		var laptopID2 int64
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO laptops (serial_number, brand, model, cpu, ram_gb, ssd_gb, status, client_company_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+			"TEST-LAPTOP-003", "Dell", "Latitude 5520", "Intel i7", 16, 512, models.LaptopStatusAtWarehouse, companyID, time.Now(), time.Now(),
+		).Scan(&laptopID2)
+		if err != nil {
+			t.Fatalf("Failed to create test laptop: %v", err)
+		}
+
+		// Link laptop to shipment
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO shipment_laptops (shipment_id, laptop_id, created_at) VALUES ($1, $2, $3)`,
+			shipmentID, laptopID2, time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to link laptop to shipment: %v", err)
+		}
+
+		// Create approved reception report for the laptop
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO reception_reports (laptop_id, shipment_id, client_company_id, warehouse_user_id, received_at, 
+			 photo_serial_number, photo_external_condition, photo_working_condition, status, approved_by, approved_at, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+			laptopID2, shipmentID, companyID, userID, time.Now(),
+			"/uploads/test-serial.jpg", "/uploads/test-ext.jpg", "/uploads/test-work.jpg",
+			models.ReceptionReportStatusApproved, userID, time.Now(), time.Now(), time.Now(),
+		)
+		if err != nil {
+			t.Fatalf("Failed to create approved reception report: %v", err)
+		}
+
+		templates := loadTestTemplates(t)
+		handler := NewShipmentsHandler(db, templates, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/shipments/"+strconv.FormatInt(shipmentID, 10), nil)
+		req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(shipmentID, 10)})
+
+		user := &models.User{ID: userID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.ShipmentDetail(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		body := w.Body.String()
+		// Should NOT show warning about reception report when one exists
+		// We check that the specific warning about needing reception report is NOT present
+		if strings.Contains(strings.ToLower(body), "reception report") && 
+		   strings.Contains(strings.ToLower(body), "released") &&
+		   strings.Contains(strings.ToLower(body), "approved") {
+			// This might be acceptable if it's just showing info about the report, not a warning
+			// Let's be more specific - check for warning indicators
+			if strings.Contains(body, "⚠️") && strings.Contains(strings.ToLower(body), "reception report") {
+				t.Errorf("Unexpected warning about reception report when approved report exists")
+			}
 		}
 	})
 }
