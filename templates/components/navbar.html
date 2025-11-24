@@ -45,6 +45,10 @@ Expected template data:
                 {{if .Nav.Forms}}
                 <a href="/forms" class="text-sm {{if eq .CurrentPage "forms"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Forms</a>
                 {{end}}
+                
+                {{if .Nav.Reports}}
+                <a href="/reports" class="text-sm {{if eq .CurrentPage "reports"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Reports</a>
+                {{end}}
             </div>
             
             <!-- User Info and Logout -->

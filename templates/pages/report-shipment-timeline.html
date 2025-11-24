@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipment Timeline - Reports</title>
+    <link rel="stylesheet" href="/static/css/output.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <style>
+        .dataTables_wrapper {
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        table.dataTable {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100% !important;
+        }
+        table.dataTable thead th {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+            padding: 12px;
+            text-align: left;
+            color: #495057;
+        }
+        table.dataTable tbody td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        table.dataTable tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        .dataTables_filter input {
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 6px 12px;
+        }
+        .dataTables_length select {
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 6px 12px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    {{template "navbar.html" .}}
+
+    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-900">Shipment Timeline Report</h2>
+                <p class="mt-2 text-gray-600">Detailed tracking with all milestones and time between stages</p>
+            </div>
+            <div class="mt-4 md:mt-0 flex gap-2">
+                <a href="/reports/shipment-timeline?format=pdf" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium">
+                    Export PDF
+                </a>
+                <a href="/reports/shipment-timeline?format=csv" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+                    Export CSV
+                </a>
+                <a href="/reports/shipment-timeline?format=xlsx" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                    Export Excel
+                </a>
+            </div>
+        </div>
+
+        {{with .ReportData}}
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Shipment Timeline Details</h3>
+            <table id="timelineTable" class="display" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>JIRA Ticket</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Pickup Scheduled</th>
+                        <th>Picked Up</th>
+                        <th>Arrived Warehouse</th>
+                        <th>Released</th>
+                        <th>Delivered</th>
+                        <th>Total Days</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Shipments}}
+                    <tr>
+                        <td>{{.ID}}</td>
+                        <td>{{.JiraTicket}}</td>
+                        <td>
+                            {{if eq .Type "single_full_journey"}}Single Full Journey
+                            {{else if eq .Type "bulk_to_warehouse"}}Bulk to Warehouse
+                            {{else if eq .Type "warehouse_to_engineer"}}Warehouse → Engineer
+                            {{else}}{{.Type}}{{end}}
+                        </td>
+                        <td>
+                            <span class="px-2 py-1 rounded text-xs font-medium
+                                {{if eq .Status "pending_pickup_from_client"}}bg-yellow-100 text-yellow-800
+                                {{else if eq .Status "picked_up_from_client"}}bg-orange-100 text-orange-800
+                                {{else if eq .Status "in_transit_to_warehouse"}}bg-purple-100 text-purple-800
+                                {{else if eq .Status "at_warehouse"}}bg-indigo-100 text-indigo-800
+                                {{else if eq .Status "released_from_warehouse"}}bg-blue-100 text-blue-800
+                                {{else if eq .Status "in_transit_to_engineer"}}bg-cyan-100 text-cyan-800
+                                {{else if eq .Status "delivered"}}bg-green-100 text-green-800
+                                {{else}}bg-gray-100 text-gray-800{{end}}">
+                                {{.Status | replace "_" " " | title}}
+                            </span>
+                        </td>
+                        <td>{{if .PickupScheduledDate}}{{.PickupScheduledDate.Format "2006-01-02"}}{{else}}-{{end}}</td>
+                        <td>{{if .PickedUpAt}}{{.PickedUpAt.Format "2006-01-02"}}{{else}}-{{end}}</td>
+                        <td>{{if .ArrivedWarehouseAt}}{{.ArrivedWarehouseAt.Format "2006-01-02"}}{{else}}-{{end}}</td>
+                        <td>{{if .ReleasedWarehouseAt}}{{.ReleasedWarehouseAt.Format "2006-01-02"}}{{else}}-{{end}}</td>
+                        <td>{{if .DeliveredAt}}{{.DeliveredAt.Format "2006-01-02"}}{{else}}-{{end}}</td>
+                        <td>{{if .TotalDurationDays}}{{.TotalDurationDays}}{{else}}-{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+
+        <div class="mt-6">
+            <a href="/reports" class="text-blue-600 hover:text-blue-700 font-medium">← Back to Reports</a>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#timelineTable').DataTable({
+                pageLength: 25,
+                order: [[0, 'desc']],
+                responsive: true,
+                scrollX: true,
+                dom: '<"flex justify-between items-center mb-4"lf>rt<"flex justify-between items-center mt-4"ip>',
+                language: {
+                    search: "Search:",
+                    lengthMenu: "Show _MENU_ entries",
+                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                    paginate: {
+                        first: "First",
+                        last: "Last",
+                        next: "Next",
+                        previous: "Previous"
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

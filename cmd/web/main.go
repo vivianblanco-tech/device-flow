@@ -295,6 +295,7 @@ func main() {
 	deliveryFormHandler := handlers.NewDeliveryFormHandler(db, templates, notifier)
 	shipmentsHandler := handlers.NewShipmentsHandler(db, templates, notifier)
 	formsHandler := handlers.NewFormsHandler(db, templates)
+	reportsHandler := handlers.NewReportsHandler(db, templates)
 
 	// Initialize router
 	router := mux.NewRouter()
@@ -458,6 +459,12 @@ func main() {
 	protected.HandleFunc("/shipments/{id:[0-9]+}/complete-details", pickupFormHandler.CompleteShipmentDetails).Methods("POST")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/edit-details", pickupFormHandler.EditShipmentDetails).Methods("POST")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/laptops/add", shipmentsHandler.AddLaptopToBulkShipment).Methods("POST")
+
+	// Reports routes (Client users only)
+	protected.HandleFunc("/reports", reportsHandler.ReportsIndex).Methods("GET")
+	protected.HandleFunc("/reports/shipment-status", reportsHandler.ShipmentStatusDashboard).Methods("GET")
+	protected.HandleFunc("/reports/inventory-summary", reportsHandler.InventorySummaryReport).Methods("GET")
+	protected.HandleFunc("/reports/shipment-timeline", reportsHandler.ShipmentTimelineReport).Methods("GET")
 
 	// Serve static files
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/",
