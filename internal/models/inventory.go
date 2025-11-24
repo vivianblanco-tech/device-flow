@@ -221,7 +221,8 @@ func GetLaptopByID(db *sql.DB, id int64) (*Laptop, error) {
 			l.id, l.serial_number, l.sku, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb, l.status, 
 			l.client_company_id, l.software_engineer_id, l.created_at, l.updated_at,
 			cc.name as client_company_name,
-			se.name as software_engineer_name
+			se.name as software_engineer_name,
+			se.employee_number as employee_id
 		FROM laptops l
 		LEFT JOIN client_companies cc ON cc.id = l.client_company_id
 		LEFT JOIN software_engineers se ON se.id = l.software_engineer_id
@@ -232,6 +233,7 @@ func GetLaptopByID(db *sql.DB, id int64) (*Laptop, error) {
 	var sku sql.NullString
 	var clientCompanyName sql.NullString
 	var softwareEngineerName sql.NullString
+	var employeeID sql.NullString
 
 	err := db.QueryRow(query, id).Scan(
 		&laptop.ID,
@@ -249,6 +251,7 @@ func GetLaptopByID(db *sql.DB, id int64) (*Laptop, error) {
 		&laptop.UpdatedAt,
 		&clientCompanyName,
 		&softwareEngineerName,
+		&employeeID,
 	)
 
 	if err == sql.ErrNoRows {
@@ -267,6 +270,9 @@ func GetLaptopByID(db *sql.DB, id int64) (*Laptop, error) {
 	}
 	if softwareEngineerName.Valid {
 		laptop.SoftwareEngineerName = softwareEngineerName.String
+	}
+	if employeeID.Valid {
+		laptop.EmployeeID = employeeID.String
 	}
 
 	return &laptop, nil

@@ -549,6 +549,65 @@ func TestGetLaptopByIDWithJoins(t *testing.T) {
 	}
 }
 
+// 🟥 RED: Test that GetLaptopByID populates employee number when software engineer is assigned
+func TestGetLaptopByIDPopulatesEmployeeNumber(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	// Create test client company
+	clientCompany := &ClientCompany{
+		Name:        "Test Company",
+		ContactInfo: "test@company.com",
+	}
+	err := CreateClientCompany(db, clientCompany)
+	if err != nil {
+		t.Fatalf("Failed to create client company: %v", err)
+	}
+
+	// Create test software engineer with employee number
+	engineer := &SoftwareEngineer{
+		Name:          "John Doe",
+		Email:         "john.doe@bairesdev.com",
+		EmployeeNumber: "EMP12345",
+	}
+	err = CreateSoftwareEngineer(db, engineer)
+	if err != nil {
+		t.Fatalf("Failed to create software engineer: %v", err)
+	}
+
+	// Create laptop assigned to engineer
+	laptop := &Laptop{
+		SerialNumber:       "SN003",
+		Brand:              "Dell",
+		Model:              "Latitude 5520",
+		CPU:                "Intel Core i7",
+		RAMGB:              "16GB",
+		SSDGB:              "512GB",
+		Status:             LaptopStatusAvailable,
+		ClientCompanyID:    &clientCompany.ID,
+		SoftwareEngineerID: &engineer.ID,
+	}
+	err = CreateLaptop(db, laptop)
+	if err != nil {
+		t.Fatalf("Failed to create laptop: %v", err)
+	}
+
+	// Test: Get laptop by ID
+	retrieved, err := GetLaptopByID(db, laptop.ID)
+	if err != nil {
+		t.Fatalf("GetLaptopByID failed: %v", err)
+	}
+
+	// Verify employee number is populated
+	if retrieved.EmployeeID != "EMP12345" {
+		t.Errorf("Expected EmployeeID 'EMP12345', got %s", retrieved.EmployeeID)
+	}
+}
+
 // Helper functions removed - using actual model functions from client_company.go and software_engineer.go
 
 // TestGetAllLaptopsHandlesNullFields tests that GetAllLaptops can handle NULL values in optional fields like brand and sku
