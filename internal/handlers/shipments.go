@@ -423,6 +423,39 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	// Check if pickup form (Complete Shipment Details) is required before updating to picked_up_from_client
+	// Filter out 'picked_up_from_client' from NextAllowedStatuses if no pickup form exists
+	if s.Status == models.ShipmentStatusPendingPickup || s.Status == models.ShipmentStatusPickupScheduled {
+		var pickupFormCount int
+		err := h.DB.QueryRowContext(r.Context(),
+			`SELECT COUNT(*) FROM pickup_forms WHERE shipment_id = $1`,
+			shipmentID,
+		).Scan(&pickupFormCount)
+		if err == nil {
+			if pickupFormCount == 0 {
+				// Filter out picked_up_from_client from the list
+				filteredStatuses := []models.ShipmentStatus{}
+				for _, status := range nextAllowedStatuses {
+					if status != models.ShipmentStatusPickedUpFromClient {
+						filteredStatuses = append(filteredStatuses, status)
+					}
+				}
+				nextAllowedStatuses = filteredStatuses
+				
+				// Show warning message if picked_up_from_client would have been available
+				if warningMsg == "" {
+					originalNextAllowedStatuses := s.GetNextAllowedStatuses()
+					for _, status := range originalNextAllowedStatuses {
+						if status == models.ShipmentStatusPickedUpFromClient {
+							warningMsg = "⚠️ A completed 'Complete Shipment Details' form is required before updating the status to 'Picked Up from Client'. Please ensure the shipment details form is completed first."
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Check if approved reception report is required for single_full_journey shipments at at_warehouse status
 	// Filter out 'released_from_warehouse' from NextAllowedStatuses if no approved reception report exists
 	if s.ShipmentType == models.ShipmentTypeSingleFullJourney && s.Status == models.ShipmentStatusAtWarehouse {
@@ -614,6 +647,24 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 				http.Error(w, "Cannot update status to 'in transit to engineer' without an assigned engineer. Please assign an engineer first.", http.StatusBadRequest)
 				return
 			}
+		}
+	}
+
+	// Validate that pickup form (Complete Shipment Details) exists before updating to picked_up_from_client
+	// This applies when transitioning from pending_pickup_from_client or pickup_from_client_scheduled to picked_up_from_client
+	if newStatus == models.ShipmentStatusPickedUpFromClient {
+		var pickupFormCount int
+		err = h.DB.QueryRowContext(r.Context(),
+			`SELECT COUNT(*) FROM pickup_forms WHERE shipment_id = $1`,
+			shipmentID,
+		).Scan(&pickupFormCount)
+		if err != nil {
+			http.Error(w, "Failed to check pickup form status", http.StatusInternalServerError)
+			return
+		}
+		if pickupFormCount == 0 {
+			http.Error(w, "Cannot update status to 'Picked Up from Client' without a completed 'Complete Shipment Details' form. Please ensure the shipment details form is completed first.", http.StatusBadRequest)
+			return
 		}
 	}
 

@@ -5204,6 +5204,176 @@ func TestUpdateShipmentStatus_InTransitToEngineerNotification(t *testing.T) {
 	})
 }
 
+// 🟥 RED: Test that updating shipment from pending_pickup_from_client to picked_up_from_client
+// requires a completed pickup form (Complete Shipment Details)
+func TestUpdateShipmentStatus_RequiresPickupFormForPickedUp(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	db, cleanup := database.SetupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Create test logistics user
+	var logisticsUserID int64
+	err := db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		"logistics@example.com", "hashedpassword", models.RoleLogistics, time.Now(), time.Now(),
+	).Scan(&logisticsUserID)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	// Create test company
+	var companyID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO client_companies (name, contact_info, created_at)
+		VALUES ($1, $2, $3) RETURNING id`,
+		"Test Company", json.RawMessage(`{"email":"test@company.com"}`), time.Now(),
+	).Scan(&companyID)
+	if err != nil {
+		t.Fatalf("Failed to create test company: %v", err)
+	}
+
+	// Create shipment in pending_pickup_from_client status WITHOUT pickup form
+	var shipmentID int64
+	err = db.QueryRowContext(ctx,
+		`INSERT INTO shipments (shipment_type, client_company_id, status, jira_ticket_number, laptop_count, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		models.ShipmentTypeSingleFullJourney, companyID, models.ShipmentStatusPendingPickup, "TEST-PF-001", 1, time.Now(), time.Now(),
+	).Scan(&shipmentID)
+	if err != nil {
+		t.Fatalf("Failed to create test shipment: %v", err)
+	}
+
+	templates := loadTestTemplates(t)
+	handler := NewShipmentsHandler(db, templates, nil)
+
+	t.Run("cannot update to picked_up_from_client without pickup form", func(t *testing.T) {
+		// First update to pickup_scheduled (sequential transition) - this should succeed
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
+		formData.Set("tracking_number", "1Z999AA10123456784")
+		formData.Set("courier_name", "UPS")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303 for pickup_scheduled update, got %d", w.Code)
+		}
+
+		// Now try to update to picked_up_from_client without pickup form - this should fail
+		formData = url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusPickedUpFromClient))
+
+		req = httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(reqCtx)
+
+		w = httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400, got %d", w.Code)
+		}
+
+		// Verify error message mentions pickup form requirement
+		body := w.Body.String()
+		if !strings.Contains(body, "pickup form") && !strings.Contains(body, "Complete Shipment Details") {
+			t.Errorf("Expected error message about pickup form requirement, got: %s", body)
+		}
+
+		// Verify status was NOT updated to picked_up_from_client
+		var status models.ShipmentStatus
+		err = db.QueryRowContext(ctx,
+			`SELECT status FROM shipments WHERE id = $1`,
+			shipmentID,
+		).Scan(&status)
+		if err != nil {
+			t.Fatalf("Failed to query shipment status: %v", err)
+		}
+		if status != models.ShipmentStatusPickupScheduled {
+			t.Errorf("Expected status to remain 'pickup_from_client_scheduled', got '%s'", status)
+		}
+	})
+
+	t.Run("can update to picked_up_from_client with pickup form", func(t *testing.T) {
+		// Create pickup form for the shipment
+		formDataJSON := json.RawMessage(`{"contact_name":"Test Contact","pickup_address":"123 Test St"}`)
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+			VALUES ($1, $2, $3, $4)`,
+			shipmentID, logisticsUserID, time.Now(), formDataJSON,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create pickup form: %v", err)
+		}
+
+		// First update to pickup_scheduled (sequential transition)
+		formData := url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
+		formData.Set("tracking_number", "1Z999AA10123456784")
+		formData.Set("courier_name", "UPS")
+
+		req := httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		user := &models.User{ID: logisticsUserID, Email: "logistics@example.com", Role: models.RoleLogistics}
+		reqCtx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(reqCtx)
+
+		w := httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Now update to picked_up_from_client (should succeed with pickup form)
+		formData = url.Values{}
+		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
+		formData.Set("status", string(models.ShipmentStatusPickedUpFromClient))
+
+		req = httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req = req.WithContext(reqCtx)
+
+		w = httptest.NewRecorder()
+		handler.UpdateShipmentStatus(w, req)
+
+		if w.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 303, got %d", w.Code)
+		}
+
+		// Verify status was updated
+		var status models.ShipmentStatus
+		err = db.QueryRowContext(ctx,
+			`SELECT status FROM shipments WHERE id = $1`,
+			shipmentID,
+		).Scan(&status)
+		if err != nil {
+			t.Fatalf("Failed to query shipment status: %v", err)
+		}
+		if status != models.ShipmentStatusPickedUpFromClient {
+			t.Errorf("Expected status 'picked_up_from_client', got '%s'", status)
+		}
+	})
+}
+
 // 🟥 RED: Test that updating single_full_journey shipment from at_warehouse to released_from_warehouse
 // requires an approved reception report for the laptop
 func TestUpdateShipmentStatus_RequiresApprovedReceptionReport(t *testing.T) {
@@ -5546,9 +5716,9 @@ func TestShipmentDetailWarningForMissingReceptionReport(t *testing.T) {
 		body := w.Body.String()
 		// Should NOT show warning about reception report when one exists
 		// We check that the specific warning about needing reception report is NOT present
-		if strings.Contains(strings.ToLower(body), "reception report") && 
-		   strings.Contains(strings.ToLower(body), "released") &&
-		   strings.Contains(strings.ToLower(body), "approved") {
+		if strings.Contains(strings.ToLower(body), "reception report") &&
+			strings.Contains(strings.ToLower(body), "released") &&
+			strings.Contains(strings.ToLower(body), "approved") {
 			// This might be acceptable if it's just showing info about the report, not a warning
 			// Let's be more specific - check for warning indicators
 			if strings.Contains(body, "⚠️") && strings.Contains(strings.ToLower(body), "reception report") {
