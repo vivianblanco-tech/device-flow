@@ -1,6 +1,6 @@
 -- ============================================
 -- ENHANCED COMPREHENSIVE SAMPLE DATA
--- Laptop Tracking System with Bulk Shipments
+-- Align with Bulk Shipments
 -- ============================================
 -- This script populates the database with realistic, comprehensive test data
 -- Password for all users: "Test123!"

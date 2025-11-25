@@ -171,8 +171,8 @@ func TestNavbarDataOnAllPages(t *testing.T) {
 
 			// Check for navbar presence
 			if tt.shouldHaveNav {
-				if !strings.Contains(html, "Laptop Tracking System") {
-					t.Error("expected navbar title 'Laptop Tracking System', but not found")
+				if !strings.Contains(html, "Align") {
+					t.Error("expected navbar title 'Align', but not found")
 				}
 
 				if !strings.Contains(html, `href="/logout"`) {

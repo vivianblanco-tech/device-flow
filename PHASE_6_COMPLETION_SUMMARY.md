@@ -2,7 +2,7 @@
 
 **Date**: November 3, 2025  
 **Status**: ✅ **COMPLETE**  
-**Project**: BDH Laptop Tracking System
+**Project**: BDH Align
 
 ---
 
@@ -108,7 +108,7 @@ All features from Phase 6 have been successfully implemented, tested, and docume
 ### Dashboard
 ```
 ┌─────────────────────────────────────────────────┐
-│  Dashboard - Laptop Tracking System             │
+│  Dashboard - Align             │
 ├─────────────────────────────────────────────────┤
 │  [📦 Total: 42] [⏳ Pending: 5]                 │
 │  [🚚 Transit: 8] [✅ Delivered: 29]             │

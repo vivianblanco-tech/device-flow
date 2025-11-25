@@ -195,7 +195,7 @@ func TestNavbarConsistencyAcrossPages(t *testing.T) {
 			}
 
 			// Check that navbar structure is present
-			if !strings.Contains(html, "Laptop Tracking System") {
+			if !strings.Contains(html, "Align") {
 				t.Error("expected application title in navbar, but not found")
 			}
 

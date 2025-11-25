@@ -4,7 +4,7 @@
 
 ## Summary
 
-Phase 1 of the Laptop Tracking System has been successfully completed. All database models have been implemented following TDD principles, with comprehensive test coverage and corresponding database migrations.
+Phase 1 of Align has been successfully completed. All database models have been implemented following TDD principles, with comprehensive test coverage and corresponding database migrations.
 
 ## What Was Accomplished
 

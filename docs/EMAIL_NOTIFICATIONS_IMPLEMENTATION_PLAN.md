@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-This document outlines the comprehensive plan for implementing all required email notifications in the Laptop Tracking System. The analysis shows that 6 email notification templates exist but only 2 are properly wired up, and 5 additional notifications need to be created from scratch.
+This document outlines the comprehensive plan for implementing all required email notifications in Align. The analysis shows that 6 email notification templates exist but only 2 are properly wired up, and 5 additional notifications need to be created from scratch.
 
 ---
 

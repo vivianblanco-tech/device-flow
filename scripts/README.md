@@ -1,6 +1,6 @@
 # Email Notification Testing Scripts
 
-This directory contains scripts to test email notifications for the Laptop Tracking System.
+This directory contains scripts to test email notifications for Align.
 
 ## Overview
 
@@ -314,4 +314,4 @@ To add a new email notification test:
 
 ## License
 
-Part of the Laptop Tracking System project.
+Part of the Align project.

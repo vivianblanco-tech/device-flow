@@ -1,4 +1,4 @@
-# Laptop Tracking System - Development Plan
+# Align - Development Plan
 
 ## Overview
 Building a web application to track laptop pickup and delivery from client companies to software engineers, including inventory management and status tracking.

@@ -1,6 +1,6 @@
 # Email Notification Test Script
 
-This standalone Go program tests all email notifications in the Laptop Tracking System by sending test emails and verifying they arrive correctly in Mailhog.
+This standalone Go program tests all email notifications in Align by sending test emails and verifying they arrive correctly in Mailhog.
 
 ## Quick Start
 

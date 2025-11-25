@@ -1,6 +1,6 @@
 # Database Setup Guide
 
-This guide provides multiple options for setting up the PostgreSQL database for the Laptop Tracking System.
+This guide provides multiple options for setting up the PostgreSQL database for Align.
 
 ---
 

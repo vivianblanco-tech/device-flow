@@ -1,5 +1,5 @@
 -- ============================================
--- COMPREHENSIVE SAMPLE DATA FOR LAPTOP TRACKING SYSTEM
+-- COMPREHENSIVE SAMPLE DATA FOR ALIGN
 -- ============================================
 -- This script populates the database with realistic test data
 -- Password for all users: "password123"

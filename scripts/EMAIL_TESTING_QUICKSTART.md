@@ -1,6 +1,6 @@
 # Email Testing Quick Start Guide
 
-This guide will help you quickly test all email notifications in the Laptop Tracking System.
+This guide will help you quickly test all email notifications in Align.
 
 ## Prerequisites (5 minutes)
 

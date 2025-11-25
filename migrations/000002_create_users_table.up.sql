@@ -22,7 +22,7 @@ ALTER TABLE users ADD CONSTRAINT chk_users_auth_method
     );
 
 -- Comment on table and columns
-COMMENT ON TABLE users IS 'User accounts for the laptop tracking system';
+COMMENT ON TABLE users IS 'User accounts for Align';
 COMMENT ON COLUMN users.email IS 'User email address (unique)';
 COMMENT ON COLUMN users.password_hash IS 'Bcrypt hashed password (for password auth)';
 COMMENT ON COLUMN users.role IS 'User role: logistics, client, warehouse, or project_manager';

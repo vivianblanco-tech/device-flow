@@ -1,6 +1,6 @@
 -- =============================================
 -- COMPREHENSIVE ENHANCED SAMPLE DATA v2.0
--- Laptop Tracking System - Production-Ready Test Data
+-- Align - Production-Ready Test Data
 -- =============================================
 -- Features:
 -- * 50+ shipments (all types and statuses)

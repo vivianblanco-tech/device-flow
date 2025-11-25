@@ -3,7 +3,7 @@
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "  Laptop Tracking System - Test Data Verification" -ForegroundColor Cyan
+Write-Host "  Align - Test Data Verification" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
 

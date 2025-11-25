@@ -4,7 +4,7 @@
 
 ## Summary
 
-Phase 0 of the Laptop Tracking System has been successfully completed. The project now has a solid foundation with all necessary infrastructure, tooling, and documentation in place.
+Phase 0 of Align has been successfully completed. The project now has a solid foundation with all necessary infrastructure, tooling, and documentation in place.
 
 ## What Was Accomplished
 

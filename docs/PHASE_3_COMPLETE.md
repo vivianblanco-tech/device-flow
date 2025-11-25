@@ -4,7 +4,7 @@
 **Status**: All sections implemented and tested
 
 ## Overview
-Phase 3 focused on implementing the main forms and business process workflows for the laptop tracking system. All core functionality for managing the shipment lifecycle has been implemented.
+Phase 3 focused on implementing the main forms and business process workflows for Align. All core functionality for managing the shipment lifecycle has been implemented.
 
 ---
 

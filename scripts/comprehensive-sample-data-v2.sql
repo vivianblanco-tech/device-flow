@@ -1,6 +1,6 @@
 -- =============================================
 -- COMPREHENSIVE ENHANCED SAMPLE DATA v2.2
--- Laptop Tracking System - Production-Ready Test Data
+-- Align - Production-Ready Test Data
 -- =============================================
 -- Features:
 -- * All three shipment types (single, bulk, warehouse-to-engineer)

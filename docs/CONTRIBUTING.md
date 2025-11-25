@@ -1,6 +1,6 @@
-# Contributing to Laptop Tracking System
+# Contributing to Align
 
-Thank you for your interest in contributing to the Laptop Tracking System! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Align! This document provides guidelines and instructions for contributing.
 
 ## Development Process
 

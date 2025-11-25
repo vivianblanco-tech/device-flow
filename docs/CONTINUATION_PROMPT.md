@@ -2,7 +2,7 @@
 
 ## Project Context
 
-I'm implementing three distinct shipment types for a laptop tracking system using strict TDD methodology. The project is in progress and I need to continue from where we left off.
+I'm implementing three distinct shipment types for Align using strict TDD methodology. The project is in progress and I need to continue from where we left off.
 
 ## What Has Been Completed
 

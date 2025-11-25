@@ -1,7 +1,7 @@
 # Phase 6 Status Check - Dashboard & Visualization
 **Date**: November 3, 2025  
 **Checked By**: AI Assistant  
-**Project**: Laptop Tracking System (BDH)
+**Project**: Align (BDH)
 
 ---
 

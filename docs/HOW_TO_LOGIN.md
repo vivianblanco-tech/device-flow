@@ -1,4 +1,4 @@
-# How to Log In to the Laptop Tracking System
+# How to Log In to Align
 
 This guide will help you log in to the application for the first time.
 

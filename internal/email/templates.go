@@ -280,7 +280,7 @@ func (et *EmailTemplates) loadTemplates() {
     <div class="email-container">
         {{template "content" .}}
         <div class="footer">
-            <p>This is an automated message from the Laptop Tracking System.</p>
+            <p>This is an automated message from Align.</p>
             <p>© {{.Year}} BairesDev. All rights reserved.</p>
         </div>
     </div>
@@ -1106,7 +1106,7 @@ func (et *EmailTemplates) GetSubject(templateName string, data interface{}) stri
 	case ReceptionReportApprovalData:
 		return "Reception Report Requires Approval - " + v.SerialNumber
 	default:
-		return "Notification from Laptop Tracking System"
+		return "Notification from Align"
 	}
 }
 

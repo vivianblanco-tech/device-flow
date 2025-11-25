@@ -1,4 +1,4 @@
-# Test Data for Laptop Tracking System
+# Test Data for Align
 
 This document describes the test data that has been added to the database and provides helpful queries for testing and development.
 

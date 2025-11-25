@@ -5204,9 +5204,9 @@ func TestUpdateShipmentStatus_InTransitToEngineerNotification(t *testing.T) {
 	})
 }
 
-// 🟥 RED: Test that updating shipment from pending_pickup_from_client to picked_up_from_client
+// 🟥 RED: Test that updating shipment from pending_pickup_from_client to pickup_from_client_scheduled
 // requires a completed pickup form (Complete Shipment Details)
-func TestUpdateShipmentStatus_RequiresPickupFormForPickedUp(t *testing.T) {
+func TestUpdateShipmentStatus_RequiresPickupFormForScheduled(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
@@ -5252,8 +5252,8 @@ func TestUpdateShipmentStatus_RequiresPickupFormForPickedUp(t *testing.T) {
 	templates := loadTestTemplates(t)
 	handler := NewShipmentsHandler(db, templates, nil)
 
-	t.Run("cannot update to picked_up_from_client without pickup form", func(t *testing.T) {
-		// First update to pickup_scheduled (sequential transition) - this should succeed
+	t.Run("cannot update to pickup_from_client_scheduled without pickup form", func(t *testing.T) {
+		// Try to update to pickup_scheduled without pickup form - this should fail
 		formData := url.Values{}
 		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
@@ -5268,22 +5268,6 @@ func TestUpdateShipmentStatus_RequiresPickupFormForPickedUp(t *testing.T) {
 		req = req.WithContext(reqCtx)
 
 		w := httptest.NewRecorder()
-		handler.UpdateShipmentStatus(w, req)
-
-		if w.Code != http.StatusSeeOther {
-			t.Errorf("Expected status 303 for pickup_scheduled update, got %d", w.Code)
-		}
-
-		// Now try to update to picked_up_from_client without pickup form - this should fail
-		formData = url.Values{}
-		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
-		formData.Set("status", string(models.ShipmentStatusPickedUpFromClient))
-
-		req = httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		req = req.WithContext(reqCtx)
-
-		w = httptest.NewRecorder()
 		handler.UpdateShipmentStatus(w, req)
 
 		if w.Code != http.StatusBadRequest {
@@ -5296,7 +5280,7 @@ func TestUpdateShipmentStatus_RequiresPickupFormForPickedUp(t *testing.T) {
 			t.Errorf("Expected error message about pickup form requirement, got: %s", body)
 		}
 
-		// Verify status was NOT updated to picked_up_from_client
+		// Verify status was NOT updated to pickup_scheduled
 		var status models.ShipmentStatus
 		err = db.QueryRowContext(ctx,
 			`SELECT status FROM shipments WHERE id = $1`,
@@ -5305,12 +5289,12 @@ func TestUpdateShipmentStatus_RequiresPickupFormForPickedUp(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to query shipment status: %v", err)
 		}
-		if status != models.ShipmentStatusPickupScheduled {
-			t.Errorf("Expected status to remain 'pickup_from_client_scheduled', got '%s'", status)
+		if status != models.ShipmentStatusPendingPickup {
+			t.Errorf("Expected status to remain 'pending_pickup_from_client', got '%s'", status)
 		}
 	})
 
-	t.Run("can update to picked_up_from_client with pickup form", func(t *testing.T) {
+	t.Run("can update to pickup_from_client_scheduled with pickup form", func(t *testing.T) {
 		// Create pickup form for the shipment
 		formDataJSON := json.RawMessage(`{"contact_name":"Test Contact","pickup_address":"123 Test St"}`)
 		_, err = db.ExecContext(ctx,
@@ -5322,7 +5306,7 @@ func TestUpdateShipmentStatus_RequiresPickupFormForPickedUp(t *testing.T) {
 			t.Fatalf("Failed to create pickup form: %v", err)
 		}
 
-		// First update to pickup_scheduled (sequential transition)
+		// Now update to pickup_scheduled (should succeed with pickup form)
 		formData := url.Values{}
 		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
 		formData.Set("status", string(models.ShipmentStatusPickupScheduled))
@@ -5337,22 +5321,6 @@ func TestUpdateShipmentStatus_RequiresPickupFormForPickedUp(t *testing.T) {
 		req = req.WithContext(reqCtx)
 
 		w := httptest.NewRecorder()
-		handler.UpdateShipmentStatus(w, req)
-
-		if w.Code != http.StatusSeeOther {
-			t.Errorf("Expected status 303, got %d", w.Code)
-		}
-
-		// Now update to picked_up_from_client (should succeed with pickup form)
-		formData = url.Values{}
-		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
-		formData.Set("status", string(models.ShipmentStatusPickedUpFromClient))
-
-		req = httptest.NewRequest(http.MethodPost, "/shipments/update-status", strings.NewReader(formData.Encode()))
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		req = req.WithContext(reqCtx)
-
-		w = httptest.NewRecorder()
 		handler.UpdateShipmentStatus(w, req)
 
 		if w.Code != http.StatusSeeOther {
@@ -5368,8 +5336,8 @@ func TestUpdateShipmentStatus_RequiresPickupFormForPickedUp(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to query shipment status: %v", err)
 		}
-		if status != models.ShipmentStatusPickedUpFromClient {
-			t.Errorf("Expected status 'picked_up_from_client', got '%s'", status)
+		if status != models.ShipmentStatusPickupScheduled {
+			t.Errorf("Expected status 'pickup_from_client_scheduled', got '%s'", status)
 		}
 	})
 }

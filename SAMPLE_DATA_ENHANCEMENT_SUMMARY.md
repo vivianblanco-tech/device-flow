@@ -372,7 +372,7 @@ docker-compose up -d
 
 ## Conclusion
 
-The sample data has been comprehensively enhanced to reflect **all current functionalities** of the Laptop Tracking System, including:
+The sample data has been comprehensively enhanced to reflect **all current functionalities** of Align, including:
 
 - ✅ All three shipment types (single, bulk, warehouse-to-engineer)
 - ✅ All eight shipment statuses

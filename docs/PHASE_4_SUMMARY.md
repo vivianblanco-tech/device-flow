@@ -6,7 +6,7 @@
 
 ## Overview
 
-Successfully implemented complete JIRA API integration following Test-Driven Development (TDD) principles. The integration enables bidirectional synchronization between the Laptop Tracking System and JIRA, allowing shipments to be tracked both in our system and in JIRA tickets.
+Successfully implemented complete JIRA API integration following Test-Driven Development (TDD) principles. The integration enables bidirectional synchronization between Align and JIRA, allowing shipments to be tracked both in our system and in JIRA tickets.
 
 ## Components Implemented
 

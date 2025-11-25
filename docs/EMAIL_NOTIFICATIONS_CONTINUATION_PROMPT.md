@@ -6,7 +6,7 @@ Use this prompt to continue the email notifications implementation:
 
 ## PROMPT FOR AI ASSISTANT
 
-I need to implement email notifications for the Laptop Tracking System. A comprehensive analysis and implementation plan has already been completed and documented in `docs/EMAIL_NOTIFICATIONS_IMPLEMENTATION_PLAN.md`.
+I need to implement email notifications for Align. A comprehensive analysis and implementation plan has already been completed and documented in `docs/EMAIL_NOTIFICATIONS_IMPLEMENTATION_PLAN.md`.
 
 ### Context
 

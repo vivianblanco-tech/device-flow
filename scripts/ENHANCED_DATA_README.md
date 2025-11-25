@@ -2,7 +2,7 @@
 
 ## Overview
 
-The enhanced sample data provides a comprehensive, realistic dataset for testing and demonstrating the Laptop Tracking System. This data includes bulk shipments, high-end workstations, premium laptops, and complete documentation across all shipment stages.
+The enhanced sample data provides a comprehensive, realistic dataset for testing and demonstrating Align. This data includes bulk shipments, high-end workstations, premium laptops, and complete documentation across all shipment stages.
 
 ## Loading the Data
 

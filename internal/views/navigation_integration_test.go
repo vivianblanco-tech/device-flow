@@ -169,7 +169,7 @@ func TestNavbarComponentRendering(t *testing.T) {
 			}
 
 			// Check logo/title is present
-			if !strings.Contains(html, "Laptop Tracking System") {
+			if !strings.Contains(html, "Align") {
 				t.Error("expected application title in navbar, but not found")
 			}
 		})

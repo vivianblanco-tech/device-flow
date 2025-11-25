@@ -423,9 +423,9 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	// Check if pickup form (Complete Shipment Details) is required before updating to picked_up_from_client
-	// Filter out 'picked_up_from_client' from NextAllowedStatuses if no pickup form exists
-	if s.Status == models.ShipmentStatusPendingPickup || s.Status == models.ShipmentStatusPickupScheduled {
+	// Check if pickup form (Complete Shipment Details) is required before updating to pickup_from_client_scheduled
+	// Filter out 'pickup_from_client_scheduled' from NextAllowedStatuses if no pickup form exists
+	if s.Status == models.ShipmentStatusPendingPickup {
 		var pickupFormCount int
 		err := h.DB.QueryRowContext(r.Context(),
 			`SELECT COUNT(*) FROM pickup_forms WHERE shipment_id = $1`,
@@ -433,21 +433,21 @@ func (h *ShipmentsHandler) ShipmentDetail(w http.ResponseWriter, r *http.Request
 		).Scan(&pickupFormCount)
 		if err == nil {
 			if pickupFormCount == 0 {
-				// Filter out picked_up_from_client from the list
+				// Filter out pickup_from_client_scheduled from the list
 				filteredStatuses := []models.ShipmentStatus{}
 				for _, status := range nextAllowedStatuses {
-					if status != models.ShipmentStatusPickedUpFromClient {
+					if status != models.ShipmentStatusPickupScheduled {
 						filteredStatuses = append(filteredStatuses, status)
 					}
 				}
 				nextAllowedStatuses = filteredStatuses
 				
-				// Show warning message if picked_up_from_client would have been available
+				// Show warning message if pickup_from_client_scheduled would have been available
 				if warningMsg == "" {
 					originalNextAllowedStatuses := s.GetNextAllowedStatuses()
 					for _, status := range originalNextAllowedStatuses {
-						if status == models.ShipmentStatusPickedUpFromClient {
-							warningMsg = "⚠️ A completed 'Complete Shipment Details' form is required before updating the status to 'Picked Up from Client'. Please ensure the shipment details form is completed first."
+						if status == models.ShipmentStatusPickupScheduled {
+							warningMsg = "⚠️ A completed 'Complete Shipment Details' form is required before updating the status to 'Pickup from Client Scheduled'. Please ensure the shipment details form is completed first."
 							break
 						}
 					}
@@ -650,9 +650,9 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 		}
 	}
 
-	// Validate that pickup form (Complete Shipment Details) exists before updating to picked_up_from_client
-	// This applies when transitioning from pending_pickup_from_client or pickup_from_client_scheduled to picked_up_from_client
-	if newStatus == models.ShipmentStatusPickedUpFromClient {
+	// Validate that pickup form (Complete Shipment Details) exists before updating to pickup_from_client_scheduled
+	// This applies when transitioning from pending_pickup_from_client to pickup_from_client_scheduled
+	if newStatus == models.ShipmentStatusPickupScheduled {
 		var pickupFormCount int
 		err = h.DB.QueryRowContext(r.Context(),
 			`SELECT COUNT(*) FROM pickup_forms WHERE shipment_id = $1`,
@@ -663,7 +663,7 @@ func (h *ShipmentsHandler) UpdateShipmentStatus(w http.ResponseWriter, r *http.R
 			return
 		}
 		if pickupFormCount == 0 {
-			http.Error(w, "Cannot update status to 'Picked Up from Client' without a completed 'Complete Shipment Details' form. Please ensure the shipment details form is completed first.", http.StatusBadRequest)
+			http.Error(w, "Cannot update status to 'Pickup from Client Scheduled' without a completed 'Complete Shipment Details' form. Please ensure the shipment details form is completed first.", http.StatusBadRequest)
 			return
 		}
 	}

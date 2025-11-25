@@ -11,7 +11,7 @@ param(
 )
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Laptop Tracking System - Startup" -ForegroundColor Cyan
+Write-Host "Align - Startup" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 # Handle fresh start

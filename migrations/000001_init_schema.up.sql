@@ -1,5 +1,5 @@
 -- Initial schema setup
--- This migration creates the foundation for the laptop tracking system
+-- This migration creates the foundation for Align
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

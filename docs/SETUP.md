@@ -1,6 +1,6 @@
 # Development Environment Setup Guide
 
-This guide will help you set up your development environment for the Laptop Tracking System.
+This guide will help you set up your development environment for Align.
 
 ## Prerequisites Installation
 
@@ -204,7 +204,7 @@ migrate -path migrations -database "postgres://${DB_USER}:${DB_PASSWORD}@${DB_HO
 ### 5. Setup Google OAuth (Optional for now)
 
 1. Visit [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project: "Laptop Tracking System"
+2. Create a new project: "Align"
 3. Enable APIs: Google+ API
 4. Create OAuth 2.0 Credentials:
    - Application type: Web application

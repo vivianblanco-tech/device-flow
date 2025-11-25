@@ -1,7 +1,7 @@
 # Database Setup Script for Windows PowerShell
 # This script helps set up the PostgreSQL databases for development and testing
 
-Write-Host "=== Laptop Tracking System - Database Setup ===" -ForegroundColor Cyan
+Write-Host "=== Align - Database Setup ===" -ForegroundColor Cyan
 Write-Host ""
 
 # Check if PostgreSQL is installed

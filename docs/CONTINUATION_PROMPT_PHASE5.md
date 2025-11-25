@@ -9,7 +9,7 @@
 
 ## Context
 
-You are continuing the **Three Shipment Types** implementation for the laptop tracking system. Phase 4 (Handler Layer) has been completed and verified with all 72 handler tests passing.
+You are continuing the **Three Shipment Types** implementation for Align. Phase 4 (Handler Layer) has been completed and verified with all 72 handler tests passing.
 
 **Previous Phases Completed:**
 - ✅ **Phase 1:** Database Schema Changes (migrations for shipment_type and laptop_count)

@@ -1,5 +1,5 @@
 -- ============================================
--- Test Data for Laptop Tracking System
+-- Test Data for Align
 -- ============================================
 -- This script creates comprehensive test data for development and testing
 -- Run this after migrations and user creation

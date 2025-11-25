@@ -7,62 +7,179 @@ Expected template data:
 - .CurrentPage (string): Current page identifier for active link highlighting
 */ -}}
 <!-- Navigation - Sticky positioned for consistent access -->
-<nav class="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200">
+<nav class="sticky top-0 z-50 bg-gradient-to-r from-gray-50 to-gray-100 shadow-md border-b border-gray-300">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <!-- Logo and Navigation Links -->
-            <div class="flex items-center space-x-8">
-                <h1 class="text-xl font-bold text-gray-900">Laptop Tracking System</h1>
+            <div class="flex items-center space-x-6">
+                <h1 class="text-xl font-bold text-gray-900">Align</h1>
                 
-                {{if .Nav.Dashboard}}
-                <a href="/dashboard" class="text-sm {{if eq .CurrentPage "dashboard"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Dashboard</a>
-                {{end}}
-                
-                {{if .Nav.Shipments}}
-                <a href="/shipments" class="text-sm {{if eq .CurrentPage "shipments"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Shipments</a>
-                {{end}}
-                
-                {{if .Nav.Inventory}}
-                <a href="/inventory" class="text-sm {{if eq .CurrentPage "inventory"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Inventory</a>
-                {{end}}
-                
-                {{if .Nav.Calendar}}
-                <a href="/calendar" class="text-sm {{if eq .CurrentPage "calendar"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Calendar</a>
-                {{end}}
-                
-                {{if .Nav.PickupForms}}
-                <a href="/pickup-forms" class="text-sm {{if eq .CurrentPage "pickup-forms"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Pickup Forms</a>
-                {{end}}
-                
-                {{if .Nav.ReceptionReports}}
-                <a href="/reception-reports" class="text-sm {{if eq .CurrentPage "reception-reports"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Reception Reports</a>
-                {{end}}
-                
-                {{if .Nav.MagicLinks}}
-                <a href="/magic-links" class="text-sm {{if eq .CurrentPage "magic-links"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Magic Links</a>
-                {{end}}
-                
-                {{if .Nav.Forms}}
-                <a href="/forms" class="text-sm {{if eq .CurrentPage "forms"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Forms</a>
-                {{end}}
-                
-                {{if .Nav.Reports}}
-                <a href="/reports" class="text-sm {{if eq .CurrentPage "reports"}}text-blue-600 font-medium{{else}}text-gray-600 hover:text-gray-900{{end}}">Reports</a>
-                {{end}}
+                <div class="flex items-center space-x-1">
+                    {{if .Nav.Dashboard}}
+                    <a href="/dashboard" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "dashboard"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                        Dashboard
+                        {{if eq .CurrentPage "dashboard"}}
+                        <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
+                        {{end}}
+                    </a>
+                    {{end}}
+                    
+                    {{if .Nav.Shipments}}
+                    <a href="/shipments" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "shipments"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                        Shipments
+                        {{if eq .CurrentPage "shipments"}}
+                        <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
+                        {{end}}
+                    </a>
+                    {{end}}
+                    
+                    {{if .Nav.Inventory}}
+                    <a href="/inventory" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "inventory"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                        Inventory
+                        {{if eq .CurrentPage "inventory"}}
+                        <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
+                        {{end}}
+                    </a>
+                    {{end}}
+                    
+                    <!-- Separator -->
+                    {{if and .Nav.Inventory (or .Nav.PickupForms .Nav.ReceptionReports .Nav.MagicLinks .Nav.Forms)}}
+                    <div class="h-6 w-px bg-gray-300 mx-1"></div>
+                    {{end}}
+                    
+                    {{if .Nav.PickupForms}}
+                    <a href="/pickup-forms" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "pickup-forms"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                        Pickup Forms
+                        {{if eq .CurrentPage "pickup-forms"}}
+                        <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
+                        {{end}}
+                    </a>
+                    {{end}}
+                    
+                    {{if .Nav.ReceptionReports}}
+                    <a href="/reception-reports" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "reception-reports"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                        Reception Reports
+                        {{if eq .CurrentPage "reception-reports"}}
+                        <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
+                        {{end}}
+                    </a>
+                    {{end}}
+                    
+                    {{if .Nav.MagicLinks}}
+                    <a href="/magic-links" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "magic-links"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                        Magic Links
+                        {{if eq .CurrentPage "magic-links"}}
+                        <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
+                        {{end}}
+                    </a>
+                    {{end}}
+                    
+                    {{if .Nav.Forms}}
+                    <a href="/forms" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "forms"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                        Forms
+                        {{if eq .CurrentPage "forms"}}
+                        <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
+                        {{end}}
+                    </a>
+                    {{end}}
+                    
+                    <!-- Separator -->
+                    {{if and (or .Nav.PickupForms .Nav.ReceptionReports .Nav.MagicLinks .Nav.Forms) .Nav.Reports}}
+                    <div class="h-6 w-px bg-gray-300 mx-1"></div>
+                    {{end}}
+                    
+                    {{if .Nav.Reports}}
+                    <a href="/reports" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "reports"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                        Reports
+                        {{if eq .CurrentPage "reports"}}
+                        <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
+                        {{end}}
+                    </a>
+                    {{end}}
+                </div>
             </div>
             
-            <!-- User Info and Logout -->
-            <div class="flex items-center">
+            <!-- User Info and Logout Dropdown -->
+            <div class="flex items-center" x-data="{ open: false }">
                 {{if .User}}
-                {{if and (eq .User.Role "client") .User.ClientCompanyName}}
-                <span class="text-sm text-gray-600 mr-4">{{.User.ClientCompanyName}} ({{.User.Role | title}})</span>
-                {{else}}
-                <span class="text-sm text-gray-600 mr-4">{{.User.Email}} ({{.User.Role | title}})</span>
-                {{end}}
-                <a href="/logout" class="text-sm text-blue-600 hover:text-blue-700">Logout</a>
+                <div class="relative">
+                    <button @click="open = !open" @click.away="open = false" class="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-white transition-all duration-200 focus:outline-none">
+                        <!-- Avatar with Initials -->
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-semibold shadow-sm" 
+                                 data-initial="{{if and (eq .User.Role "client") .User.ClientCompanyName}}{{.User.ClientCompanyName}}{{else}}{{.User.Email}}{{end}}">
+                                <span class="avatar-initial"></span>
+                            </div>
+                        </div>
+                        
+                        <!-- User Info -->
+                        <div class="hidden md:block text-left">
+                            <div class="text-sm font-medium text-gray-900">
+                                {{if and (eq .User.Role "client") .User.ClientCompanyName}}
+                                    {{.User.ClientCompanyName}}
+                                {{else}}
+                                    {{.User.Email}}
+                                {{end}}
+                            </div>
+                            <!-- Role Badge -->
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{if eq .User.Role "logistics"}}bg-purple-100 text-purple-800{{else if eq .User.Role "client"}}bg-blue-100 text-blue-800{{else if eq .User.Role "warehouse"}}bg-green-100 text-green-800{{else}}bg-gray-100 text-gray-800{{end}}">
+                                {{.User.Role | title}}
+                            </span>
+                        </div>
+                        
+                        <!-- Dropdown Arrow -->
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    
+                    <!-- Dropdown Menu -->
+                    <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50" style="display: none;">
+                        <div class="py-1">
+                            <!-- User Info in Dropdown -->
+                            <div class="px-4 py-3 border-b border-gray-200">
+                                <p class="text-sm font-medium text-gray-900 truncate">
+                                    {{if and (eq .User.Role "client") .User.ClientCompanyName}}
+                                        {{.User.ClientCompanyName}}
+                                    {{else}}
+                                        {{.User.Email}}
+                                    {{end}}
+                                </p>
+                                <span class="inline-flex items-center mt-1 px-2 py-0.5 rounded text-xs font-medium {{if eq .User.Role "logistics"}}bg-purple-100 text-purple-800{{else if eq .User.Role "client"}}bg-blue-100 text-blue-800{{else if eq .User.Role "warehouse"}}bg-green-100 text-green-800{{else}}bg-gray-100 text-gray-800{{end}}">
+                                    {{.User.Role | title}}
+                                </span>
+                            </div>
+                            
+                            <!-- Logout Button -->
+                            <a href="/logout" class="flex items-center space-x-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                                <span>Logout</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
                 {{end}}
             </div>
         </div>
     </div>
 </nav>
+
+<!-- Alpine.js for dropdown functionality -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+<script>
+    // Set avatar initials
+    document.addEventListener('DOMContentLoaded', function() {
+        const avatarElements = document.querySelectorAll('[data-initial]');
+        avatarElements.forEach(function(el) {
+            const text = el.getAttribute('data-initial') || '';
+            const initial = text.charAt(0).toUpperCase();
+            const span = el.querySelector('.avatar-initial');
+            if (span) {
+                span.textContent = initial;
+            }
+        });
+    });
+</script>
 

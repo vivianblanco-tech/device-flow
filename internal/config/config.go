@@ -131,7 +131,7 @@ func Load() *Config {
 			User:           getEnv("SMTP_USER", ""),
 			Password:       getEnv("SMTP_PASSWORD", ""),
 			From:           getEnv("SMTP_FROM", "noreply@laptop-tracking.com"),
-			FromName:       getEnv("SMTP_FROM_NAME", "Laptop Tracking System"),
+			FromName:       getEnv("SMTP_FROM_NAME", "Align"),
 			LogisticsEmail: getEnv("LOGISTICS_EMAIL", "international@bairesdev.com"),
 			WarehouseEmail: getEnv("WAREHOUSE_EMAIL", "warehouse@bairesdev.com"),
 		},

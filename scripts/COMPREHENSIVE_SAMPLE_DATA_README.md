@@ -2,7 +2,7 @@
 
 ## Overview
 
-The comprehensive sample data v2.1 provides production-ready test data that covers **all current functionalities** of the Laptop Tracking System, including:
+The comprehensive sample data v2.1 provides production-ready test data that covers **all current functionalities** of Align, including:
 
 - ✅ **All 3 shipment types** (single full journey, bulk to warehouse, warehouse to engineer)
 - ✅ **All 8 shipment statuses** (complete workflow representation)

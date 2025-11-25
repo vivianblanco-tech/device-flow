@@ -1,6 +1,6 @@
 -- =============================================
 -- COMPREHENSIVE SHIPMENTS & FORMS DATA
--- Laptop Tracking System - Production-Ready Shipments
+-- Align - Production-Ready Shipments
 -- =============================================
 -- This file adds 40+ shipments with complete forms and reports
 -- to complement the enhanced-sample-data-comprehensive.sql base data
