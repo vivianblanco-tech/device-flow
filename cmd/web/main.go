@@ -460,7 +460,7 @@ func main() {
 	protected.HandleFunc("/shipments/{id:[0-9]+}/edit-details", pickupFormHandler.EditShipmentDetails).Methods("POST")
 	protected.HandleFunc("/shipments/{id:[0-9]+}/laptops/add", shipmentsHandler.AddLaptopToBulkShipment).Methods("POST")
 
-	// Reports routes (Client users only)
+	// Reports routes (Client and Project Manager users)
 	protected.HandleFunc("/reports", reportsHandler.ReportsIndex).Methods("GET")
 	protected.HandleFunc("/reports/shipment-status", reportsHandler.ShipmentStatusDashboard).Methods("GET")
 	protected.HandleFunc("/reports/inventory-summary", reportsHandler.InventorySummaryReport).Methods("GET")
