@@ -64,6 +64,7 @@ func TestNavbarComponentRendering(t *testing.T) {
 				`href="/shipments"`,
 				`href="/inventory"`,
 				`href="/calendar"`,
+				`href="/reports"`, // Project Manager should have access to Reports
 			},
 			unexpectedLinks: []string{
 				`href="/pickup-forms"`,

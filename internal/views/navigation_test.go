@@ -36,6 +36,7 @@ func TestGetNavigationLinks(t *testing.T) {
 				"pickup_forms":      false,
 				"reception_reports": false,
 				"magic_links":       false,
+				"reports":           true, // Project Manager should have access to Reports
 			},
 		},
 		{
@@ -62,6 +63,7 @@ func TestGetNavigationLinks(t *testing.T) {
 				"pickup_forms":      false, // Pickup Forms removed for Client users
 				"reception_reports": false,
 				"magic_links":       false,
+				"reports":           true, // Client users can access reports
 			},
 		},
 	}
@@ -91,6 +93,11 @@ func TestGetNavigationLinks(t *testing.T) {
 			}
 			if nav.MagicLinks != tt.expectedLinks["magic_links"] {
 				t.Errorf("MagicLinks visibility = %v, want %v", nav.MagicLinks, tt.expectedLinks["magic_links"])
+			}
+			if reportsVal, ok := tt.expectedLinks["reports"]; ok {
+				if nav.Reports != reportsVal {
+					t.Errorf("Reports visibility = %v, want %v", nav.Reports, reportsVal)
+				}
 			}
 		})
 	}

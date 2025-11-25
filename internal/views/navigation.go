@@ -40,6 +40,7 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		nav.PickupForms = false
 		nav.ReceptionReports = false
 		nav.MagicLinks = false
+		nav.Reports = true // Project Manager can access reports
 
 	case models.RoleWarehouse:
 		// Warehouse has access to inventory and reception
