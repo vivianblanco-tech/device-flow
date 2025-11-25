@@ -67,7 +67,26 @@ func TestReportsIndex(t *testing.T) {
 		}
 	})
 
-	t.Run("Non-client user cannot access reports", func(t *testing.T) {
+	t.Run("Project Manager user can access reports index", func(t *testing.T) {
+		user := &models.User{
+			ID:    2,
+			Email: "pm@bairesdev.com",
+			Role:  models.RoleProjectManager,
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/reports", nil)
+		ctx := context.WithValue(req.Context(), middleware.UserContextKey, user)
+		req = req.WithContext(ctx)
+
+		rr := httptest.NewRecorder()
+		handler.ReportsIndex(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d", http.StatusOK, rr.Code)
+		}
+	})
+
+	t.Run("Non-client and non-PM user cannot access reports", func(t *testing.T) {
 		user := &models.User{
 			ID:    1,
 			Email: "logistics@test.com",

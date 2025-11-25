@@ -32,27 +32,32 @@ func NewReportsHandler(db *sql.DB, templates *template.Template) *ReportsHandler
 	}
 }
 
-// requireClientRole checks if the user is a client user
-func (h *ReportsHandler) requireClientRole(w http.ResponseWriter, r *http.Request) (*models.User, bool) {
+// requireReportsAccess checks if the user has access to reports (Client or Project Manager)
+func (h *ReportsHandler) requireReportsAccess(w http.ResponseWriter, r *http.Request) (*models.User, bool) {
 	user := middleware.GetUserFromContext(r.Context())
 	if user == nil {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return nil, false
 	}
-	if user.Role != models.RoleClient {
-		http.Error(w, "Forbidden: Only client users can access reports", http.StatusForbidden)
+	
+	// Allow Client and Project Manager roles
+	if user.Role != models.RoleClient && user.Role != models.RoleProjectManager {
+		http.Error(w, "Forbidden: Only client and project manager users can access reports", http.StatusForbidden)
 		return nil, false
 	}
-	if user.ClientCompanyID == nil {
+	
+	// Client users must be associated with a company
+	if user.Role == models.RoleClient && user.ClientCompanyID == nil {
 		http.Error(w, "Forbidden: Client user must be associated with a company", http.StatusForbidden)
 		return nil, false
 	}
+	
 	return user, true
 }
 
 // ReportsIndex displays the reports index page
 func (h *ReportsHandler) ReportsIndex(w http.ResponseWriter, r *http.Request) {
-	user, ok := h.requireClientRole(w, r)
+	user, ok := h.requireReportsAccess(w, r)
 	if !ok {
 		return
 	}
@@ -72,15 +77,19 @@ func (h *ReportsHandler) ReportsIndex(w http.ResponseWriter, r *http.Request) {
 
 // ShipmentStatusDashboard displays the shipment status dashboard report
 func (h *ReportsHandler) ShipmentStatusDashboard(w http.ResponseWriter, r *http.Request) {
-	user, ok := h.requireClientRole(w, r)
+	user, ok := h.requireReportsAccess(w, r)
 	if !ok {
 		return
 	}
 
 	format := r.URL.Query().Get("format")
 
-	// Get report data
-	reportData, err := h.getShipmentStatusData(user.ClientCompanyID)
+	// Get report data - PM users see all data, Client users see only their company's data
+	var companyID *int64
+	if user.Role == models.RoleClient {
+		companyID = user.ClientCompanyID
+	}
+	reportData, err := h.getShipmentStatusData(companyID)
 	if err != nil {
 		log.Printf("Error getting shipment status data: %v", err)
 		http.Error(w, "Failed to load report data", http.StatusInternalServerError)
@@ -118,15 +127,19 @@ func (h *ReportsHandler) ShipmentStatusDashboard(w http.ResponseWriter, r *http.
 
 // InventorySummaryReport displays the inventory summary report
 func (h *ReportsHandler) InventorySummaryReport(w http.ResponseWriter, r *http.Request) {
-	user, ok := h.requireClientRole(w, r)
+	user, ok := h.requireReportsAccess(w, r)
 	if !ok {
 		return
 	}
 
 	format := r.URL.Query().Get("format")
 
-	// Get report data
-	reportData, err := h.getInventorySummaryData(user.ClientCompanyID)
+	// Get report data - PM users see all data, Client users see only their company's data
+	var companyID *int64
+	if user.Role == models.RoleClient {
+		companyID = user.ClientCompanyID
+	}
+	reportData, err := h.getInventorySummaryData(companyID)
 	if err != nil {
 		log.Printf("Error getting inventory summary data: %v", err)
 		http.Error(w, "Failed to load report data", http.StatusInternalServerError)
@@ -164,15 +177,19 @@ func (h *ReportsHandler) InventorySummaryReport(w http.ResponseWriter, r *http.R
 
 // ShipmentTimelineReport displays the shipment timeline report
 func (h *ReportsHandler) ShipmentTimelineReport(w http.ResponseWriter, r *http.Request) {
-	user, ok := h.requireClientRole(w, r)
+	user, ok := h.requireReportsAccess(w, r)
 	if !ok {
 		return
 	}
 
 	format := r.URL.Query().Get("format")
 
-	// Get report data
-	reportData, err := h.getShipmentTimelineData(user.ClientCompanyID)
+	// Get report data - PM users see all data, Client users see only their company's data
+	var companyID *int64
+	if user.Role == models.RoleClient {
+		companyID = user.ClientCompanyID
+	}
+	reportData, err := h.getShipmentTimelineData(companyID)
 	if err != nil {
 		log.Printf("Error getting shipment timeline data: %v", err)
 		http.Error(w, "Failed to load report data", http.StatusInternalServerError)
@@ -238,11 +255,8 @@ type ShipmentStatusRow struct {
 }
 
 // getShipmentStatusData retrieves shipment status data for a client company
+// If companyID is nil, returns data for all companies (for PM users)
 func (h *ReportsHandler) getShipmentStatusData(companyID *int64) (*ShipmentStatusData, error) {
-	if companyID == nil {
-		return nil, fmt.Errorf("company ID is required")
-	}
-
 	data := &ShipmentStatusData{
 		ByStatus: make(map[string]int),
 		ByType:   make(map[string]int),
@@ -252,38 +266,67 @@ func (h *ReportsHandler) getShipmentStatusData(companyID *int64) (*ShipmentStatu
 	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
 
+	// Build query based on whether companyID is provided
+	var query string
+	var args []interface{}
+	if companyID != nil {
+		query = `SELECT COUNT(*) FROM shipments WHERE client_company_id = $1`
+		args = []interface{}{*companyID}
+	} else {
+		query = `SELECT COUNT(*) FROM shipments`
+		args = []interface{}{}
+	}
+
 	// Get total shipments
-	err := h.DB.QueryRow(
-		`SELECT COUNT(*) FROM shipments WHERE client_company_id = $1`,
-		*companyID,
-	).Scan(&data.TotalShipments)
+	err := h.DB.QueryRow(query, args...).Scan(&data.TotalShipments)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total shipments: %w", err)
 	}
 
 	// Get this month's shipments
-	err = h.DB.QueryRow(
-		`SELECT COUNT(*) FROM shipments WHERE client_company_id = $1 AND created_at >= $2`,
-		*companyID, startOfMonth,
-	).Scan(&data.TotalThisMonth)
+	if companyID != nil {
+		err = h.DB.QueryRow(
+			`SELECT COUNT(*) FROM shipments WHERE client_company_id = $1 AND created_at >= $2`,
+			*companyID, startOfMonth,
+		).Scan(&data.TotalThisMonth)
+	} else {
+		err = h.DB.QueryRow(
+			`SELECT COUNT(*) FROM shipments WHERE created_at >= $1`,
+			startOfMonth,
+		).Scan(&data.TotalThisMonth)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get monthly shipments: %w", err)
 	}
 
 	// Get this year's shipments
-	err = h.DB.QueryRow(
-		`SELECT COUNT(*) FROM shipments WHERE client_company_id = $1 AND created_at >= $2`,
-		*companyID, startOfYear,
-	).Scan(&data.TotalThisYear)
+	if companyID != nil {
+		err = h.DB.QueryRow(
+			`SELECT COUNT(*) FROM shipments WHERE client_company_id = $1 AND created_at >= $2`,
+			*companyID, startOfYear,
+		).Scan(&data.TotalThisYear)
+	} else {
+		err = h.DB.QueryRow(
+			`SELECT COUNT(*) FROM shipments WHERE created_at >= $1`,
+			startOfYear,
+		).Scan(&data.TotalThisYear)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get yearly shipments: %w", err)
 	}
 
 	// Get shipments by status
-	rows, err := h.DB.Query(
-		`SELECT status, COUNT(*) FROM shipments WHERE client_company_id = $1 GROUP BY status`,
-		*companyID,
-	)
+	var rows *sql.Rows
+	if companyID != nil {
+		rows, err = h.DB.Query(
+			`SELECT status, COUNT(*) FROM shipments WHERE client_company_id = $1 GROUP BY status`,
+			*companyID,
+		)
+	} else {
+		rows, err = h.DB.Query(
+			`SELECT status, COUNT(*) FROM shipments GROUP BY status`,
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get shipments by status: %w", err)
 	}
@@ -299,10 +342,16 @@ func (h *ReportsHandler) getShipmentStatusData(companyID *int64) (*ShipmentStatu
 	}
 
 	// Get shipments by type
-	rows, err = h.DB.Query(
-		`SELECT shipment_type, COUNT(*) FROM shipments WHERE client_company_id = $1 GROUP BY shipment_type`,
-		*companyID,
-	)
+	if companyID != nil {
+		rows, err = h.DB.Query(
+			`SELECT shipment_type, COUNT(*) FROM shipments WHERE client_company_id = $1 GROUP BY shipment_type`,
+			*companyID,
+		)
+	} else {
+		rows, err = h.DB.Query(
+			`SELECT shipment_type, COUNT(*) FROM shipments GROUP BY shipment_type`,
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get shipments by type: %w", err)
 	}
@@ -329,25 +378,42 @@ func (h *ReportsHandler) getShipmentStatusData(companyID *int64) (*ShipmentStatu
 
 	// Get average delivery time for delivered shipments
 	var avgDays sql.NullFloat64
-	err = h.DB.QueryRow(
-		`SELECT AVG(EXTRACT(EPOCH FROM (delivered_at - created_at)) / 86400)
-		 FROM shipments 
-		 WHERE client_company_id = $1 AND delivered_at IS NOT NULL`,
-		*companyID,
-	).Scan(&avgDays)
+	if companyID != nil {
+		err = h.DB.QueryRow(
+			`SELECT AVG(EXTRACT(EPOCH FROM (delivered_at - created_at)) / 86400)
+			 FROM shipments 
+			 WHERE client_company_id = $1 AND delivered_at IS NOT NULL`,
+			*companyID,
+		).Scan(&avgDays)
+	} else {
+		err = h.DB.QueryRow(
+			`SELECT AVG(EXTRACT(EPOCH FROM (delivered_at - created_at)) / 86400)
+			 FROM shipments 
+			 WHERE delivered_at IS NOT NULL`,
+		).Scan(&avgDays)
+	}
 	if err == nil && avgDays.Valid {
 		data.AverageDeliveryTime = avgDays.Float64
 	}
 
 	// Get detailed shipment list
-	rows, err = h.DB.Query(
-		`SELECT id, jira_ticket_number, shipment_type, status, laptop_count, 
-		 courier_name, tracking_number, created_at, delivered_at
-		 FROM shipments 
-		 WHERE client_company_id = $1 
-		 ORDER BY created_at DESC`,
-		*companyID,
-	)
+	if companyID != nil {
+		rows, err = h.DB.Query(
+			`SELECT id, jira_ticket_number, shipment_type, status, laptop_count, 
+			 courier_name, tracking_number, created_at, delivered_at
+			 FROM shipments 
+			 WHERE client_company_id = $1 
+			 ORDER BY created_at DESC`,
+			*companyID,
+		)
+	} else {
+		rows, err = h.DB.Query(
+			`SELECT id, jira_ticket_number, shipment_type, status, laptop_count, 
+			 courier_name, tracking_number, created_at, delivered_at
+			 FROM shipments 
+			 ORDER BY created_at DESC`,
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get shipment list: %w", err)
 	}
@@ -404,30 +470,41 @@ type InventorySummaryRow struct {
 }
 
 // getInventorySummaryData retrieves inventory summary data for a client company
+// If companyID is nil, returns data for all companies (for PM users)
 func (h *ReportsHandler) getInventorySummaryData(companyID *int64) (*InventorySummaryData, error) {
-	if companyID == nil {
-		return nil, fmt.Errorf("company ID is required")
-	}
-
 	data := &InventorySummaryData{
 		ByStatus: make(map[string]int),
 		ByBrand:  make(map[string]int),
 	}
 
 	// Get total laptops
-	err := h.DB.QueryRow(
-		`SELECT COUNT(*) FROM laptops WHERE client_company_id = $1`,
-		*companyID,
-	).Scan(&data.TotalLaptops)
+	var err error
+	if companyID != nil {
+		err = h.DB.QueryRow(
+			`SELECT COUNT(*) FROM laptops WHERE client_company_id = $1`,
+			*companyID,
+		).Scan(&data.TotalLaptops)
+	} else {
+		err = h.DB.QueryRow(
+			`SELECT COUNT(*) FROM laptops`,
+		).Scan(&data.TotalLaptops)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total laptops: %w", err)
 	}
 
 	// Get laptops by status
-	rows, err := h.DB.Query(
-		`SELECT status, COUNT(*) FROM laptops WHERE client_company_id = $1 GROUP BY status`,
-		*companyID,
-	)
+	var rows *sql.Rows
+	if companyID != nil {
+		rows, err = h.DB.Query(
+			`SELECT status, COUNT(*) FROM laptops WHERE client_company_id = $1 GROUP BY status`,
+			*companyID,
+		)
+	} else {
+		rows, err = h.DB.Query(
+			`SELECT status, COUNT(*) FROM laptops GROUP BY status`,
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get laptops by status: %w", err)
 	}
@@ -443,10 +520,16 @@ func (h *ReportsHandler) getInventorySummaryData(companyID *int64) (*InventorySu
 	}
 
 	// Get laptops by brand
-	rows, err = h.DB.Query(
-		`SELECT brand, COUNT(*) FROM laptops WHERE client_company_id = $1 AND brand IS NOT NULL GROUP BY brand`,
-		*companyID,
-	)
+	if companyID != nil {
+		rows, err = h.DB.Query(
+			`SELECT brand, COUNT(*) FROM laptops WHERE client_company_id = $1 AND brand IS NOT NULL GROUP BY brand`,
+			*companyID,
+		)
+	} else {
+		rows, err = h.DB.Query(
+			`SELECT brand, COUNT(*) FROM laptops WHERE brand IS NOT NULL GROUP BY brand`,
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get laptops by brand: %w", err)
 	}
@@ -462,10 +545,16 @@ func (h *ReportsHandler) getInventorySummaryData(companyID *int64) (*InventorySu
 	}
 
 	// Get assigned vs unassigned count
-	err = h.DB.QueryRow(
-		`SELECT COUNT(*) FROM laptops WHERE client_company_id = $1 AND software_engineer_id IS NOT NULL`,
-		*companyID,
-	).Scan(&data.AssignedCount)
+	if companyID != nil {
+		err = h.DB.QueryRow(
+			`SELECT COUNT(*) FROM laptops WHERE client_company_id = $1 AND software_engineer_id IS NOT NULL`,
+			*companyID,
+		).Scan(&data.AssignedCount)
+	} else {
+		err = h.DB.QueryRow(
+			`SELECT COUNT(*) FROM laptops WHERE software_engineer_id IS NOT NULL`,
+		).Scan(&data.AssignedCount)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get assigned count: %w", err)
 	}
@@ -473,16 +562,27 @@ func (h *ReportsHandler) getInventorySummaryData(companyID *int64) (*InventorySu
 	data.UnassignedCount = data.TotalLaptops - data.AssignedCount
 
 	// Get detailed laptop list
-	rows, err = h.DB.Query(
-		`SELECT l.id, l.serial_number, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb, 
-		 l.status, l.software_engineer_id, se.name as engineer_name,
-		 l.created_at, l.updated_at
-		 FROM laptops l
-		 LEFT JOIN software_engineers se ON se.id = l.software_engineer_id
-		 WHERE l.client_company_id = $1 
-		 ORDER BY l.created_at DESC`,
-		*companyID,
-	)
+	if companyID != nil {
+		rows, err = h.DB.Query(
+			`SELECT l.id, l.serial_number, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb, 
+			 l.status, l.software_engineer_id, se.name as engineer_name,
+			 l.created_at, l.updated_at
+			 FROM laptops l
+			 LEFT JOIN software_engineers se ON se.id = l.software_engineer_id
+			 WHERE l.client_company_id = $1 
+			 ORDER BY l.created_at DESC`,
+			*companyID,
+		)
+	} else {
+		rows, err = h.DB.Query(
+			`SELECT l.id, l.serial_number, l.brand, l.model, l.cpu, l.ram_gb, l.ssd_gb, 
+			 l.status, l.software_engineer_id, se.name as engineer_name,
+			 l.created_at, l.updated_at
+			 FROM laptops l
+			 LEFT JOIN software_engineers se ON se.id = l.software_engineer_id
+			 ORDER BY l.created_at DESC`,
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get laptop list: %w", err)
 	}
@@ -540,23 +640,33 @@ type ShipmentTimelineRow struct {
 }
 
 // getShipmentTimelineData retrieves shipment timeline data for a client company
+// If companyID is nil, returns data for all companies (for PM users)
 func (h *ReportsHandler) getShipmentTimelineData(companyID *int64) (*ShipmentTimelineData, error) {
-	if companyID == nil {
-		return nil, fmt.Errorf("company ID is required")
-	}
-
 	data := &ShipmentTimelineData{}
 
-	rows, err := h.DB.Query(
-		`SELECT id, jira_ticket_number, shipment_type, status, laptop_count,
-		 courier_name, tracking_number, pickup_scheduled_date, picked_up_at,
-		 arrived_warehouse_at, released_warehouse_at, eta_to_engineer, delivered_at,
-		 created_at
-		 FROM shipments 
-		 WHERE client_company_id = $1 
-		 ORDER BY created_at DESC`,
-		*companyID,
-	)
+	var rows *sql.Rows
+	var err error
+	if companyID != nil {
+		rows, err = h.DB.Query(
+			`SELECT id, jira_ticket_number, shipment_type, status, laptop_count,
+			 courier_name, tracking_number, pickup_scheduled_date, picked_up_at,
+			 arrived_warehouse_at, released_warehouse_at, eta_to_engineer, delivered_at,
+			 created_at
+			 FROM shipments 
+			 WHERE client_company_id = $1 
+			 ORDER BY created_at DESC`,
+			*companyID,
+		)
+	} else {
+		rows, err = h.DB.Query(
+			`SELECT id, jira_ticket_number, shipment_type, status, laptop_count,
+			 courier_name, tracking_number, pickup_scheduled_date, picked_up_at,
+			 arrived_warehouse_at, released_warehouse_at, eta_to_engineer, delivered_at,
+			 created_at
+			 FROM shipments 
+			 ORDER BY created_at DESC`,
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get shipment timeline data: %w", err)
 	}
