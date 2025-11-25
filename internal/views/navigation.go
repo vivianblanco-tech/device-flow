@@ -25,7 +25,7 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		nav.Dashboard = true
 		nav.Shipments = true
 		nav.Inventory = true
-		nav.Calendar = true
+		nav.Calendar = false // Calendar link removed
 		nav.PickupForms = true
 		nav.ReceptionReports = true
 		nav.MagicLinks = true
@@ -36,7 +36,7 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		nav.Dashboard = true
 		nav.Shipments = true
 		nav.Inventory = true
-		nav.Calendar = true
+		nav.Calendar = false // Calendar link removed
 		nav.PickupForms = false
 		nav.ReceptionReports = false
 		nav.MagicLinks = false
@@ -47,7 +47,7 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		nav.Dashboard = false
 		nav.Shipments = true
 		nav.Inventory = true
-		nav.Calendar = true
+		nav.Calendar = false // Calendar link removed
 		nav.PickupForms = false
 		nav.ReceptionReports = true
 		nav.MagicLinks = false
@@ -57,7 +57,7 @@ func GetNavigationLinks(role models.UserRole) NavigationLinks {
 		nav.Dashboard = false
 		nav.Shipments = true
 		nav.Inventory = true // Client users can view their company's laptops
-		nav.Calendar = false // Calendar removed for Client users
+		nav.Calendar = false // Calendar link removed
 		nav.PickupForms = false // Pickup Forms removed for Client users
 		nav.ReceptionReports = false
 		nav.MagicLinks = false

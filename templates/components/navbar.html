@@ -16,7 +16,7 @@ Expected template data:
                 
                 <div class="flex items-center space-x-1">
                     {{if .Nav.Dashboard}}
-                    <a href="/dashboard" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "dashboard"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                    <a href="/dashboard" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "dashboard"}}text-blue-600 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
                         Dashboard
                         {{if eq .CurrentPage "dashboard"}}
                         <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
@@ -25,7 +25,7 @@ Expected template data:
                     {{end}}
                     
                     {{if .Nav.Shipments}}
-                    <a href="/shipments" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "shipments"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                    <a href="/shipments" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "shipments"}}text-blue-600 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
                         Shipments
                         {{if eq .CurrentPage "shipments"}}
                         <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
@@ -34,7 +34,7 @@ Expected template data:
                     {{end}}
                     
                     {{if .Nav.Inventory}}
-                    <a href="/inventory" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "inventory"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                    <a href="/inventory" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "inventory"}}text-blue-600 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
                         Inventory
                         {{if eq .CurrentPage "inventory"}}
                         <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
@@ -48,7 +48,7 @@ Expected template data:
                     {{end}}
                     
                     {{if .Nav.PickupForms}}
-                    <a href="/pickup-forms" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "pickup-forms"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                    <a href="/pickup-forms" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "pickup-forms"}}text-blue-600 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
                         Pickup Forms
                         {{if eq .CurrentPage "pickup-forms"}}
                         <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
@@ -57,7 +57,7 @@ Expected template data:
                     {{end}}
                     
                     {{if .Nav.ReceptionReports}}
-                    <a href="/reception-reports" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "reception-reports"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                    <a href="/reception-reports" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "reception-reports"}}text-blue-600 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
                         Reception Reports
                         {{if eq .CurrentPage "reception-reports"}}
                         <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
@@ -66,7 +66,7 @@ Expected template data:
                     {{end}}
                     
                     {{if .Nav.MagicLinks}}
-                    <a href="/magic-links" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "magic-links"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                    <a href="/magic-links" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "magic-links"}}text-blue-600 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
                         Magic Links
                         {{if eq .CurrentPage "magic-links"}}
                         <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
@@ -75,7 +75,7 @@ Expected template data:
                     {{end}}
                     
                     {{if .Nav.Forms}}
-                    <a href="/forms" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "forms"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                    <a href="/forms" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "forms"}}text-blue-600 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
                         Forms
                         {{if eq .CurrentPage "forms"}}
                         <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
@@ -89,7 +89,7 @@ Expected template data:
                     {{end}}
                     
                     {{if .Nav.Reports}}
-                    <a href="/reports" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "reports"}}text-blue-700 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
+                    <a href="/reports" class="relative px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 {{if eq .CurrentPage "reports"}}text-blue-600 bg-blue-50 border-b-2 border-blue-600{{else}}text-gray-700 hover:text-gray-900 hover:bg-white hover:scale-105{{end}}">
                         Reports
                         {{if eq .CurrentPage "reports"}}
                         <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>

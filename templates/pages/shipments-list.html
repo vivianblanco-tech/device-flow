@@ -21,8 +21,8 @@
             </div>
             
             {{if eq .User.Role "logistics"}}
-            <!-- Three Create Shipment Buttons -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-6 rounded-lg shadow-md border-2 border-gray-200">
+            <!-- Four Create Shipment Buttons -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-white p-6 rounded-lg shadow-md border-2 border-gray-200">
                 <a href="/shipments/create/single" class="flex flex-col items-center justify-center px-4 py-4 bg-white border-2 border-blue-500 rounded-lg hover:bg-blue-50 transition group">
                     <div class="bg-blue-500 rounded-full p-3 mb-3 group-hover:bg-blue-600 transition">
                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,6 +51,16 @@
                     </div>
                     <span class="text-sm font-semibold text-gray-900">+ Warehouse → Engineer</span>
                     <span class="text-xs text-gray-500 mt-1">From warehouse inventory</span>
+                </a>
+                
+                <a href="/shipments/create/engineer-to-warehouse" class="flex flex-col items-center justify-center px-4 py-4 bg-white border-2 border-orange-500 rounded-lg hover:bg-orange-50 transition group">
+                    <div class="bg-orange-500 rounded-full p-3 mb-3 group-hover:bg-orange-600 transition">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path>
+                        </svg>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-900">+ Engineer → Warehouse</span>
+                    <span class="text-xs text-gray-500 mt-1">Return to warehouse/client</span>
                 </a>
             </div>
             {{end}}

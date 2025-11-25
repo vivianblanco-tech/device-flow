@@ -64,11 +64,12 @@ func TestNavbarConsistencyAcrossPages(t *testing.T) {
 				`href="/dashboard"`,
 				`href="/shipments"`,
 				`href="/inventory"`,
-				`href="/calendar"`,
 				`href="/pickup-forms"`,
 				`href="/reception-reports"`,
 			},
-			unexpectedLinks: []string{},
+			unexpectedLinks: []string{
+				`href="/calendar"`, // Calendar link removed
+			},
 		},
 		{
 			name:             "Dashboard page for project manager",
@@ -81,9 +82,9 @@ func TestNavbarConsistencyAcrossPages(t *testing.T) {
 				`href="/dashboard"`,
 				`href="/shipments"`,
 				`href="/inventory"`,
-				`href="/calendar"`,
 			},
 			unexpectedLinks: []string{
+				`href="/calendar"`, // Calendar link removed
 				`href="/pickup-forms"`,
 				`href="/reception-reports"`,
 			},
@@ -98,11 +99,11 @@ func TestNavbarConsistencyAcrossPages(t *testing.T) {
 			expectedLinks: []string{
 				`href="/shipments"`,
 				`href="/inventory"`,
-				`href="/calendar"`,
 				`href="/reception-reports"`,
 			},
 			unexpectedLinks: []string{
 				`href="/dashboard"`,
+				`href="/calendar"`, // Calendar link removed
 				`href="/pickup-forms"`,
 			},
 		},
@@ -116,11 +117,11 @@ func TestNavbarConsistencyAcrossPages(t *testing.T) {
 			expectedLinks: []string{
 				`href="/shipments"`,
 				`href="/inventory"`,
-				`href="/calendar"`,
-				`href="/pickup-forms"`,
 			},
 			unexpectedLinks: []string{
 				`href="/dashboard"`,
+				`href="/calendar"`,
+				`href="/pickup-forms"`,
 				`href="/reception-reports"`,
 			},
 		},
@@ -135,9 +136,10 @@ func TestNavbarConsistencyAcrossPages(t *testing.T) {
 				`href="/dashboard"`,
 				`href="/shipments"`,
 				`href="/inventory"`,
-				`href="/calendar"`,
 			},
-			unexpectedLinks: []string{},
+			unexpectedLinks: []string{
+				`href="/calendar"`, // Calendar link removed
+			},
 		},
 		{
 			name:             "Calendar page for warehouse user",
@@ -149,11 +151,11 @@ func TestNavbarConsistencyAcrossPages(t *testing.T) {
 			expectedLinks: []string{
 				`href="/shipments"`,
 				`href="/inventory"`,
-				`href="/calendar"`,
 				`href="/reception-reports"`,
 			},
 			unexpectedLinks: []string{
 				`href="/dashboard"`,
+				`href="/calendar"`, // Calendar link removed
 			},
 		},
 	}

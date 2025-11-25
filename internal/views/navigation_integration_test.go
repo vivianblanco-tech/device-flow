@@ -48,11 +48,12 @@ func TestNavbarComponentRendering(t *testing.T) {
 				`href="/dashboard"`,
 				`href="/shipments"`,
 				`href="/inventory"`,
-				`href="/calendar"`,
 				`href="/pickup-forms"`,
 				`href="/reception-reports"`,
 			},
-			unexpectedLinks:     []string{},
+			unexpectedLinks: []string{
+				`href="/calendar"`, // Calendar link removed
+			},
 			expectedStickyClass: true,
 		},
 		{
@@ -63,10 +64,10 @@ func TestNavbarComponentRendering(t *testing.T) {
 				`href="/dashboard"`,
 				`href="/shipments"`,
 				`href="/inventory"`,
-				`href="/calendar"`,
 				`href="/reports"`, // Project Manager should have access to Reports
 			},
 			unexpectedLinks: []string{
+				`href="/calendar"`, // Calendar link removed
 				`href="/pickup-forms"`,
 				`href="/reception-reports"`,
 			},
@@ -79,11 +80,11 @@ func TestNavbarComponentRendering(t *testing.T) {
 			expectedLinks: []string{
 				`href="/shipments"`,
 				`href="/inventory"`,
-				`href="/calendar"`,
 				`href="/reception-reports"`,
 			},
 			unexpectedLinks: []string{
 				`href="/dashboard"`,
+				`href="/calendar"`, // Calendar link removed
 				`href="/pickup-forms"`,
 			},
 			expectedStickyClass: true,
@@ -95,11 +96,11 @@ func TestNavbarComponentRendering(t *testing.T) {
 			expectedLinks: []string{
 				`href="/shipments"`,
 				`href="/inventory"`, // Client users can now view their company's inventory
-				`href="/calendar"`,
-				`href="/pickup-forms"`,
 			},
 			unexpectedLinks: []string{
 				`href="/dashboard"`,
+				`href="/calendar"`,
+				`href="/pickup-forms"`,
 				`href="/reception-reports"`,
 			},
 			expectedStickyClass: true,

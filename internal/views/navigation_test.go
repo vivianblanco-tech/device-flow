@@ -19,7 +19,7 @@ func TestGetNavigationLinks(t *testing.T) {
 				"dashboard":         true,
 				"shipments":         true,
 				"inventory":         true,
-				"calendar":          true,
+				"calendar":          false, // Calendar link removed
 				"pickup_forms":      true,
 				"reception_reports": true,
 				"magic_links":       true,
@@ -32,7 +32,7 @@ func TestGetNavigationLinks(t *testing.T) {
 				"dashboard":         true,
 				"shipments":         true,
 				"inventory":         true,
-				"calendar":          true,
+				"calendar":          false, // Calendar link removed
 				"pickup_forms":      false,
 				"reception_reports": false,
 				"magic_links":       false,
@@ -46,7 +46,7 @@ func TestGetNavigationLinks(t *testing.T) {
 				"dashboard":         false,
 				"shipments":         true,
 				"inventory":         true,
-				"calendar":          true,
+				"calendar":          false, // Calendar link removed
 				"pickup_forms":      false,
 				"reception_reports": true,
 				"magic_links":       false,

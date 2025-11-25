@@ -18,18 +18,18 @@
         </div>
 
         <!-- Form Type Options -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             
             <!-- Single Full Journey Form -->
-            <a href="/shipments/create/single" class="group">
-                <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 border-2 border-transparent hover:border-blue-500">
+            <a href="/shipments/create/single" class="group h-full">
+                <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 border-2 border-transparent hover:border-blue-500 h-full flex flex-col">
                     <div class="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mb-4">
                         <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                     </div>
                     <h3 class="text-xl font-semibold text-gray-900 mb-2">Single Laptop Shipment</h3>
-                    <p class="text-sm text-gray-600 mb-4">
+                    <p class="text-sm text-gray-600 mb-4 flex-grow">
                         Ship a single laptop directly from client to engineer through our warehouse. 
                         Complete tracking from pickup to final delivery.
                     </p>
@@ -43,15 +43,15 @@
             </a>
 
             <!-- Bulk to Warehouse Form -->
-            <a href="/shipments/create/bulk" class="group">
-                <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 border-2 border-transparent hover:border-green-500">
+            <a href="/shipments/create/bulk" class="group h-full">
+                <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 border-2 border-transparent hover:border-green-500 h-full flex flex-col">
                     <div class="flex items-center justify-center w-12 h-12 bg-green-100 rounded-lg mb-4">
                         <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                         </svg>
                     </div>
                     <h3 class="text-xl font-semibold text-gray-900 mb-2">Bulk Shipment to Warehouse</h3>
-                    <p class="text-sm text-gray-600 mb-4">
+                    <p class="text-sm text-gray-600 mb-4 flex-grow">
                         Ship multiple laptops from client location to our warehouse for processing. 
                         Ideal for large batches or inventory transfers.
                     </p>
@@ -66,28 +66,47 @@
 
             <!-- Warehouse to Engineer Form (Logistics Only) -->
             {{if .ShowWarehouseToEngineer}}
-            <a href="/shipments/create/warehouse-to-engineer" class="group">
-                <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 border-2 border-transparent hover:border-purple-500">
+            <a href="/shipments/create/warehouse-to-engineer" class="group h-full">
+                <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 border-2 border-transparent hover:border-purple-500 h-full flex flex-col">
                     <div class="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mb-4">
                         <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
                         </svg>
                     </div>
                     <h3 class="text-xl font-semibold text-gray-900 mb-2">Warehouse to Engineer</h3>
-                    <p class="text-sm text-gray-600 mb-4">
+                    <p class="text-sm text-gray-600 mb-4 flex-grow">
                         Ship laptops from warehouse to software engineer. Select from available 
                         inventory and specify delivery details.
                     </p>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center text-purple-600 font-medium group-hover:text-purple-700">
-                            <span>Create Form</span>
-                            <svg class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </div>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                            Logistics Only
-                        </span>
+                    <div class="flex items-center text-purple-600 font-medium group-hover:text-purple-700">
+                        <span>Create Form</span>
+                        <svg class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                </div>
+            </a>
+            {{end}}
+
+            <!-- Engineer to Warehouse/Client Form (Logistics Only) -->
+            {{if .ShowWarehouseToEngineer}}
+            <a href="/shipments/create/engineer-to-warehouse" class="group h-full">
+                <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 border-2 border-transparent hover:border-orange-500 h-full flex flex-col">
+                    <div class="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-lg mb-4">
+                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">Engineer to Warehouse</h3>
+                    <p class="text-sm text-gray-600 mb-4 flex-grow">
+                        Return laptops from engineer back to warehouse or client. Track device 
+                        returns and manage inventory restocking.
+                    </p>
+                    <div class="flex items-center text-orange-600 font-medium group-hover:text-orange-700">
+                        <span>Create Form</span>
+                        <svg class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
                     </div>
                 </div>
             </a>
@@ -125,6 +144,15 @@
                     <div>
                         <strong>Warehouse to Engineer:</strong> Use this to ship laptops that are already in the warehouse 
                         to their assigned engineers. Only available for logistics users.
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                    <div>
+                        <strong>Engineer to Warehouse:</strong> Use this to return laptops from engineers back to the warehouse 
+                        or client. Track device returns and manage inventory restocking. Only available for logistics users.
                     </div>
                 </div>
                 {{end}}

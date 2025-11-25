@@ -2044,6 +2044,17 @@ func TestUpdateShipmentStatus(t *testing.T) {
 	handler := NewShipmentsHandler(db, templates, nil) // nil email notifier for tests
 
 	t.Run("logistics user can update shipment status", func(t *testing.T) {
+		// Create pickup form before updating status
+		formDataJSON := json.RawMessage(`{"contact_name":"Test Contact","pickup_address":"123 Test St","contact_email":"test@example.com"}`)
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+			VALUES ($1, $2, $3, $4)`,
+			shipmentID, logisticsUserID, time.Now(), formDataJSON,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create pickup form: %v", err)
+		}
+
 		// First update to pickup_scheduled (sequential transition)
 		formData := url.Values{}
 		formData.Set("shipment_id", strconv.FormatInt(shipmentID, 10))
@@ -2551,6 +2562,17 @@ func TestUpdateShipmentStatus(t *testing.T) {
 			t.Fatalf("Failed to create test shipment: %v", err)
 		}
 
+		// Create pickup form before updating status
+		formDataJSON := json.RawMessage(`{"contact_name":"Test Contact","pickup_address":"123 Test St","contact_email":"test@example.com"}`)
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+			VALUES ($1, $2, $3, $4)`,
+			shipmentID3, logisticsUserID, time.Now(), formDataJSON,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create pickup form: %v", err)
+		}
+
 		trackingNumber := "1Z999AA10123456784"
 		courierName := "FedEx"
 
@@ -2667,6 +2689,20 @@ func TestUpdateShipmentStatus(t *testing.T) {
 			VALUES ($1, $2, $3, $4, $5) RETURNING id`,
 			companyID, models.ShipmentStatusPendingPickup, "TEST-994", time.Now(), time.Now(),
 		).Scan(&shipmentID6)
+		if err != nil {
+			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		// Create pickup form before updating status
+		formDataJSON := json.RawMessage(`{"contact_name":"Test Contact","pickup_address":"123 Test St","contact_email":"test@example.com"}`)
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+			VALUES ($1, $2, $3, $4)`,
+			shipmentID6, logisticsUserID, time.Now(), formDataJSON,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create pickup form: %v", err)
+		}
 		if err != nil {
 			t.Fatalf("Failed to create test shipment: %v", err)
 		}
@@ -2957,6 +2993,17 @@ func TestUpdateShipmentStatus(t *testing.T) {
 		).Scan(&shipmentID13)
 		if err != nil {
 			t.Fatalf("Failed to create test shipment: %v", err)
+		}
+
+		// Create pickup form before updating status
+		formDataJSON := json.RawMessage(`{"contact_name":"Test Contact","pickup_address":"123 Test St","contact_email":"test@example.com"}`)
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+			VALUES ($1, $2, $3, $4)`,
+			shipmentID13, logisticsUserID, time.Now(), formDataJSON,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create pickup form: %v", err)
 		}
 
 		formData := url.Values{}
@@ -3908,7 +3955,7 @@ func TestShipmentDetailClientPermissions(t *testing.T) {
 		}
 	})
 
-	t.Run("logistics user CAN see Confirm Delivery link for comparison", func(t *testing.T) {
+	t.Run("logistics user does NOT see Confirm Delivery link", func(t *testing.T) {
 		// Create logistics user
 		var logisticsUserID int64
 		err := db.QueryRowContext(ctx,
@@ -3940,9 +3987,9 @@ func TestShipmentDetailClientPermissions(t *testing.T) {
 
 		body := w.Body.String()
 
-		// Logistics user SHOULD see "Confirm Delivery" link for comparison
-		if !strings.Contains(body, "Confirm Delivery") {
-			t.Error("Logistics user SHOULD see 'Confirm Delivery' link")
+		// Logistics user should NOT see "Confirm Delivery" link (removed on purpose)
+		if strings.Contains(body, "Confirm Delivery") {
+			t.Error("Logistics user should NOT see 'Confirm Delivery' link")
 		}
 	})
 }
@@ -4670,6 +4717,17 @@ func TestUpdateShipmentStatusWithDatabaseCourier(t *testing.T) {
 	handler := NewShipmentsHandler(db, templates, nil)
 
 	t.Run("update shipment status accepts courier from database", func(t *testing.T) {
+		// Create pickup form before updating status
+		formDataJSON := json.RawMessage(`{"contact_name":"Test Contact","pickup_address":"123 Test St","contact_email":"test@example.com"}`)
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO pickup_forms (shipment_id, submitted_by_user_id, submitted_at, form_data)
+			VALUES ($1, $2, $3, $4)`,
+			shipmentID, userID, time.Now(), formDataJSON,
+		)
+		if err != nil {
+			t.Fatalf("Failed to create pickup form: %v", err)
+		}
+
 		form := url.Values{}
 		form.Set("status", string(models.ShipmentStatusPickupScheduled))
 		form.Set("courier_name", courierName)
