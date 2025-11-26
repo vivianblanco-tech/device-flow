@@ -148,9 +148,10 @@ Write-Host "================================================" -ForegroundColor G
 Write-Host ""
 
 Write-Host "Key Features in Sample Data:" -ForegroundColor Cyan
-Write-Host "  [OK] Three shipment types (single, bulk, warehouse-to-engineer)" -ForegroundColor Green
+Write-Host "  [OK] ~100 shipments across three types (single, bulk, warehouse-to-engineer)" -ForegroundColor Green
 Write-Host "  [OK] All eight shipment statuses represented" -ForegroundColor Green
-Write-Host "  [OK] Multiple bulk shipments (2-5 laptops each)" -ForegroundColor Green
+Write-Host "  [OK] Multiple bulk shipments (2-6 laptops each)" -ForegroundColor Green
+Write-Host "  [OK] Average delivery time: ~2.5-2.9 days" -ForegroundColor Green
 Write-Host "  [OK] High-end workstations and premium laptops" -ForegroundColor Green
 Write-Host "  [OK] Complete pickup forms with detailed JSON data" -ForegroundColor Green
 Write-Host "  [OK] Laptop-based reception reports with approval workflow" -ForegroundColor Green
@@ -248,6 +249,34 @@ SELECT
 FROM shipments 
 GROUP BY shipment_type 
 ORDER BY count DESC;
+" -t
+
+Write-Host ""
+Write-Host "Average Delivery Time Verification:" -ForegroundColor Cyan
+docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "
+SELECT 
+    ROUND(AVG(EXTRACT(EPOCH FROM (delivered_at - picked_up_at)) / 86400)::numeric, 2) as avg_delivery_days,
+    COUNT(*) as delivered_count,
+    CASE 
+        WHEN AVG(EXTRACT(EPOCH FROM (delivered_at - picked_up_at)) / 86400) BETWEEN 2.5 AND 2.9 THEN 'OK - Target met (2.5-2.9 days)'
+        ELSE 'WARNING - Outside target range'
+    END as status
+FROM shipments
+WHERE status = 'delivered' 
+  AND picked_up_at IS NOT NULL 
+  AND delivered_at IS NOT NULL;
+" -t
+
+Write-Host ""
+Write-Host "Total Shipment Count:" -ForegroundColor Cyan
+docker exec -i laptop-tracking-db psql -U postgres -d laptop_tracking_dev -c "
+SELECT 
+    COUNT(*) as total_shipments,
+    CASE 
+        WHEN COUNT(*) >= 95 AND COUNT(*) <= 105 THEN 'OK - Target met (~100 shipments)'
+        ELSE 'WARNING - Outside target range'
+    END as status
+FROM shipments;
 " -t
 
 Write-Host ""

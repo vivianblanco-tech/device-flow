@@ -3,12 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/images/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/images/android-chrome-512x512.png">
+    <link rel="manifest" href="/static/images/site.webmanifest">
     <title>Login - Align</title>    
     <link rel="stylesheet" href="/static/css/output.css" />
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center">
-    <div class="max-w-md w-full mx-auto p-6">
-        <div class="bg-white rounded-lg shadow-md p-8">
+    <div class="max-w-6xl w-full mx-auto p-6">
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Login Form Card -->
+            <div class="bg-white rounded-lg shadow-md p-8">
             <!-- Logo/Header -->
             <div class="text-center mb-8">
                 <div class="bg-white px-6 py-4 rounded-lg inline-block mb-4">
@@ -120,6 +129,61 @@
             <div class="mt-6 text-center text-sm text-gray-600">
                 <p>Need help? Contact <a href="mailto:support@bairesdev.com" class="text-blue-600 hover:text-blue-700">support@bairesdev.com</a></p>
             </div>
+        </div>
+        
+        <!-- Benefits Box -->
+        <div class="bg-white rounded-lg shadow-md p-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Why Choose Align?</h2>
+            <div class="space-y-6">
+                <!-- Benefit 1 -->
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Everyone on the same page:</span> Clients, PMs, logistics, and warehouse teams all operate on one unified platform —no more disconnected emails or spreadsheets.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Benefit 2 -->
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Eliminate delays:</span> Real-time collaboration across all teams prevents mistakes, speeds up onboarding, and keeps projects on track.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Benefit 3 -->
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-gray-700 leading-relaxed">
+                            <span class="font-semibold text-gray-900">Start faster, earn sooner:</span> With Align's guaranteed 3-day express delivery across LATAM, projects launch quickly and revenue accelerates.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
         </div>
     </div>
 </body>
