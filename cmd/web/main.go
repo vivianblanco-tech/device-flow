@@ -296,6 +296,7 @@ func main() {
 	shipmentsHandler := handlers.NewShipmentsHandler(db, templates, notifier)
 	formsHandler := handlers.NewFormsHandler(db, templates)
 	reportsHandler := handlers.NewReportsHandler(db, templates)
+	aboutHandler := handlers.NewAboutHandler(db, templates)
 
 	// Initialize router
 	router := mux.NewRouter()
@@ -465,6 +466,9 @@ func main() {
 	protected.HandleFunc("/reports/shipment-status", reportsHandler.ShipmentStatusDashboard).Methods("GET")
 	protected.HandleFunc("/reports/inventory-summary", reportsHandler.InventorySummaryReport).Methods("GET")
 	protected.HandleFunc("/reports/shipment-timeline", reportsHandler.ShipmentTimelineReport).Methods("GET")
+
+	// About page (accessible to all authenticated users)
+	protected.HandleFunc("/about", aboutHandler.About).Methods("GET")
 
 	// Serve static files
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/",
